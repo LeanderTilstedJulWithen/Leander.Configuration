@@ -2,4 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/Leander.Configuration/Leander.Configuration.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Leander.Configuration.Tests/Leander.Configuration.Tests.csproj" />
+  </Folder>
 </Solution>
