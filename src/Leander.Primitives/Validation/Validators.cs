@@ -32,6 +32,11 @@ public static class Validators
 
         private static bool HasElements(IEnumerable values)
         {
+            if (values is IList list)
+            {
+                return list.Count > 0;
+            }
+
             var enumerator = values.GetEnumerator();
             try
             {

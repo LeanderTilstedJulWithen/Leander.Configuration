@@ -17,16 +17,16 @@ internal sealed class DelimitedReader<T>(ConfigurationDefinition<T> element, cha
         }
     }
 
-    public override ReadStatus Read(ConfigurationReader reader, ConfigurationDefinition definition, string key, out IReadOnlyList<T> value)
+    public override ReadStatus Read(ReadContext context, ConfigurationDefinition definition, string key, out IReadOnlyList<T> value)
     {
         value = [];
 
-        var raw = reader.Source.GetValue(key);
+        var raw = context.Source.GetValue(key);
         if (raw is null)
         {
-            if (reader.Source.GetChildNames(key).Count > 0)
+            if (context.Source.GetChildNames(key).Count > 0)
             {
-                reader.Report(DiagnosticSeverity.Warning, key, $"has child entries, but a single '{delimiter}'-delimited value is expected", definition);
+                context.Report(DiagnosticSeverity.Warning, key, $"has child entries, but a single '{delimiter}'-delimited value is expected", definition);
             }
 
             return ReadStatus.Missing;
@@ -34,11 +34,11 @@ internal sealed class DelimitedReader<T>(ConfigurationDefinition<T> element, cha
 
         // Resolution guarantees a scalar element.
         var scalar = (ScalarReader<T>)element.Reader;
-        var primitive = scalar.GetPrimitive(reader);
+        var primitive = scalar.GetPrimitive(context);
 
         if (!Converters.List(primitive.Converter, delimiter).TryParse(raw, out var items))
         {
-            reader.Report(DiagnosticSeverity.Error, key, $"'{raw}' is not a valid '{delimiter}'-delimited list of {ScalarReader<T>.Describe(primitive)}", definition);
+            context.Report(DiagnosticSeverity.Error, key, $"'{raw}' is not a valid '{delimiter}'-delimited list of {ScalarReader<T>.Describe(primitive)}", definition);
             return ReadStatus.Failed;
         }
 
@@ -47,7 +47,7 @@ internal sealed class DelimitedReader<T>(ConfigurationDefinition<T> element, cha
 
         for (var i = 0; i < items.Count; i++)
         {
-            if (scalar.TryProcess(reader, definition, $"{key}[{i}]", items[i], out var item))
+            if (scalar.TryProcess(context, definition, $"{key}[{i}]", items[i], out var item))
             {
                 elements.Add(item);
             }

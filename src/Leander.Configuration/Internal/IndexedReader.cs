@@ -7,18 +7,18 @@ internal sealed class IndexedReader<T>(ConfigurationDefinition<T> element) : Val
 {
     public override void Resolve(ContractResolver resolver, ConfigurationDefinition definition) => element.Resolve(resolver);
 
-    public override ReadStatus Read(ConfigurationReader reader, ConfigurationDefinition definition, string key, out IReadOnlyList<T> value)
+    public override ReadStatus Read(ReadContext context, ConfigurationDefinition definition, string key, out IReadOnlyList<T> value)
     {
         value = [];
 
-        var names = reader.Source.GetChildNames(key);
-        var hasValue = reader.Source.GetValue(key) is not null;
+        var names = context.Source.GetChildNames(key);
+        var hasValue = context.Source.GetValue(key) is not null;
 
         if (names.Count == 0)
         {
             if (hasValue)
             {
-                reader.Report(DiagnosticSeverity.Warning, key, $"has a single value, but indexed entries ({key}:0, {key}:1, ...) are expected", definition);
+                context.Report(DiagnosticSeverity.Warning, key, $"has a single value, but indexed entries ({key}:0, {key}:1, ...) are expected", definition);
             }
 
             return ReadStatus.Missing;
@@ -26,7 +26,7 @@ internal sealed class IndexedReader<T>(ConfigurationDefinition<T> element) : Val
 
         if (hasValue)
         {
-            reader.Report(DiagnosticSeverity.Warning, key, "has a single value that is ignored, because indexed entries are expected", definition);
+            context.Report(DiagnosticSeverity.Warning, key, "has a single value that is ignored, because indexed entries are expected", definition);
         }
 
         var failed = false;
@@ -40,7 +40,7 @@ internal sealed class IndexedReader<T>(ConfigurationDefinition<T> element) : Val
             }
             else
             {
-                reader.Report(DiagnosticSeverity.Error, $"{key}:{name}", $"'{name}' is not a valid index", definition);
+                context.Report(DiagnosticSeverity.Error, $"{key}:{name}", $"'{name}' is not a valid index", definition);
                 failed = true;
             }
         }
@@ -51,20 +51,20 @@ internal sealed class IndexedReader<T>(ConfigurationDefinition<T> element) : Val
         {
             if (entries[i].Index == entries[i - 1].Index)
             {
-                reader.Report(DiagnosticSeverity.Error, key, $"index {entries[i].Index} is defined more than once", definition);
+                context.Report(DiagnosticSeverity.Error, key, $"index {entries[i].Index} is defined more than once", definition);
                 failed = true;
             }
         }
 
         if (entries.Count > 0 && entries[^1].Index != entries.Count - 1)
         {
-            reader.Report(DiagnosticSeverity.Warning, key, "indices are not contiguous from 0", definition);
+            context.Report(DiagnosticSeverity.Warning, key, "indices are not contiguous from 0", definition);
         }
 
         var elements = new List<T>(entries.Count);
         foreach (var (_, name) in entries)
         {
-            if (element.TryRead(reader, $"{key}:{name}", out var item))
+            if (element.TryRead(context, $"{key}:{name}", out var item))
             {
                 elements.Add(item);
             }

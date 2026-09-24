@@ -1,30 +1,25 @@
 namespace Leander.Configuration.Internal;
 
-internal sealed class DictionaryValueSource : IValueSource
+// Reads the dictionary as-is; keyComparer must be the comparer the dictionary itself uses.
+internal sealed class DictionaryValueSource(IReadOnlyDictionary<string, string?> values, StringComparer keyComparer) : IValueSource
 {
-    private readonly Dictionary<string, string?> _values;
-
-    public DictionaryValueSource(IEnumerable<KeyValuePair<string, string?>> values)
-    {
-        _values = new Dictionary<string, string?>(values, StringComparer.OrdinalIgnoreCase);
-    }
-
-    public string? GetValue(string key) => _values.GetValueOrDefault(key);
+    public string? GetValue(string key) => values.GetValueOrDefault(key);
 
     public IReadOnlyList<string> GetChildNames(string key)
     {
-        var prefix = key + ValueSource.KeySeparator;
         var names = new List<string>();
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var seen = new HashSet<string>(keyComparer);
 
-        foreach (var candidate in _values.Keys)
+        foreach (var candidate in values.Keys)
         {
-            if (!candidate.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            if (candidate.Length <= key.Length ||
+                candidate[key.Length] != ValueSource.KeySeparator ||
+                !keyComparer.Equals(candidate[..key.Length], key))
             {
                 continue;
             }
 
-            var remainder = candidate[prefix.Length..];
+            var remainder = candidate[(key.Length + 1)..];
             var separator = remainder.IndexOf(ValueSource.KeySeparator);
             var name = separator < 0 ? remainder : remainder[..separator];
 

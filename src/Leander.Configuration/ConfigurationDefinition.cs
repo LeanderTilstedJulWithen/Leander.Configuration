@@ -15,7 +15,8 @@ public abstract class ConfigurationDefinition
 
     public abstract string? Description { get; }
 
-    public abstract bool IsRequired { get; }
+    // A definition without a default is required.
+    public bool IsRequired => !HasDefault;
 
     public abstract bool HasDefault { get; }
 
@@ -32,6 +33,6 @@ public abstract class ConfigurationDefinition
 
     internal abstract void Resolve(ContractResolver resolver);
 
-    // Reads the definition and discards the value; used to validate a whole contract.
-    internal abstract void Read(ConfigurationReader reader);
+    // Reads the value of the definition as an object; used to read a whole contract.
+    internal abstract bool TryRead(ReadContext context, out object? value);
 }

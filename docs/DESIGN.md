@@ -46,7 +46,7 @@ Options objects can still be exposed as `IOptions<T>` by registering a factory. 
 src/
   Leander.Primitives                  what a value is: parsing, normalization, validation, primitive definitions
                                       no dependencies
-  Leander.Configuration               where a value lives: keys, presence, collections, contract, reader, diagnostics
+  Leander.Configuration               where a value lives: keys, presence, collections, contract, snapshot, diagnostics
                                       depends on Leander.Primitives, no Microsoft.Extensions.*
 later:
   Leander.Configuration.Microsoft     IConfiguration source adapter, DI / IOptions registration
@@ -125,7 +125,7 @@ public static class DatabaseConfiguration
 
     public static readonly ConfigurationDefinition<string> AdminEmail =
         ConfigurationDefinition.Define("Admin:Email", Primitives.Email)      // a primitive definition
-            .Required();
+            .Describe("Where operational alerts are sent.");                // no default, so required
 
     public static readonly ConfigurationDefinition<int> Flags =
         ConfigurationDefinition.Define<int>("Flags", "Hex");               // a registered named primitive
@@ -183,7 +183,7 @@ ConfigurationDefinition.Define("Database:ConnectionStrings", Primitives.Connecti
 | `.Delimited()` | One entry holding a delimited list, e.g. `"a,b,c"`             |
 
 - **List-level `Validate`/`Normalize`** are extension methods on `ConfigurationDefinition<IReadOnlyList<T>>`, because a list has no primitive of its own.
-- **Presence carries over.** `Required()` before the mapping carries over to the list, as does the description.
+- **The description carries over** to the list. A list is required unless it has its own default, e.g. `.Delimited().Default([])`.
 - **`.Indexed()` composes**: `.Indexed().Indexed()` reads `Key:0:0`, `Key:0:1`, …
 - **`.Delimited()` requires a scalar element.** Otherwise the contract fails to build. Item diagnostics use `Key[i]`.
 - **Index rules.** Index names must be integers and are ordered numerically. A non-integer or duplicate index is an error, and gaps produce a warning.
@@ -192,7 +192,7 @@ ConfigurationDefinition.Define("Database:ConnectionStrings", Primitives.Connecti
 
 ### Defaults and presence
 
-`.Default(value)` is typed. `Required()` and `Default()` are mutually exclusive, and the last one called wins. A missing value with neither gives `default(T)` and a trace diagnostic. That means `null` for a non-nullable `string`, which is the weakest spot of the current design.
+`.Default(value)` is typed. **A definition without a default is required**: a missing value is an error. There is no way to declare an optional value yet. The intended direction is that only explicitly nullable types (`int?`, `string?`, `T?`) are optional. That follows the C# nullability conventions, and a required `int` is never quietly set to `0`.
 
 ### Contract
 
@@ -210,7 +210,7 @@ var contract = new ConfigurationContractBuilder()
 - **`Build()`** builds the primitive registry first. It then resolves the primitive of every configuration definition, including the element definitions of lists.
 - **Resolution is keyed by definition instance, not by name.** Derived primitives (`Email.Validate(...)`) keep the name "Email", but they never enter the registry's name table, so they never collide with the real Email.
 - **Failures.** Build throws one exception listing every unresolvable primitive, duplicate key, or invalid `Delimited()` use.
-- **`ConfigurationContract`** is the complete list of definitions, which is also what tooling will enumerate. `contract.Validate(source)` reads *every* definition and returns all diagnostics.
+- **`ConfigurationContract`** is the complete list of definitions, which is also what tooling will enumerate.
 
 ### Sources
 
@@ -219,15 +219,24 @@ The core depends on a minimal `IValueSource`, not on `IConfiguration`:
 - `GetValue(key)`: `null` means missing
 - `GetChildNames(key)`: needed for indexed collections
 
-`ValueSource.FromDictionary(...)` provides a case-insensitive in-memory source. `Leander.Configuration.Microsoft` will implement `IValueSource` over `IConfiguration`.
+In-memory sources:
 
-### Reader
+- `ValueSource.FromPairs(pairs)`: copies the pairs into a case-insensitive dictionary. When keys differ only in case, the last one wins.
+- `ValueSource.FromDictionary(dictionary, keyComparer)`: uses the dictionary as-is, without copying. `keyComparer` must be the dictionary's own comparer, so that child names are matched the same way as values are looked up.
 
-`new ConfigurationReader(contract, source)`:
+`Leander.Configuration.Microsoft` will implement `IValueSource` over `IConfiguration`.
 
-- `Get`/`TryGet` read a definition through the pipeline. A definition that is not part of the contract is an error.
-- Diagnostics are collected instead of thrown. Values of failed definitions are `default(T)`.
-- `ThrowIfInvalid()` throws one `InvalidConfigurationException` listing every error:
+### Snapshot
+
+**A source must satisfy the contract to produce a configuration.** Contract and source are aligned when every definition has a value or a default, and that value parses, normalizes and passes validation.
+
+- `contract.Read(source)` reads *every* definition and returns a `ConfigurationSnapshot`, or throws one `InvalidConfigurationException` listing every error.
+- `contract.TryRead(source, out snapshot, out diagnostics)` is the non-throwing variant. It gives no snapshot when there is an error.
+- `snapshot.Get(definition)` cannot fail for a definition in the contract. A definition outside the contract throws `ArgumentException`.
+- `snapshot.Diagnostics` holds the warnings and traces from reading.
+- The name avoids `Configuration`, which would clash with the `Leander.Configuration` namespace. "Snapshot" leaves room for reload: a new read gives a new snapshot.
+
+The exception message lists every error:
 
 ```
 Configuration is invalid:
@@ -239,7 +248,7 @@ Configuration is invalid:
 
 ### Diagnostics
 
-Each diagnostic has a severity (`Error`, `Warning`, `Trace`), a key, a message and the definition it concerns. Only errors make `ThrowIfInvalid()` throw. Warnings and traces go to a logger or can be inspected in the debugger.
+Each diagnostic has a severity (`Error`, `Warning`, `Trace`), a key, a message and the definition it concerns. Only errors prevent a snapshot. Warnings and traces go to a logger or can be inspected in the debugger.
 
 ### Parse error messages
 
@@ -256,8 +265,8 @@ Options classes are written by the application. Construction is explicit:
 ```csharp
 new DatabaseOptions
 {
-    CommandTimeout = reader.Get(DatabaseConfiguration.CommandTimeout),
-    AdminEmail = reader.Get(DatabaseConfiguration.AdminEmail),
+    CommandTimeout = snapshot.Get(DatabaseConfiguration.CommandTimeout),
+    AdminEmail = snapshot.Get(DatabaseConfiguration.AdminEmail),
 };
 ```
 

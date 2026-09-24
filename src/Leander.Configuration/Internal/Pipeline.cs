@@ -7,7 +7,7 @@ internal static class Pipeline
 {
     // Normalizes, then validates. All validators run; every failure becomes a diagnostic.
     public static bool TryProcess<T>(
-        ConfigurationReader reader,
+        ReadContext context,
         ConfigurationDefinition definition,
         string key,
         IReadOnlyList<INormalizer<T>> normalizers,
@@ -25,7 +25,7 @@ internal static class Pipeline
             }
             catch (Exception exception)
             {
-                reader.Report(DiagnosticSeverity.Error, key, $"normalizer '{normalizer.Description}' failed: {exception.Message}", definition);
+                context.Report(DiagnosticSeverity.Error, key, $"normalizer '{normalizer.Description}' failed: {exception.Message}", definition);
                 result = default!;
                 return false;
             }
@@ -38,13 +38,13 @@ internal static class Pipeline
             {
                 if (validator.Validate(result) is { } message)
                 {
-                    reader.Report(DiagnosticSeverity.Error, key, message, definition);
+                    context.Report(DiagnosticSeverity.Error, key, message, definition);
                     isValid = false;
                 }
             }
             catch (Exception exception)
             {
-                reader.Report(DiagnosticSeverity.Error, key, $"validator '{validator.Description}' failed: {exception.Message}", definition);
+                context.Report(DiagnosticSeverity.Error, key, $"validator '{validator.Description}' failed: {exception.Message}", definition);
                 isValid = false;
             }
         }

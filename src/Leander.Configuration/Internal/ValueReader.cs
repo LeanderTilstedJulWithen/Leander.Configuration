@@ -13,10 +13,10 @@ internal abstract class ValueReader<T>
 {
     public abstract void Resolve(ContractResolver resolver, ConfigurationDefinition definition);
 
-    public abstract ReadStatus Read(ConfigurationReader reader, ConfigurationDefinition definition, string key, out T value);
+    public abstract ReadStatus Read(ReadContext context, ConfigurationDefinition definition, string key, out T value);
 
     // Applies the primitive's rules to a value that did not come from the source, e.g. a default.
-    public virtual bool TryProcess(ConfigurationReader reader, ConfigurationDefinition definition, string key, T value, out T result)
+    public virtual bool TryProcess(ReadContext context, ConfigurationDefinition definition, string key, T value, out T result)
     {
         result = value;
         return true;

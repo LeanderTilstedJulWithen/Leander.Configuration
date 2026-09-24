@@ -17,38 +17,38 @@ internal sealed class ScalarReader<T>(PrimitiveDefinition<T>? primitive, string?
         }
     }
 
-    public override ReadStatus Read(ConfigurationReader reader, ConfigurationDefinition definition, string key, out T value)
+    public override ReadStatus Read(ReadContext context, ConfigurationDefinition definition, string key, out T value)
     {
         value = default!;
 
-        var raw = reader.Source.GetValue(key);
+        var raw = context.Source.GetValue(key);
         if (raw is null)
         {
-            if (reader.Source.GetChildNames(key).Count > 0)
+            if (context.Source.GetChildNames(key).Count > 0)
             {
-                reader.Report(DiagnosticSeverity.Warning, key, "has child entries, but a single value is expected", definition);
+                context.Report(DiagnosticSeverity.Warning, key, "has child entries, but a single value is expected", definition);
             }
 
             return ReadStatus.Missing;
         }
 
-        var resolved = GetPrimitive(reader);
+        var resolved = GetPrimitive(context);
         if (!resolved.Converter.TryParse(raw, out var parsed))
         {
-            reader.Report(DiagnosticSeverity.Error, key, $"'{raw}' is not a valid {Describe(resolved)}", definition);
+            context.Report(DiagnosticSeverity.Error, key, $"'{raw}' is not a valid {Describe(resolved)}", definition);
             return ReadStatus.Failed;
         }
 
-        return TryProcess(reader, definition, key, parsed, out value) ? ReadStatus.Read : ReadStatus.Failed;
+        return TryProcess(context, definition, key, parsed, out value) ? ReadStatus.Read : ReadStatus.Failed;
     }
 
-    public override bool TryProcess(ConfigurationReader reader, ConfigurationDefinition definition, string key, T value, out T result)
+    public override bool TryProcess(ReadContext context, ConfigurationDefinition definition, string key, T value, out T result)
     {
-        var resolved = GetPrimitive(reader);
-        return Pipeline.TryProcess(reader, definition, key, resolved.Normalizers, resolved.Validators, value, out result);
+        var resolved = GetPrimitive(context);
+        return Pipeline.TryProcess(context, definition, key, resolved.Normalizers, resolved.Validators, value, out result);
     }
 
-    public Primitive<T> GetPrimitive(ConfigurationReader reader) => reader.Contract.GetPrimitive<T>(this);
+    public Primitive<T> GetPrimitive(ReadContext context) => context.Contract.GetPrimitive<T>(this);
 
     public static string Describe(Primitive<T> resolved) =>
         resolved.Name is null ? TypeNames.Get(typeof(T)) : $"{TypeNames.Get(typeof(T))} ({resolved.Name})";
