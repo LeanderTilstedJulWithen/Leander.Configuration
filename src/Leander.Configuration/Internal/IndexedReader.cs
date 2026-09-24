@@ -5,6 +5,8 @@ namespace Leander.Configuration.Internal;
 // Reads one entry per element: Key:0, Key:1, ... Each element goes through the element definition.
 internal sealed class IndexedReader<T>(ConfigurationDefinition<T> element) : ValueReader<IReadOnlyList<T>>
 {
+    public override void Resolve(ContractResolver resolver, ConfigurationDefinition definition) => element.Resolve(resolver);
+
     public override ReadStatus Read(ConfigurationReader reader, ConfigurationDefinition definition, string key, out IReadOnlyList<T> value)
     {
         value = [];

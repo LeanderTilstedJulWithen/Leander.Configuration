@@ -1,9 +1,12 @@
 using Leander.Configuration.Internal;
+using Leander.Primitives.Normalization;
+using Leander.Primitives.Validation;
 
 namespace Leander.Configuration;
 
 // Definitions are immutable: every builder method returns a new definition.
-// Builder methods never throw; problems are reported as diagnostics when the definition is read.
+// Builder methods never throw; problems are reported when the contract is built or the definition is read.
+// Value rules live on the primitive. Definition-level normalizers and validators exist only for lists (see ConfigurationDefinitionExtensions).
 public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
 {
     private readonly Settings _settings;
@@ -37,22 +40,16 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
     public ConfigurationDefinition<T> Default(T value) =>
         new(_settings with { IsRequired = false, HasDefault = true, DefaultValue = value });
 
-    public ConfigurationDefinition<T> Normalize(INormalizer<T> normalizer) =>
-        new(_settings with { Normalizers = [.. _settings.Normalizers, new ComponentReference<INormalizer<T>>(normalizer, null)] });
-
-    public ConfigurationDefinition<T> Normalize(string normalizerKey) =>
-        new(_settings with { Normalizers = [.. _settings.Normalizers, new ComponentReference<INormalizer<T>>(null, normalizerKey)] });
-
-    public ConfigurationDefinition<T> Validate(IValidator<T> validator) =>
-        new(_settings with { Validators = [.. _settings.Validators, new ComponentReference<IValidator<T>>(validator, null)] });
-
-    public ConfigurationDefinition<T> Validate(string validatorKey) =>
-        new(_settings with { Validators = [.. _settings.Validators, new ComponentReference<IValidator<T>>(null, validatorKey)] });
-
     // Everything configured so far applies to each element; everything configured afterwards applies to the list.
     public ConfigurationDefinition<IReadOnlyList<T>> Indexed() => ToList(new IndexedReader<T>(this));
 
     public ConfigurationDefinition<IReadOnlyList<T>> Delimited(char delimiter = ',') => ToList(new DelimitedReader<T>(this, delimiter));
+
+    internal ConfigurationDefinition<T> AddNormalizer(INormalizer<T> normalizer) =>
+        new(_settings with { Normalizers = [.. _settings.Normalizers, normalizer] });
+
+    internal ConfigurationDefinition<T> AddValidator(IValidator<T> validator) =>
+        new(_settings with { Validators = [.. _settings.Validators, validator] });
 
     private ConfigurationDefinition<IReadOnlyList<T>> ToList(ValueReader<IReadOnlyList<T>> reader) =>
         new(new ConfigurationDefinition<IReadOnlyList<T>>.Settings(Key, reader)
@@ -60,6 +57,10 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
             Description = Description,
             IsRequired = IsRequired,
         });
+
+    internal override void Resolve(ContractResolver resolver) => Reader.Resolve(resolver, this);
+
+    internal override void Read(ConfigurationReader reader) => TryRead(reader, Key, out _);
 
     internal bool TryRead(ConfigurationReader reader, string key, out T value)
     {
@@ -69,7 +70,13 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
                 return TryProcess(reader, key, raw, out value);
 
             case ReadStatus.Missing when HasDefault:
-                return TryProcess(reader, key, _settings.DefaultValue!, out value);
+                if (!Reader.TryProcess(reader, this, key, _settings.DefaultValue!, out var defaultValue))
+                {
+                    value = default!;
+                    return false;
+                }
+
+                return TryProcess(reader, key, defaultValue, out value);
 
             case ReadStatus.Missing when IsRequired:
                 reader.Report(DiagnosticSeverity.Error, key, "value is required", this);
@@ -87,57 +94,8 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
         }
     }
 
-    // Runs the fixed pipeline stages after parsing: normalize, then validate.
-    internal bool TryProcess(ConfigurationReader reader, string key, T value, out T result)
-    {
-        result = value;
-
-        foreach (var reference in _settings.Normalizers)
-        {
-            if (!reader.TryResolveNormalizer(reference, key, this, out var normalizer))
-            {
-                result = default!;
-                return false;
-            }
-
-            try
-            {
-                result = normalizer.Normalize(result);
-            }
-            catch (Exception exception)
-            {
-                reader.Report(DiagnosticSeverity.Error, key, $"normalizer '{normalizer.Description}' failed: {exception.Message}", this);
-                result = default!;
-                return false;
-            }
-        }
-
-        var isValid = true;
-        foreach (var reference in _settings.Validators)
-        {
-            if (!reader.TryResolveValidator(reference, key, this, out var validator))
-            {
-                isValid = false;
-                continue;
-            }
-
-            try
-            {
-                if (validator.Validate(result) is { } message)
-                {
-                    reader.Report(DiagnosticSeverity.Error, key, message, this);
-                    isValid = false;
-                }
-            }
-            catch (Exception exception)
-            {
-                reader.Report(DiagnosticSeverity.Error, key, $"validator '{validator.Description}' failed: {exception.Message}", this);
-                isValid = false;
-            }
-        }
-
-        return isValid;
-    }
+    private bool TryProcess(ConfigurationReader reader, string key, T value, out T result) =>
+        Pipeline.TryProcess(reader, this, key, _settings.Normalizers, _settings.Validators, value, out result);
 
     private sealed record Settings(string Key, ValueReader<T> Reader)
     {
@@ -149,8 +107,8 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
 
         public T? DefaultValue { get; init; }
 
-        public IReadOnlyList<ComponentReference<INormalizer<T>>> Normalizers { get; init; } = [];
+        public IReadOnlyList<INormalizer<T>> Normalizers { get; init; } = [];
 
-        public IReadOnlyList<ComponentReference<IValidator<T>>> Validators { get; init; } = [];
+        public IReadOnlyList<IValidator<T>> Validators { get; init; } = [];
     }
 }

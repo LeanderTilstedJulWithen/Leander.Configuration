@@ -1,11 +1,21 @@
-using System.Diagnostics.CodeAnalysis;
-using Leander.Parsing;
+using Leander.Primitives;
 
 namespace Leander.Configuration.Internal;
 
-internal sealed class ScalarReader<T>(IConverter<T>? converter, string? converterKey) : ValueReader<T>
+// Reads a single value. The primitive is given either as a definition or as the name of a registered primitive.
+internal sealed class ScalarReader<T>(PrimitiveDefinition<T>? primitive, string? primitiveName) : ValueReader<T>
 {
-    public string TypeDescription => converterKey is null ? TypeNames.Get(typeof(T)) : $"{TypeNames.Get(typeof(T))} ({converterKey})";
+    public override void Resolve(ContractResolver resolver, ConfigurationDefinition definition)
+    {
+        if (primitiveName is not null)
+        {
+            resolver.Resolve<T>(this, definition.Key, primitiveName);
+        }
+        else
+        {
+            resolver.Resolve(this, definition.Key, primitive!);
+        }
+    }
 
     public override ReadStatus Read(ConfigurationReader reader, ConfigurationDefinition definition, string key, out T value)
     {
@@ -22,24 +32,24 @@ internal sealed class ScalarReader<T>(IConverter<T>? converter, string? converte
             return ReadStatus.Missing;
         }
 
-        if (!TryResolveConverter(reader, definition, key, out var resolved))
+        var resolved = GetPrimitive(reader);
+        if (!resolved.Converter.TryParse(raw, out var parsed))
         {
+            reader.Report(DiagnosticSeverity.Error, key, $"'{raw}' is not a valid {Describe(resolved)}", definition);
             return ReadStatus.Failed;
         }
 
-        if (!resolved.TryParse(raw, out value))
-        {
-            reader.Report(DiagnosticSeverity.Error, key, $"'{raw}' is not a valid {TypeDescription}", definition);
-            return ReadStatus.Failed;
-        }
-
-        return ReadStatus.Read;
+        return TryProcess(reader, definition, key, parsed, out value) ? ReadStatus.Read : ReadStatus.Failed;
     }
 
-    public bool TryResolveConverter(
-        ConfigurationReader reader,
-        ConfigurationDefinition definition,
-        string key,
-        [NotNullWhen(true)] out IConverter<T>? resolved) =>
-        reader.TryResolveConverter(converter, converterKey, key, definition, out resolved);
+    public override bool TryProcess(ConfigurationReader reader, ConfigurationDefinition definition, string key, T value, out T result)
+    {
+        var resolved = GetPrimitive(reader);
+        return Pipeline.TryProcess(reader, definition, key, resolved.Normalizers, resolved.Validators, value, out result);
+    }
+
+    public Primitive<T> GetPrimitive(ConfigurationReader reader) => reader.Contract.GetPrimitive<T>(this);
+
+    public static string Describe(Primitive<T> resolved) =>
+        resolved.Name is null ? TypeNames.Get(typeof(T)) : $"{TypeNames.Get(typeof(T))} ({resolved.Name})";
 }
