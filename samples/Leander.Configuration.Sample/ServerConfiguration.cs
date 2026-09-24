@@ -36,7 +36,6 @@ public static class ServerConfiguration
     public static readonly ConfigurationDefinition<IReadOnlyList<string>> Features =
         ConfigurationDefinition.Define<string>("Server:Features")
             .Delimited()
-            .Default([])
             .Describe("Comma-separated list of enabled features.");
 
     public static readonly ConfigurationDefinition<string> AdminEmail =
