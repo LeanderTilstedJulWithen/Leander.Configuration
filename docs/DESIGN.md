@@ -194,6 +194,9 @@ ConfigurationDefinition.Define("Database:ConnectionStrings", Primitives.Connecti
 
 `.Default(value)` is typed. **A definition without a default is required**: a missing value is an error. There is no way to declare an optional value yet. The intended direction is that only explicitly nullable types (`int?`, `string?`, `T?`) are optional. That follows the C# nullability conventions, and a required `int` is never quietly set to `0`.
 
+- **The primitive's type decides whether null is allowed.** The pipeline has no special handling of null. A default of `null` goes through the primitive's normalizers and validators like any other value.
+- **A null default is only rejected by the primitive's own rules.** If a normalizer or validator rejects it, the failure is reported as an error diagnostic. A primitive without such rules lets `null` through, even for a non-nullable type. Closing that gap belongs with nullable type support.
+
 ### Contract
 
 `ConfigurationContractBuilder` collects primitive definitions and configuration definitions in one place:
