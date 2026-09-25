@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `Leander.Primitives.Normalization`: `INormalizer<T>` with `Description` and `Normalize`, and `Normalizers` (`Create`, `Trim`, `FullPath`).
 - `PrimitiveDefinition<T>`: an immutable, fluent definition of a kind of value (name, description, converter, normalizers, validators). A definition without a name is the default for its type.
 - `Primitive<T>`: a resolved definition. The converter falls back to the type's default, and normalizers and validators are appended to the default's.
+- `Primitive<T>.TryParse` (parse, normalize, validate) and `Primitive<T>.TryAccept` (normalize, validate), each with an overload that returns every error. Primitives can be used without Leander.Configuration.
 - `PrimitiveRegistry` / `PrimitiveRegistryBuilder`: primitives keyed by `(type, name)`, with `(type, null)` as the default. `RegisterDefaults()` covers the built-in types, `"Hex"` and `"Local"`. `Build()` reports every unresolvable definition at once.
 - `IPrimitiveFallback`, with a built-in enum fallback.
 

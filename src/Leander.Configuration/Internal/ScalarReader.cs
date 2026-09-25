@@ -1,5 +1,4 @@
 using Leander.Primitives;
-using Leander.Primitives.Internal;
 
 namespace Leander.Configuration.Internal;
 
@@ -33,24 +32,17 @@ internal sealed class ScalarReader<T>(PrimitiveDefinition<T>? primitive, string?
             return ReadStatus.Missing;
         }
 
-        var resolved = GetPrimitive(context);
-        if (!resolved.Converter.TryParse(raw, out var parsed))
-        {
-            context.Report(DiagnosticSeverity.Error, key, $"'{raw}' is not a valid {Describe(resolved)}", definition);
-            return ReadStatus.Failed;
-        }
-
-        return TryProcess(context, definition, key, parsed, out value) ? ReadStatus.Read : ReadStatus.Failed;
+        var success = GetPrimitive(context).TryParse(raw, out value, out var errors);
+        Pipeline.Report(context, definition, key, errors);
+        return success ? ReadStatus.Read : ReadStatus.Failed;
     }
 
     public override bool TryProcess(ReadContext context, ConfigurationDefinition definition, string key, T value, out T result)
     {
-        var resolved = GetPrimitive(context);
-        return Pipeline.TryProcess(context, definition, key, resolved.Normalizers, resolved.Validators, value, out result);
+        var success = GetPrimitive(context).TryAccept(value, out result, out var errors);
+        Pipeline.Report(context, definition, key, errors);
+        return success;
     }
 
     public Primitive<T> GetPrimitive(ReadContext context) => context.Contract.GetPrimitive<T>(this);
-
-    public static string Describe(Primitive<T> resolved) =>
-        resolved.Name is null ? TypeNames.Get(typeof(T)) : $"{TypeNames.Get(typeof(T))} ({resolved.Name})";
 }

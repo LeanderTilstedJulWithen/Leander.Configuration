@@ -1,3 +1,4 @@
+using Leander.Primitives.Internal;
 using Leander.Primitives.Normalization;
 using Leander.Primitives.Validation;
 
@@ -5,7 +6,7 @@ namespace Leander.Configuration.Internal;
 
 internal static class Pipeline
 {
-    // Normalizes, then validates. All validators run; every failure becomes a diagnostic.
+    // Normalizes, then validates definition-level rules. Every failure becomes a diagnostic.
     public static bool TryProcess<T>(
         ReadContext context,
         ConfigurationDefinition definition,
@@ -15,40 +16,17 @@ internal static class Pipeline
         T value,
         out T result)
     {
-        result = value;
+        var errors = new List<string>();
+        var success = Rules.TryApply(normalizers, validators, value, out result, errors);
+        Report(context, definition, key, errors);
+        return success;
+    }
 
-        foreach (var normalizer in normalizers)
+    public static void Report(ReadContext context, ConfigurationDefinition definition, string key, IReadOnlyList<string> errors)
+    {
+        foreach (var error in errors)
         {
-            try
-            {
-                result = normalizer.Normalize(result);
-            }
-            catch (Exception exception)
-            {
-                context.Report(DiagnosticSeverity.Error, key, $"normalizer '{normalizer.Description}' failed: {exception.Message}", definition);
-                result = default!;
-                return false;
-            }
+            context.Report(DiagnosticSeverity.Error, key, error, definition);
         }
-
-        var isValid = true;
-        foreach (var validator in validators)
-        {
-            try
-            {
-                if (validator.Validate(result) is { } message)
-                {
-                    context.Report(DiagnosticSeverity.Error, key, message, definition);
-                    isValid = false;
-                }
-            }
-            catch (Exception exception)
-            {
-                context.Report(DiagnosticSeverity.Error, key, $"validator '{validator.Description}' failed: {exception.Message}", definition);
-                isValid = false;
-            }
-        }
-
-        return isValid;
     }
 }

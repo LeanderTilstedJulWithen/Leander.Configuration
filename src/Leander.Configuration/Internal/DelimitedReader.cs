@@ -38,7 +38,7 @@ internal sealed class DelimitedReader<T>(ConfigurationDefinition<T> element, cha
 
         if (!Converters.List(primitive.Converter, delimiter).TryParse(raw, out var items))
         {
-            context.Report(DiagnosticSeverity.Error, key, $"'{raw}' is not a valid '{delimiter}'-delimited list of {ScalarReader<T>.Describe(primitive)}", definition);
+            context.Report(DiagnosticSeverity.Error, key, $"'{raw}' is not a valid '{delimiter}'-delimited list of {primitive.DisplayName}", definition);
             return ReadStatus.Failed;
         }
 

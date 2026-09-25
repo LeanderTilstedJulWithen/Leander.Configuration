@@ -1,3 +1,5 @@
+using Leander.Primitives.Internal;
+
 namespace Leander.Primitives;
 
 public abstract class Primitive
@@ -12,4 +14,7 @@ public abstract class Primitive
     public abstract Type ValueType { get; }
 
     public abstract string? Description { get; }
+
+    // The type and name for messages, e.g. "Int32 (Hex)".
+    internal string DisplayName => Name is null ? TypeNames.Get(ValueType) : $"{TypeNames.Get(ValueType)} ({Name})";
 }
