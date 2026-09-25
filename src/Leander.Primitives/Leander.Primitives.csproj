@@ -7,7 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- The configuration contract builder resolves unregistered primitive definitions via PrimitiveRegistry.TryResolve. -->
+    <!-- The configuration contract builder resolves unregistered primitive definitions via PrimitiveRegistry.TryResolve,
+         collects primitive failures via PrimitiveRegistryBuilder.Build(out failures), and shares TypeNames. -->
     <InternalsVisibleTo Include="Leander.Configuration" />
   </ItemGroup>
 

@@ -49,13 +49,26 @@ public sealed class PrimitiveRegistryBuilder
         return this;
     }
 
-    // Resolves defaults first, then named definitions against a registry holding only those defaults (and the fallbacks).
     // Throws if any definition has no converter and no default converter for its type.
     public PrimitiveRegistry Build()
     {
+        var registry = Build(out var failures);
+        if (failures.Count > 0)
+        {
+            throw new InvalidOperationException(
+                "Primitives could not be resolved:" + Environment.NewLine + string.Join(Environment.NewLine, failures.Select(f => f.Message)));
+        }
+
+        return registry;
+    }
+
+    // Resolves defaults first, then named definitions against a registry holding only those defaults (and the fallbacks).
+    // Never throws: the registry holds every primitive that resolved, and the rest are returned as failures.
+    internal PrimitiveRegistry Build(out IReadOnlyList<PrimitiveFailure> failures)
+    {
         var fallbacks = _fallbacks.ToList();
         var defaults = new Dictionary<(Type Type, string? Name), Primitive>();
-        var failures = new List<string>();
+        var failed = new List<PrimitiveFailure>();
 
         foreach (var ((type, name), definition) in _definitions.Where(entry => entry.Key.Name is null))
         {
@@ -65,7 +78,7 @@ public sealed class PrimitiveRegistryBuilder
             }
             else
             {
-                failures.Add($"The default primitive for {type} has no converter.");
+                failed.Add(new PrimitiveFailure(type, name, $"Default primitive for {TypeNames.Get(type)}: has no converter."));
             }
         }
 
@@ -80,16 +93,13 @@ public sealed class PrimitiveRegistryBuilder
             }
             else
             {
-                failures.Add($"The primitive '{name}' for {type} has no converter, and no default converter is registered for {type}.");
+                var typeName = TypeNames.Get(type);
+                failed.Add(new PrimitiveFailure(type, name,
+                    $"Primitive '{name}' for {typeName}: has no converter, and no default converter is registered for {typeName}."));
             }
         }
 
-        if (failures.Count > 0)
-        {
-            throw new InvalidOperationException(
-                "Primitives could not be resolved:" + Environment.NewLine + string.Join(Environment.NewLine, failures));
-        }
-
+        failures = failed;
         return new PrimitiveRegistry(primitives, fallbacks);
     }
 }

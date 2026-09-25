@@ -230,7 +230,7 @@ public class PrimitiveRegistryTests
 
         var exception = Assert.Throws<InvalidOperationException>(builder.Build);
 
-        Assert.Contains($"The default primitive for {typeof(Custom)} has no converter.", exception.Message);
+        Assert.Contains("Default primitive for Custom: has no converter.", exception.Message);
     }
 
     [Fact]
@@ -240,7 +240,7 @@ public class PrimitiveRegistryTests
 
         var exception = Assert.Throws<InvalidOperationException>(builder.Build);
 
-        Assert.Contains($"The primitive 'Special' for {typeof(Custom)} has no converter", exception.Message);
+        Assert.Contains("Primitive 'Special' for Custom: has no converter, and no default converter is registered for Custom.", exception.Message);
     }
 
     [Fact]
@@ -254,9 +254,9 @@ public class PrimitiveRegistryTests
 
         var exception = Assert.Throws<InvalidOperationException>(builder.Build);
 
-        Assert.Contains($"The default primitive for {typeof(Custom)}", exception.Message);
-        Assert.Contains($"'Special' for {typeof(Custom)}", exception.Message);
-        Assert.Contains($"'Short' for {typeof(Version)}", exception.Message);
+        Assert.Contains("Default primitive for Custom:", exception.Message);
+        Assert.Contains("'Special' for Custom:", exception.Message);
+        Assert.Contains("'Short' for Version:", exception.Message);
     }
 
     [Fact]

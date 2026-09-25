@@ -1,4 +1,5 @@
 using Leander.Primitives;
+using Leander.Primitives.Internal;
 
 namespace Leander.Configuration.Internal;
 

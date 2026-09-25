@@ -1,5 +1,6 @@
-namespace Leander.Configuration.Internal;
+namespace Leander.Primitives.Internal;
 
+// Short, readable type names for messages, e.g. IReadOnlyList<Int32>.
 internal static class TypeNames
 {
     public static string Get(Type type)

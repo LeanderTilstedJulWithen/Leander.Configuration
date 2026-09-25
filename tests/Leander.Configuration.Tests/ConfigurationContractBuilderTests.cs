@@ -316,18 +316,56 @@ public class ConfigurationContractBuilderTests
         Assert.Equal(expected, BuildFailure(builder));
     }
 
-    // Primitive failures are thrown by the registry before definitions are resolved, so they are not combined.
     [Fact]
-    public void Build_UnresolvablePrimitive_FailsBeforeDefinitions()
+    public void Build_UnresolvablePrimitive_IsListedWithDefinitionFailures()
     {
         var builder = new ConfigurationContractBuilder()
             .Register(PrimitiveDefinition.Define<Custom>("Named"))
             .Register(ConfigurationDefinition.Define<Custom>("Value"));
 
-        var message = BuildFailure(builder);
+        var expected = string.Join(
+            Environment.NewLine,
+            "Configuration contract could not be built:",
+            "Primitive 'Named' for Custom: has no converter, and no default converter is registered for Custom.",
+            "Value: no converter is available for Custom.");
+        Assert.Equal(expected, BuildFailure(builder));
+    }
 
-        Assert.StartsWith("Primitives could not be resolved:", message);
-        Assert.DoesNotContain("Value:", message);
+    [Fact]
+    public void Build_DefinitionByNameOfUnresolvablePrimitive_NamesPrimitiveAsCause()
+    {
+        var builder = new ConfigurationContractBuilder()
+            .Register(PrimitiveDefinition.Define<Custom>("Named"))
+            .Register(ConfigurationDefinition.Define<Custom>("Value", "Named"));
+
+        Assert.Contains("Value: primitive 'Named' for Custom could not be resolved.", BuildFailure(builder));
+    }
+
+    [Fact]
+    public void Build_DefinitionOfTypeWithUnresolvableDefault_NamesDefaultAsCause()
+    {
+        var builder = new ConfigurationContractBuilder()
+            .Register(PrimitiveDefinition.Define<Custom>())
+            .Register(ConfigurationDefinition.Define<Custom>("Value"));
+
+        var expected = string.Join(
+            Environment.NewLine,
+            "Configuration contract could not be built:",
+            "Default primitive for Custom: has no converter.",
+            "Value: the default primitive for Custom could not be resolved.");
+        Assert.Equal(expected, BuildFailure(builder));
+    }
+
+    [Fact]
+    public void Build_UnresolvablePrimitive_DoesNotAffectOtherDefinitions()
+    {
+        var port = ConfigurationDefinition.Define<int>("Port");
+        var builder = new ConfigurationContractBuilder()
+            .RegisterDefaultPrimitives()
+            .Register(PrimitiveDefinition.Define<Custom>("Named"))
+            .Register(port);
+
+        Assert.DoesNotContain("Port", BuildFailure(builder));
     }
 
     [Fact]

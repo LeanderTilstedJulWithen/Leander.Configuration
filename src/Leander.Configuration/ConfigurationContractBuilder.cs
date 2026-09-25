@@ -33,11 +33,12 @@ public sealed class ConfigurationContractBuilder
     }
 
     // Builds the primitives first, then resolves the primitive of every definition against them.
-    // Throws if a key is defined more than once or a primitive cannot be resolved.
+    // Throws one exception listing every failure: primitives that cannot be resolved, duplicate keys,
+    // and definitions whose primitive cannot be resolved.
     public ConfigurationContract Build()
     {
-        var primitives = _primitives.Build();
-        var resolver = new ContractResolver(primitives);
+        var primitives = _primitives.Build(out var primitiveFailures);
+        var resolver = new ContractResolver(primitives, primitiveFailures);
 
         foreach (var duplicate in _definitions.GroupBy(d => d.Key, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1))
         {

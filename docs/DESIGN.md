@@ -212,7 +212,7 @@ var contract = new ConfigurationContractBuilder()
 
 - **`Build()`** builds the primitive registry first. It then resolves the primitive of every configuration definition, including the element definitions of lists.
 - **Resolution is keyed by definition instance, not by name.** Derived primitives (`Email.Validate(...)`) keep the name "Email", but they never enter the registry's name table, so they never collide with the real Email.
-- **Failures.** Build throws one exception listing every unresolvable primitive, duplicate key, or invalid `Delimited()` use.
+- **Failures.** Build throws one exception listing every failure: registered primitives that cannot be resolved first, then duplicate keys, unresolvable definitions and invalid `Delimited()` uses. A registered primitive that fails does not hide the definitions: they are still resolved, and a definition that depends on the failed primitive names it as the cause.
 - **`ConfigurationContract`** is the complete list of definitions, which is also what tooling will enumerate.
 
 ### Sources

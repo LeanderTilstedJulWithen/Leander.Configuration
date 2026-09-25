@@ -19,7 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 #### Leander.Configuration
 - `ConfigurationDefinition<T>`: key, presence (`Required`/`Default`), description, and a primitive given as a definition or a registered name.
 - Collections via `Indexed()` (`Key:0`, `Key:1`, …) and `Delimited()` (`"a,b,c"`), with list-level `Validate`/`Normalize` extension methods.
-- `ConfigurationContractBuilder` / `ConfigurationContract`: registers primitives and configuration definitions, resolves every definition's primitive, and rejects duplicate keys.
+- `ConfigurationContractBuilder` / `ConfigurationContract`: registers primitives and configuration definitions, resolves every definition's primitive, and rejects duplicate keys. `Build()` lists every failure at once, including registered primitives that cannot be resolved.
 - `ConfigurationSnapshot`: the validated values of a contract, from `contract.Read(source)` (throws a single `InvalidConfigurationException`) or `contract.TryRead(...)`. A definition without a default is required.
 - `ConfigurationDiagnostic` with `DiagnosticSeverity` (`Error`, `Warning`, `Trace`).
 - `IValueSource`, `ValueSource.FromPairs` (case-insensitive, last key wins) and `ValueSource.FromDictionary` (uses the dictionary as-is).
@@ -27,4 +27,3 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Notes
 - Leander.Configuration no longer references the sibling Leander.Parsing repository. It depends on Leander.Primitives instead.
-- There are no tests yet. The initial test project was removed during the move to Leander.Primitives.
