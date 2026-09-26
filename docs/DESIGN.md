@@ -18,6 +18,7 @@ Leander.Configuration makes every configuration key an explicit, typed **definit
 - **Code is the authoring format.** Contracts are written in C#, not YAML or JSON. Any machine-readable artifact is a build product, not something humans maintain.
 - **Avoid reflection where possible.** It is not forbidden, but it should be the exception and be visible.
 - **Report everything at once.** Reading collects diagnostics and never stops at the first failure. Building a contract or registry lists every problem in one exception.
+- **Nullable-clean.** With `<Nullable>enable</Nullable>`, using the library needs no `!` and gives no warnings. Whether a value can be null shows in its type. (`IConfiguration` and `IOptions<T>` predate nullable reference types and don't follow this.)
 - **Definitions describe, builders resolve.** Definitions are inert rules. Resolution happens in explicit build steps.
 - **Stay small.** Microsoft's infrastructure keeps the configuration sources, providers, environment variables, DI and hosting. We replace only the binding step.
 
@@ -194,10 +195,23 @@ ConfigurationDefinition.Define("Database:ConnectionStrings", Primitives.Connecti
 
 ### Defaults and presence
 
-`.Default(value)` is typed. **A definition without a default is required**: a missing value is an error. There is no way to declare an optional value yet. The intended direction is that only explicitly nullable types (`int?`, `string?`, `T?`) are optional. That follows the C# nullability conventions, and a required `int` is never quietly set to `0`.
+Presence decides what happens when the source has no value. A definition has exactly one of three modes:
 
-- **The primitive's type decides whether null is allowed.** The pipeline has no special handling of null. A default of `null` goes through the primitive's normalizers and validators like any other value.
-- **A null default is only rejected by the primitive's own rules.** If a normalizer or validator rejects it, the failure is reported as an error diagnostic. A primitive without such rules lets `null` through, even for a non-nullable type. Closing that gap belongs with nullable type support.
+| Definition                     | Missing value              | Type   |
+|--------------------------------|----------------------------|--------|
+| `Define<int>("Port")`          | error: "value is required" | `int`  |
+| `Define<int>("Port").Default(8080)` | the default           | `int`  |
+| `Define<int>("Port").Optional()`    | `null`                | `int?` |
+
+`.Optional()` is not implemented yet.
+
+- **Optional is explicit and shows in the type.** `.Optional()` maps `ConfigurationDefinition<T>` to `ConfigurationDefinition<T?>`, like `.Indexed()` maps to a list. A consumer can't forget that the value may be missing, and a required `int` is never quietly set to `0`.
+- **`T?` for both kinds of type.** For a value type, `T?` is `Nullable<T>`. For a reference type, it's the annotated `T?`. C# can't overload on constraints alone, so these are two extension methods (`where T : struct` and `where T : class`) in separate classes, but the caller sees one `.Optional()`.
+- **Optional belongs to the definition, not the primitive.** Presence is about where a value lives, not what it is. Primitives stay non-nullable, the registry keeps one entry per `(type, name)`, and `Email` is the same primitive for a required and an optional key. (Optional primitives would need `(string?, name)` and `(string, name)` as separate registry keys, which is impossible because they're the same runtime type.)
+- **Primitives never see null.** A missing optional value skips the pipeline and gives `null`. A present value goes through the primitive's rules as usual, so rules need no nullable variants.
+- **The definition carries an `IsOptional` flag.** `string?` and `string` are the same type at runtime, so the type alone can't tell. `IsRequired` is true when a definition has neither a default nor `.Optional()`.
+- **Types keep the rules honest.** After `.Optional()` the type is `T?`, and methods that only fit `T` don't compile. We don't add nullable overloads.
+- **Contract build errors.** A `null` default on a non-optional definition fails the contract build: the compiler already warns about `.Default(null)` on a `string` definition, and the build catches it at runtime too. A definition with both a default and `.Optional()` also fails: the default means the value is never null, so `T?` would be misleading.
 
 ### Contract
 
@@ -292,8 +306,8 @@ The contract lists every definition, and both definition hierarchies expose thei
 - **Validators organisation.** One `Validators` class, or one class per type (`StringValidation`, …).
 - **Converter descriptions.** Validators and normalizers have a `Description`, but converters don't.
 - **Enum fallback visibility.** It uses reflection, and should perhaps be reported as a trace diagnostic.
-- **Defaults and optionality.** Typed vs string defaults, and how required/default/optional shows up in the type (`T` vs `T?`).
-- **Collections.** Dictionaries.
+- **Defaults.** Typed vs string defaults.
+- **Collections.** Dictionaries. Optional collections and optional elements: `.Indexed().Optional()` (the list may be missing) vs `.Optional().Indexed()` (elements may be missing).
 - **Sensitive values.** API and redaction rules.
 - **Reload.** `IOptionsMonitor` support. v1 reads once at startup.
 - **Tests.** There are none yet, for either project.
