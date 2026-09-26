@@ -202,9 +202,6 @@ Presence decides what happens when the source has no value. A definition has exa
 | `Define<int>("Port")`          | error: "value is required" | `int`  |
 | `Define<int>("Port").Default(8080)` | the default           | `int`  |
 | `Define<int>("Port").Optional()`    | `null`                | `int?` |
-
-`.Optional()` is implemented for value types only so far.
-
 - **Optional is explicit and shows in the type.** `.Optional()` maps `ConfigurationDefinition<T>` to `ConfigurationDefinition<T?>`, like `.Indexed()` maps to a list. A consumer can't forget that the value may be missing, and a required `int` is never quietly set to `0`.
 - **`T?` for both kinds of type.** For a value type, `T?` is `Nullable<T>`. For a reference type, it's the annotated `T?`. C# can't overload on constraints alone, so these are two extension methods (`where T : struct` and `where T : class`) in separate classes, but the caller sees one `.Optional()`.
 - **Optional belongs to the definition, not the primitive.** Presence is about where a value lives, not what it is. Primitives stay non-nullable, the registry keeps one entry per `(type, name)`, and `Email` is the same primitive for a required and an optional key. (Optional primitives would need `(string?, name)` and `(string, name)` as separate registry keys, which is impossible because they're the same runtime type.)
