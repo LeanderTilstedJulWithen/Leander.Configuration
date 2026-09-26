@@ -26,5 +26,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `IValueSource`, `ValueSource.FromPairs` (case-insensitive, last key wins) and `ValueSource.FromDictionary` (uses the dictionary as-is).
 - `docs/DESIGN.md`: design overview.
 
+#### Leander.Configuration.MicrosoftExtensions
+- `IConfiguration.AsValueSource()`: reads an `IConfiguration` (root or section) as an `IValueSource`, live and without copying.
+
 ### Notes
 - Leander.Configuration no longer references the sibling Leander.Parsing repository. It depends on Leander.Primitives instead.

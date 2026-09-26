@@ -15,5 +15,5 @@
 - [ ] Opt-in handling of warnings when reading: ignore them, or treat them as errors. Keep the diagnostics model simple.
 
 ## Later
-- [ ] `IConfiguration` adapter: implement `IValueSource` directly (`GetSection(key).Value`, `GetChildren()`).
+- [x] `IConfiguration` adapter: implement `IValueSource` directly (`GetSection(key).Value`, `GetChildren()`).
 - [ ] `Uri` formatting: trailing `/` from `AbsoluteUri`, if it matters.
