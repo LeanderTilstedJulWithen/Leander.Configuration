@@ -203,7 +203,7 @@ Presence decides what happens when the source has no value. A definition has exa
 | `Define<int>("Port").Default(8080)` | the default           | `int`  |
 | `Define<int>("Port").Optional()`    | `null`                | `int?` |
 
-`.Optional()` is not implemented yet.
+`.Optional()` is implemented for value types only so far.
 
 - **Optional is explicit and shows in the type.** `.Optional()` maps `ConfigurationDefinition<T>` to `ConfigurationDefinition<T?>`, like `.Indexed()` maps to a list. A consumer can't forget that the value may be missing, and a required `int` is never quietly set to `0`.
 - **`T?` for both kinds of type.** For a value type, `T?` is `Nullable<T>`. For a reference type, it's the annotated `T?`. C# can't overload on constraints alone, so these are two extension methods (`where T : struct` and `where T : class`) in separate classes, but the caller sees one `.Optional()`.

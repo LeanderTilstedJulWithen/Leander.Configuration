@@ -24,6 +24,8 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
 
     public override bool HasDefault => _settings.HasDefault;
 
+    public override bool IsOptional => _settings.IsOptional;
+
     internal ValueReader<T> Reader => _settings.Reader;
 
     internal static ConfigurationDefinition<T> Create(string key, ValueReader<T> reader) => new(new Settings(key, reader));
@@ -52,6 +54,14 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
             Description = Description,
         });
 
+    // Used by Optional(). The reader turns T into TOptional, i.e. T?.
+    internal ConfigurationDefinition<TOptional> ToOptional<TOptional>(ValueReader<TOptional> reader) =>
+        new(new ConfigurationDefinition<TOptional>.Settings(Key, reader)
+        {
+            Description = Description,
+            IsOptional = true,
+        });
+
     internal override void Resolve(ContractResolver resolver) => Reader.Resolve(resolver, this);
 
     internal override bool TryRead(ReadContext context, out object? value)
@@ -77,6 +87,11 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
 
                 return TryProcess(context, key, defaultValue, out value);
 
+            // T is nullable, so default is null. The pipeline never sees it.
+            case ReadStatus.Missing when IsOptional:
+                value = default!;
+                return true;
+
             case ReadStatus.Missing:
                 context.Report(DiagnosticSeverity.Error, key, "value is required", this);
                 value = default!;
@@ -88,7 +103,8 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
         }
     }
 
-    private bool TryProcess(ReadContext context, string key, T value, out T result) =>
+    // Applies definition-level rules.
+    internal bool TryProcess(ReadContext context, string key, T value, out T result) =>
         Pipeline.TryProcess(context, this, key, _settings.Normalizers, _settings.Validators, value, out result);
 
     private sealed record Settings(string Key, ValueReader<T> Reader)
@@ -96,6 +112,8 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
         public string? Description { get; init; }
 
         public bool HasDefault { get; init; }
+
+        public bool IsOptional { get; init; }
 
         public T? DefaultValue { get; init; }
 

@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 #### Leander.Configuration
 - `ConfigurationDefinition<T>`: key, presence (`Required`/`Default`), description, and a primitive given as a definition or a registered name.
+- `Optional()` for value types: `ConfigurationDefinition<T>` becomes `ConfigurationDefinition<T?>`, and a missing value is `null` instead of an error. `ConfigurationDefinition.IsOptional` reports it.
 - Collections via `Indexed()` (`Key:0`, `Key:1`, …) and `Delimited()` (`"a,b,c"`), with list-level `Validate`/`Normalize` extension methods.
 - `ConfigurationContractBuilder` / `ConfigurationContract`: registers primitives and configuration definitions, resolves every definition's primitive, and rejects duplicate keys. `Build()` lists every failure at once, including registered primitives that cannot be resolved.
 - `ConfigurationSnapshot`: the validated values of a contract, from `contract.Read(source)` (throws a single `InvalidConfigurationException`) or `contract.TryRead(...)`. A definition without a default is required.

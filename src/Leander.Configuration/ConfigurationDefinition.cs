@@ -15,10 +15,13 @@ public abstract class ConfigurationDefinition
 
     public abstract string? Description { get; }
 
-    // A definition without a default is required.
-    public bool IsRequired => !HasDefault;
+    // A definition without a default, that is not optional, is required.
+    public bool IsRequired => !HasDefault && !IsOptional;
 
     public abstract bool HasDefault { get; }
+
+    // A missing optional value is null. See Optional().
+    public abstract bool IsOptional { get; }
 
     // Uses the default primitive for T.
     public static ConfigurationDefinition<T> Define<T>(string key) =>
