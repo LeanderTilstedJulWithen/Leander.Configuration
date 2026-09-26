@@ -226,6 +226,101 @@ public class ConfigurationContractTests
         Assert.Equal(0, Contract(port).Read(Source()).Get(port));
     }
 
+    // Optional
+
+    [Fact]
+    public void Optional_ValueType_IsNullable()
+    {
+        var port = ConfigurationDefinition.Define<int>("Port").Describe("The port.").Optional();
+
+        Assert.Equal(typeof(int?), port.ValueType);
+        Assert.True(port.IsOptional);
+        Assert.False(port.IsRequired);
+        Assert.Equal("The port.", port.Description);
+    }
+
+    // At runtime string? is string, so only IsOptional tells them apart.
+    [Fact]
+    public void Optional_ReferenceType_IsOptional()
+    {
+        var name = ConfigurationDefinition.Define<string>("Name").Optional();
+
+        Assert.Equal(typeof(string), name.ValueType);
+        Assert.True(name.IsOptional);
+        Assert.False(name.IsRequired);
+    }
+
+    [Fact]
+    public void Read_Optional_ValueType_Missing_IsNull()
+    {
+        var port = ConfigurationDefinition.Define<int>("Port").Optional();
+
+        var snapshot = Contract(port).Read(Source());
+
+        Assert.Null(snapshot.Get(port));
+        Assert.Empty(snapshot.Diagnostics);
+    }
+
+    [Fact]
+    public void Read_Optional_ReferenceType_Missing_IsNull()
+    {
+        var name = ConfigurationDefinition.Define<string>("Name").Optional();
+
+        var snapshot = Contract(name).Read(Source());
+
+        Assert.Null(snapshot.Get(name));
+        Assert.Empty(snapshot.Diagnostics);
+    }
+
+    [Fact]
+    public void Read_Optional_ValueType_Present_GoesThroughPrimitive()
+    {
+        var primitive = PrimitiveDefinition.Define<int>().Validate(Validators.InRange(1, 65535));
+        var port = ConfigurationDefinition.Define("Port", primitive).Optional();
+        var contract = Contract(port);
+
+        Assert.Equal(8080, contract.Read(Source(("Port", "8080"))).Get(port));
+
+        contract.TryRead(Source(("Port", "0")), out _, out var diagnostics);
+        var error = Single(diagnostics, DiagnosticSeverity.Error);
+        Assert.Equal("Port", error.Key);
+        Assert.Equal("must be between 1 and 65535", error.Message);
+        Assert.Same(port, error.Definition);
+    }
+
+    [Fact]
+    public void Read_Optional_ReferenceType_Present_GoesThroughPrimitive()
+    {
+        var primitive = PrimitiveDefinition.Define<string>().Normalize(Normalizers.Trim).Validate(Validators.NotEmpty);
+        var name = ConfigurationDefinition.Define("Name", primitive).Optional();
+        var contract = Contract(name);
+
+        Assert.Equal("abc", contract.Read(Source(("Name", "  abc  "))).Get(name));
+
+        contract.TryRead(Source(("Name", "   ")), out _, out var diagnostics);
+        Assert.Equal("must not be empty", Single(diagnostics, DiagnosticSeverity.Error).Message);
+    }
+
+    [Fact]
+    public void Read_Optional_InvalidValue_IsError()
+    {
+        var port = ConfigurationDefinition.Define<int>("Port").Optional();
+
+        var success = Contract(port).TryRead(Source(("Port", "abc")), out _, out var diagnostics);
+
+        Assert.False(success);
+        Assert.Equal("'abc' is not a valid Int32", Single(diagnostics, DiagnosticSeverity.Error).Message);
+    }
+
+    // Documents current behaviour: optional collections are not designed yet (see DESIGN.md, Open questions).
+    [Fact]
+    public void Read_OptionalIndexed_Missing_IsNull()
+    {
+        var ports = ConfigurationDefinition.Define<int>("Ports").Indexed().Optional();
+
+        Assert.Null(Contract(ports).Read(Source()).Get(ports));
+    }
+
     // Indexed collections
 
     [Fact]

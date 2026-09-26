@@ -305,6 +305,26 @@ public class ConfigurationContractBuilderTests
         Assert.Contains("Name: the default is null, but the definition is not optional.", BuildFailure(builder));
     }
 
+    [Fact]
+    public void Build_OptionalThenDefault_Fails()
+    {
+        var builder = new ConfigurationContractBuilder()
+            .RegisterDefaultPrimitives()
+            .Register(ConfigurationDefinition.Define<int>("Port").Optional().Default(80));
+
+        Assert.Contains("Port: Optional() cannot be combined with a default.", BuildFailure(builder));
+    }
+
+    [Fact]
+    public void Build_DefaultThenOptional_Fails()
+    {
+        var builder = new ConfigurationContractBuilder()
+            .RegisterDefaultPrimitives()
+            .Register(ConfigurationDefinition.Define<string>("Name").Default("abc").Optional());
+
+        Assert.Contains("Name: Optional() cannot be combined with a default.", BuildFailure(builder));
+    }
+
     // Failures
 
     [Fact]
