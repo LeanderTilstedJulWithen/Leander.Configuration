@@ -78,4 +78,4 @@ int port = snapshot.Get(ServerConfiguration.Port);
 
 Leander.Configuration replaces only the binding step. Sources, providers, dependency injection and hosting stay with Microsoft.Extensions. A source is anything implementing `IValueSource`. Leander.Configuration.MicrosoftExtensions reads an `IConfiguration` with `AsValueSource()`, and `ValueSource.FromPairs` and `ValueSource.FromDictionary` cover plain key/value data.
 
-See [samples/Leander.Configuration.Sample](samples/Leander.Configuration.Sample) for a complete example.
+See [samples/Leander.Configuration.Sample](samples/Leander.Configuration.Sample) for a complete example, and [samples/Leander.Configuration.MicrosoftExtensions.Sample](samples/Leander.Configuration.MicrosoftExtensions.Sample) for reading `appsettings.json`, environment variables and command-line arguments.
