@@ -34,7 +34,7 @@ public sealed class ConfigurationContractBuilder
 
     // Builds the primitives first, then resolves the primitive of every definition against them.
     // Throws one exception listing every failure: primitives that cannot be resolved, duplicate keys,
-    // and definitions whose primitive cannot be resolved.
+    // definitions whose primitive cannot be resolved, and invalid presence (a null default, or a default with Optional()).
     public ConfigurationContract Build()
     {
         var primitives = _primitives.Build(out var primitiveFailures);

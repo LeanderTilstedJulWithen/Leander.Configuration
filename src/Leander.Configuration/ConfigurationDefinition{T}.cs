@@ -62,7 +62,19 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
             IsOptional = true,
         });
 
-    internal override void Resolve(ContractResolver resolver) => Reader.Resolve(resolver, this);
+    internal override void Resolve(ContractResolver resolver)
+    {
+        if (HasDefault && IsOptional)
+        {
+            resolver.Failures.Add($"{Key}: Optional() cannot be combined with a default.");
+        }
+        else if (HasDefault && _settings.DefaultValue is null)
+        {
+            resolver.Failures.Add($"{Key}: the default is null, but the definition is not optional.");
+        }
+
+        Reader.Resolve(resolver, this);
+    }
 
     internal override bool TryRead(ReadContext context, out object? value)
     {

@@ -226,39 +226,6 @@ public class ConfigurationContractTests
         Assert.Equal(0, Contract(port).Read(Source()).Get(port));
     }
 
-    // Documents the gap in DESIGN.md: without rules that reject it, a null default passes on a non-nullable type.
-    [Fact]
-    public void Read_NullDefault_WithoutRules_IsNull()
-    {
-        var name = ConfigurationDefinition.Define<string>("Name").Default(null!);
-
-        Assert.Null(Contract(name).Read(Source()).Get(name));
-    }
-
-    [Fact]
-    public void Read_NullDefault_RejectedByNormalizer_IsError()
-    {
-        var primitive = PrimitiveDefinition.Define<string>().Normalize(Normalizers.Trim);
-        var name = ConfigurationDefinition.Define("Name", primitive).Default(null!);
-
-        var success = Contract(name).TryRead(Source(), out _, out var diagnostics);
-
-        Assert.False(success);
-        Assert.StartsWith("normalizer 'trim whitespace' failed", Single(diagnostics, DiagnosticSeverity.Error).Message);
-    }
-
-    [Fact]
-    public void Read_NullDefault_RejectedByValidator_IsError()
-    {
-        var primitive = PrimitiveDefinition.Define<string>().Validate(Validators.NotEmpty);
-        var name = ConfigurationDefinition.Define("Name", primitive).Default(null!);
-
-        var success = Contract(name).TryRead(Source(), out _, out var diagnostics);
-
-        Assert.False(success);
-        Assert.Equal("must not be empty", Single(diagnostics, DiagnosticSeverity.Error).Message);
-    }
-
     // Indexed collections
 
     [Fact]

@@ -293,6 +293,18 @@ public class ConfigurationContractBuilderTests
         Assert.Equal([3], values[1]);
     }
 
+    // Presence
+
+    [Fact]
+    public void Build_NullDefaultOnNonOptional_Fails()
+    {
+        var builder = new ConfigurationContractBuilder()
+            .RegisterDefaultPrimitives()
+            .Register(ConfigurationDefinition.Define<string>("Name").Default(null!));
+
+        Assert.Contains("Name: the default is null, but the definition is not optional.", BuildFailure(builder));
+    }
+
     // Failures
 
     [Fact]

@@ -5,7 +5,16 @@ namespace Leander.Configuration.Internal;
 internal sealed class OptionalValueReader<T>(ConfigurationDefinition<T> inner) : ValueReader<T?>
     where T : struct
 {
-    public override void Resolve(ContractResolver resolver, ConfigurationDefinition definition) => inner.Resolve(resolver);
+    // A default set before Optional() would make the value never null.
+    public override void Resolve(ContractResolver resolver, ConfigurationDefinition definition)
+    {
+        if (inner.HasDefault)
+        {
+            resolver.Failures.Add($"{definition.Key}: Optional() cannot be combined with a default.");
+        }
+
+        inner.Resolve(resolver);
+    }
 
     public override ReadStatus Read(ReadContext context, ConfigurationDefinition definition, string key, out T? value)
     {
@@ -24,24 +33,5 @@ internal sealed class OptionalValueReader<T>(ConfigurationDefinition<T> inner) :
 
         value = processed;
         return ReadStatus.Read;
-    }
-
-    public override bool TryProcess(ReadContext context, ConfigurationDefinition definition, string key, T? value, out T? result)
-    {
-        result = null;
-
-        if (value is null)
-        {
-            return true;
-        }
-
-        if (!inner.Reader.TryProcess(context, definition, key, value.Value, out var primitive) ||
-            !inner.TryProcess(context, key, primitive, out var processed))
-        {
-            return false;
-        }
-
-        result = processed;
-        return true;
     }
 }
