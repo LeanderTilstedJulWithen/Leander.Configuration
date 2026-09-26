@@ -48,8 +48,10 @@ src/
                                       no dependencies
   Leander.Configuration               where a value lives: keys, presence, collections, contract, snapshot, diagnostics
                                       depends on Leander.Primitives, no Microsoft.Extensions.*
+  Leander.Configuration.MicrosoftExtensions
+                                      IConfiguration source adapter, DI / IOptions registration
+                                      (not .Microsoft: that namespace would shadow Microsoft.Extensions.* inside it)
 later:
-  Leander.Configuration.Microsoft     IConfiguration source adapter, DI / IOptions registration
   Leander.Configuration.Generators    source generator for options construction code
   Leander.Configuration.Tool          export contract / documentation / example configuration
 ```

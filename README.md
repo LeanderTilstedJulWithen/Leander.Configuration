@@ -4,7 +4,7 @@
 
 - **Leander.Primitives** describes kinds of values: how they are parsed, normalized and validated.
 - **Leander.Configuration** describes configuration keys and reads them into a validated snapshot.
-- **Leander.Configuration.MicrosoftExtensions** reads an `IConfiguration` as a source.
+- **Leander.Configuration.MicrosoftExtensions** reads an `IConfiguration` as a source and exposes options as `IOptions<T>`.
 
 ## Why
 
@@ -78,4 +78,12 @@ int port = snapshot.Get(ServerConfiguration.Port);
 
 Leander.Configuration replaces only the binding step. Sources, providers, dependency injection and hosting stay with Microsoft.Extensions. A source is anything implementing `IValueSource`. Leander.Configuration.MicrosoftExtensions reads an `IConfiguration` with `AsValueSource()`, and `ValueSource.FromPairs` and `ValueSource.FromDictionary` cover plain key/value data.
 
-See [samples/Leander.Configuration.Sample](samples/Leander.Configuration.Sample) for a complete example, and [samples/Leander.Configuration.MicrosoftExtensions.Sample](samples/Leander.Configuration.MicrosoftExtensions.Sample) for reading `appsettings.json`, environment variables and command-line arguments.
+With a host, the configuration is read before the host is built, and options are constructed by your own code:
+
+```csharp
+builder.Services
+    .AddConfigurationContract(contract, builder.Configuration) // throws InvalidConfigurationException listing every problem
+    .AddOptionsFrom(ServerOptions.From);                       // IOptions<ServerOptions>
+```
+
+See [samples/Leander.Configuration.Sample](samples/Leander.Configuration.Sample) for a complete example, and [samples/Leander.Configuration.MicrosoftExtensions.Sample](samples/Leander.Configuration.MicrosoftExtensions.Sample) for a host with `IOptions<T>`.
