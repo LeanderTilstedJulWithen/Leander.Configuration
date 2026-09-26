@@ -17,9 +17,11 @@ Configuration is invalid:
 
   Server:Port              must be between 1 and 65535
   Server:RequestTimeout    '30s' is not a valid TimeSpan
+  Server:MaxConnections    must be greater than 0
   Server:AllowedOrigins:1  'not a uri' is not a valid Uri
   Server:Features          value is required
   Admin:Email              must contain @
+  Admin:BackupEmail        must contain @
   Logging:Verbosity        'Chatty' is not a valid Verbosity
 ```
 
@@ -48,7 +50,7 @@ Primitives has no dependency on Leander.Configuration. Anything that turns text 
 
 ## Leander.Configuration
 
-A configuration definition names a key, its primitive, whether it has a default, and a description:
+A configuration definition names a key, its primitive, whether it's required, has a default or is optional, and a description:
 
 ```csharp
 public static readonly ConfigurationDefinition<int> Port =
@@ -61,19 +63,28 @@ public static readonly ConfigurationDefinition<IReadOnlyList<Uri>> AllowedOrigin
         .Indexed()
         .Validate(Validators.Collections.NotEmpty)
         .Describe("Origins allowed to call the server.");
+
+public static readonly ConfigurationDefinition<string?> BackupEmail =
+    ConfigurationDefinition.Define("Admin:BackupEmail", SamplePrimitives.Email)
+        .Optional()
+        .Describe("Where operational alerts are also sent, if set.");
 ```
 
-Definitions are registered in a contract, built once at startup. `Build()` fails if a primitive cannot be resolved or a key is defined twice. Reading a source gives a snapshot that is already validated:
+A definition without a default is required. `Optional()` turns `T` into `T?`: a missing value is `null` instead of an error, and a present value still goes through the primitive's rules.
+
+Definitions are registered in a contract, built once at startup. `Build()` fails if a primitive cannot be resolved, a key is defined twice, or a default doesn't fit (`null` on a non-optional key, or any default on an optional one). Reading a source gives a snapshot that is already validated:
 
 ```csharp
 var contract = new ConfigurationContractBuilder()
     .RegisterDefaultPrimitives()
     .Register(ServerConfiguration.Port)
     .Register(ServerConfiguration.AllowedOrigins)
+    .Register(ServerConfiguration.BackupEmail)
     .Build();
 
 var snapshot = contract.Read(configuration.AsValueSource()); // throws InvalidConfigurationException listing every problem
 int port = snapshot.Get(ServerConfiguration.Port);
+string? backupEmail = snapshot.Get(ServerConfiguration.BackupEmail);
 ```
 
 Leander.Configuration replaces only the binding step. Sources, providers, dependency injection and hosting stay with Microsoft.Extensions. A source is anything implementing `IValueSource`. Leander.Configuration.MicrosoftExtensions reads an `IConfiguration` with `AsValueSource()`, and `ValueSource.FromPairs` and `ValueSource.FromDictionary` cover plain key/value data.

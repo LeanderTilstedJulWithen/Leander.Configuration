@@ -1,4 +1,5 @@
 using Leander.Primitives;
+using Leander.Primitives.Normalization;
 using Leander.Primitives.Validation;
 
 namespace Leander.Configuration.MicrosoftExtensions.Sample;
@@ -33,4 +34,10 @@ public static class ServerConfiguration
             .Delimited()
             .Default([])
             .Describe("Comma-separated list of enabled features.");
+
+    // Optional: not in appsettings.json, so it's null unless given, e.g. on the command line.
+    public static readonly ConfigurationDefinition<string?> CertificatePath =
+        ConfigurationDefinition.Define("Server:CertificatePath", PrimitiveDefinition.Define<string>().Normalize(Normalizers.FullPath))
+            .Optional()
+            .Describe("TLS certificate file. Plain HTTP when missing.");
 }

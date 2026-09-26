@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 // Later providers override earlier ones, so try e.g.:
 //   dotnet run -- Server:Port=99999
 //   dotnet run -- Server:AllowedOrigins:1="not a uri"
+//   dotnet run -- Server:CertificatePath=cert.pfx
 var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
 {
     Args = args,
@@ -22,6 +23,7 @@ var contract = new ConfigurationContractBuilder()
     .Register(ServerConfiguration.Port)
     .Register(ServerConfiguration.AllowedOrigins)
     .Register(ServerConfiguration.Features)
+    .Register(ServerConfiguration.CertificatePath)
     .Build();
 
 // The configuration is read here, before the host is built. An invalid configuration never reaches the services.
@@ -46,5 +48,6 @@ Console.WriteLine($"Host            {options.Host}");
 Console.WriteLine($"Port            {options.Port}");
 Console.WriteLine($"AllowedOrigins  {string.Join(", ", options.AllowedOrigins)}");
 Console.WriteLine($"Features        {string.Join(", ", options.Features)}");
+Console.WriteLine($"Certificate     {options.CertificatePath ?? "(none, plain HTTP)"}");
 
 return 0;

@@ -1,3 +1,4 @@
+using Leander.Primitives;
 using Leander.Primitives.Validation;
 
 namespace Leander.Configuration.Sample;
@@ -27,6 +28,12 @@ public static class ServerConfiguration
             .Default(TimeSpan.FromSeconds(30))
             .Describe("Maximum time allowed for a request.");
 
+    // Optional: a missing value is null, not an error. A present value is still validated.
+    public static readonly ConfigurationDefinition<int?> MaxConnections =
+        ConfigurationDefinition.Define("Server:MaxConnections", PrimitiveDefinition.Define<int>().Validate(Validators.GreaterThan(0)))
+            .Optional()
+            .Describe("Maximum number of concurrent connections. No limit when missing.");
+
     public static readonly ConfigurationDefinition<IReadOnlyList<Uri>> AllowedOrigins =
         ConfigurationDefinition.Define<Uri>("Server:AllowedOrigins")
             .Indexed()
@@ -41,6 +48,12 @@ public static class ServerConfiguration
     public static readonly ConfigurationDefinition<string> AdminEmail =
         ConfigurationDefinition.Define("Admin:Email", SamplePrimitives.Email)
             .Describe("Where operational alerts are sent.");
+
+    // The same Email primitive as AdminEmail. Optionality belongs to the key, not the primitive.
+    public static readonly ConfigurationDefinition<string?> BackupEmail =
+        ConfigurationDefinition.Define("Admin:BackupEmail", SamplePrimitives.Email)
+            .Optional()
+            .Describe("Where operational alerts are also sent, if set.");
 
     public static readonly ConfigurationDefinition<Verbosity> Verbosity =
         ConfigurationDefinition.Define<Verbosity>("Logging:Verbosity")
