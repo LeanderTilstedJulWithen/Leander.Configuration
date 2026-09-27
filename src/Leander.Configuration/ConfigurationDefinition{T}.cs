@@ -26,12 +26,17 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
 
     public override bool IsOptional => _settings.IsOptional;
 
+    public override bool IsSensitive => _settings.IsSensitive;
+
     internal ValueReader<T> Reader => _settings.Reader;
 
     internal static ConfigurationDefinition<T> Create(string key, ValueReader<T> reader) => new(new Settings(key, reader));
 
     public ConfigurationDefinition<T> Describe(string description) =>
         new(_settings with { Description = description });
+
+    public ConfigurationDefinition<T> Sensitive() =>
+        new(_settings with { IsSensitive = true });
 
     // Without a default, the value is required.
     public ConfigurationDefinition<T> Default(T value) =>
@@ -52,6 +57,7 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
         new(new ConfigurationDefinition<IReadOnlyList<T>>.Settings(Key, reader)
         {
             Description = Description,
+            IsSensitive = IsSensitive,
         });
 
     // Used by Optional(). The reader turns T into TOptional, i.e. T?.
@@ -60,6 +66,7 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
         {
             Description = Description,
             IsOptional = true,
+            IsSensitive = IsSensitive,
         });
 
     internal override void Resolve(ContractResolver resolver)
@@ -126,6 +133,8 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
         public bool HasDefault { get; init; }
 
         public bool IsOptional { get; init; }
+
+        public bool IsSensitive { get; init; }
 
         public T? DefaultValue { get; init; }
 

@@ -17,7 +17,7 @@ internal static class Pipeline
         out T result)
     {
         var errors = new List<string>();
-        var success = Rules.TryApply(normalizers, validators, value, out result, errors);
+        var success = Rules.TryApply(normalizers, validators, value, out result, errors, context.IsSensitive);
         Report(context, definition, key, errors);
         return success;
     }

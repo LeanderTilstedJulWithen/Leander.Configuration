@@ -11,6 +11,10 @@ internal sealed class ReadContext(ConfigurationContract contract, IValueSource s
 
     public IReadOnlyList<ConfigurationDiagnostic> Diagnostics => _diagnostics;
 
+    // Whether the contract definition being read is sensitive; its values are left out of diagnostics.
+    // Set per contract definition, because its elements don't know: .Indexed().Sensitive() leaves the element as it was.
+    public bool IsSensitive { get; set; }
+
     public void Report(DiagnosticSeverity severity, string key, string message, ConfigurationDefinition definition) =>
         _diagnostics.Add(new ConfigurationDiagnostic(severity, key, message, definition));
 }

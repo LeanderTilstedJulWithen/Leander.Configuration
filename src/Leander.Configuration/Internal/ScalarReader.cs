@@ -35,14 +35,14 @@ internal sealed class ScalarReader<T>(PrimitiveDefinition<T>? primitive, string?
             return ReadStatus.Missing;
         }
 
-        var success = GetPrimitive(context).TryParse(raw, out value, out var errors);
+        var success = GetPrimitive(context).TryParse(raw, context.IsSensitive, out value, out var errors);
         Pipeline.Report(context, definition, key, errors);
         return success ? ReadStatus.Read : ReadStatus.Failed;
     }
 
     public override bool TryProcess(ReadContext context, ConfigurationDefinition definition, string key, T value, out T result)
     {
-        var success = GetPrimitive(context).TryAccept(value, out result, out var errors);
+        var success = GetPrimitive(context).TryAccept(value, context.IsSensitive, out result, out var errors);
         Pipeline.Report(context, definition, key, errors);
         return success;
     }

@@ -149,7 +149,7 @@ public static class DatabaseConfiguration
 
 ### Definition hierarchy
 
-- `ConfigurationDefinition` (abstract, non-generic): key, value type, description, required, has-default. Tooling enumerates this type. It also hosts the `Define` entry points.
+- `ConfigurationDefinition` (abstract, non-generic): key, value type, description, required, has-default, optional, sensitive. Tooling enumerates this type. It also hosts the `Define` entry points.
 - `ConfigurationDefinition<T> : ConfigurationDefinition`: the typed reader, the default value, and list-level rules.
 
 ### Keys
@@ -289,7 +289,8 @@ ConfigurationDefinition.Define<string>("Api:Key")
 - **Sensitive belongs to the definition.** Whether a value is secret depends on what it's used for, not on its type: a plain `string` can be an API key. `IsSensitive` is on `ConfigurationDefinition`. A sensitive primitive (e.g. a connection string that is always secret) may come later.
 - **It carries over** to `.Indexed()`, `.Delimited()` and `.Optional()`, like the description.
 - **Diagnostics never contain a sensitive value.** `'abc' is not a valid Int32` becomes `value is not a valid Int32`. That covers parse errors, delimited list errors, and exception messages from normalizers and validators, which may contain the value too. Validator failure messages are fixed descriptions, so they stay.
-- **Primitives know nothing about keys**, so they can't decide on redaction. Primitive error messages will therefore leave the value out, and the configuration layer adds it back when the definition is not sensitive. Exception messages are dropped for sensitive definitions.
+- **Primitives know nothing about keys**, so they can't decide on redaction. `Primitive<T>` has internal `TryParse`/`TryAccept` overloads with a `redact` flag, which Leander.Configuration passes. With it, the value and exception messages are left out. The public overloads still echo the input.
+- **The contract definition decides.** Sensitivity is taken from the definition in the contract, not from the element being read, because `.Indexed().Sensitive()` leaves the element definition as it was.
 - **Descriptors and documentation** mark the definition as sensitive and never show its default. Example configuration uses a placeholder.
 
 ## Options objects

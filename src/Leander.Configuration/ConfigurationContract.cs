@@ -45,6 +45,8 @@ public sealed class ConfigurationContract
 
         foreach (var definition in Definitions)
         {
+            context.IsSensitive = definition.IsSensitive;
+
             if (definition.TryRead(context, out var value))
             {
                 values[definition] = value;

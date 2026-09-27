@@ -23,6 +23,9 @@ public abstract class ConfigurationDefinition
     // A missing optional value is null. See Optional().
     public abstract bool IsOptional { get; }
 
+    // A sensitive value is left out of diagnostics and documentation. See Sensitive().
+    public abstract bool IsSensitive { get; }
+
     // Uses the default primitive for T.
     public static ConfigurationDefinition<T> Define<T>(string key) =>
         ConfigurationDefinition<T>.Create(key, new ScalarReader<T>(PrimitiveDefinition.Define<T>(), primitiveName: null));
