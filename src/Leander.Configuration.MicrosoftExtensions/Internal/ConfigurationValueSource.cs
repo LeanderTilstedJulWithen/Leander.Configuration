@@ -4,8 +4,10 @@ namespace Leander.Configuration.MicrosoftExtensions.Internal;
 
 internal sealed class ConfigurationValueSource(IConfiguration configuration) : IValueSource
 {
-    public string? GetValue(string key) => configuration[key];
+    private readonly IConfiguration _configuration = configuration;
+
+    public string? GetValue(string key) => _configuration[key];
 
     public IReadOnlyList<string> GetChildNames(string key) =>
-        configuration.GetSection(key).GetChildren().Select(child => child.Key).ToList();
+        _configuration.GetSection(key).GetChildren().Select(child => child.Key).ToList();
 }

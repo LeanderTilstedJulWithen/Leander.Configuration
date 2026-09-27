@@ -6,6 +6,11 @@ internal sealed class DictionaryConverter<TKey, TValue>(
     char entryDelimiter,
     char keyValueDelimiter) : IConverter<IReadOnlyDictionary<TKey, TValue>> where TKey : notnull
 {
+    private readonly IConverter<TKey> _keyConverter = keyConverter;
+    private readonly IConverter<TValue> _valueConverter = valueConverter;
+    private readonly char _entryDelimiter = entryDelimiter;
+    private readonly char _keyValueDelimiter = keyValueDelimiter;
+
     public bool TryParse(string input, out IReadOnlyDictionary<TKey, TValue> result)
     {
         var dictionary = new Dictionary<TKey, TValue>();
@@ -17,12 +22,12 @@ internal sealed class DictionaryConverter<TKey, TValue>(
             return true;
         }
 
-        foreach (var entry in trimmed.Split(entryDelimiter))
+        foreach (var entry in trimmed.Split(_entryDelimiter))
         {
-            var parts = entry.Split(keyValueDelimiter, 2);
+            var parts = entry.Split(_keyValueDelimiter, 2);
             if (parts.Length != 2 ||
-                !keyConverter.TryParse(parts[0].Trim(), out var key) ||
-                !valueConverter.TryParse(parts[1].Trim(), out var value) ||
+                !_keyConverter.TryParse(parts[0].Trim(), out var key) ||
+                !_valueConverter.TryParse(parts[1].Trim(), out var value) ||
                 !dictionary.TryAdd(key, value))
             {
                 result = new Dictionary<TKey, TValue>();
@@ -34,6 +39,6 @@ internal sealed class DictionaryConverter<TKey, TValue>(
     }
 
     public string Format(IReadOnlyDictionary<TKey, TValue> value) => string.Join(
-        entryDelimiter,
-        value.Select(pair => $"{keyConverter.Format(pair.Key)}{keyValueDelimiter}{valueConverter.Format(pair.Value)}"));
+        _entryDelimiter,
+        value.Select(pair => $"{_keyConverter.Format(pair.Key)}{_keyValueDelimiter}{_valueConverter.Format(pair.Value)}"));
 }

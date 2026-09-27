@@ -4,8 +4,11 @@ namespace Leander.Primitives.Parsing.Internal;
 
 internal sealed class TimeSpanFormatConverter(string[] formats, TimeSpanStyles styles) : IConverter<TimeSpan>
 {
-    public bool TryParse(string input, out TimeSpan result) =>
-        TimeSpan.TryParseExact(input, formats, CultureInfo.InvariantCulture, styles, out result);
+    private readonly string[] _formats = formats;
+    private readonly TimeSpanStyles _styles = styles;
 
-    public string Format(TimeSpan value) => value.ToString(formats[0], CultureInfo.InvariantCulture);
+    public bool TryParse(string input, out TimeSpan result) =>
+        TimeSpan.TryParseExact(input, _formats, CultureInfo.InvariantCulture, _styles, out result);
+
+    public string Format(TimeSpan value) => value.ToString(_formats[0], CultureInfo.InvariantCulture);
 }

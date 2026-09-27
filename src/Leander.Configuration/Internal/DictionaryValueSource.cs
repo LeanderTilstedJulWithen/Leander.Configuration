@@ -3,18 +3,21 @@ namespace Leander.Configuration.Internal;
 // Reads the dictionary as-is; keyComparer must be the comparer the dictionary itself uses.
 internal sealed class DictionaryValueSource(IReadOnlyDictionary<string, string?> values, StringComparer keyComparer) : IValueSource
 {
-    public string? GetValue(string key) => values.GetValueOrDefault(key);
+    private readonly IReadOnlyDictionary<string, string?> _values = values;
+    private readonly StringComparer _keyComparer = keyComparer;
+
+    public string? GetValue(string key) => _values.GetValueOrDefault(key);
 
     public IReadOnlyList<string> GetChildNames(string key)
     {
         var names = new List<string>();
-        var seen = new HashSet<string>(keyComparer);
+        var seen = new HashSet<string>(_keyComparer);
 
-        foreach (var candidate in values.Keys)
+        foreach (var candidate in _values.Keys)
         {
             if (candidate.Length <= key.Length ||
                 candidate[key.Length] != ValueSource.KeySeparator ||
-                !keyComparer.Equals(candidate[..key.Length], key))
+                !_keyComparer.Equals(candidate[..key.Length], key))
             {
                 continue;
             }

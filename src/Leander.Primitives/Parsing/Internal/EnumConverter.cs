@@ -2,10 +2,12 @@ namespace Leander.Primitives.Parsing.Internal;
 
 internal sealed class EnumConverter<TEnum>(bool isFlags) : IConverter<TEnum> where TEnum : struct, Enum
 {
+    private readonly bool _isFlags = isFlags;
+
     public bool TryParse(string input, out TEnum result)
     {
         // Enum.TryParse ORs comma-separated names together, which only makes sense for flags.
-        if (!isFlags && input.Contains(','))
+        if (!_isFlags && input.Contains(','))
         {
             result = default;
             return false;
@@ -16,7 +18,7 @@ internal sealed class EnumConverter<TEnum>(bool isFlags) : IConverter<TEnum> whe
             return false;
         }
 
-        return isFlags ? IsValidFlagsCombination(result) : Enum.IsDefined(result);
+        return _isFlags ? IsValidFlagsCombination(result) : Enum.IsDefined(result);
     }
 
     public string Format(TEnum value) => value.ToString();

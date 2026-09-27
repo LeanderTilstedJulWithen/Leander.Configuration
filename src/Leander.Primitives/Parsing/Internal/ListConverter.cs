@@ -2,6 +2,9 @@ namespace Leander.Primitives.Parsing.Internal;
 
 internal sealed class ListConverter<T>(IConverter<T> elementConverter, char delimiter) : IConverter<IReadOnlyList<T>>
 {
+    private readonly IConverter<T> _elementConverter = elementConverter;
+    private readonly char _delimiter = delimiter;
+
     public bool TryParse(string input, out IReadOnlyList<T> result)
     {
         var list = new List<T>();
@@ -13,9 +16,9 @@ internal sealed class ListConverter<T>(IConverter<T> elementConverter, char deli
             return true;
         }
 
-        foreach (var segment in trimmed.Split(delimiter))
+        foreach (var segment in trimmed.Split(_delimiter))
         {
-            if (!elementConverter.TryParse(segment.Trim(), out var element))
+            if (!_elementConverter.TryParse(segment.Trim(), out var element))
             {
                 result = [];
                 return false;
@@ -27,5 +30,5 @@ internal sealed class ListConverter<T>(IConverter<T> elementConverter, char deli
         return true;
     }
 
-    public string Format(IReadOnlyList<T> value) => string.Join(delimiter, value.Select(elementConverter.Format));
+    public string Format(IReadOnlyList<T> value) => string.Join(_delimiter, value.Select(_elementConverter.Format));
 }

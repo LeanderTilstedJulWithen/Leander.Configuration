@@ -5,11 +5,14 @@ namespace Leander.Configuration.Internal;
 // Reads a single entry holding a delimited list. Each item goes through the element's primitive.
 internal sealed class DelimitedReader<T>(ConfigurationDefinition<T> element, char delimiter) : ValueReader<IReadOnlyList<T>>
 {
+    private readonly ConfigurationDefinition<T> _element = element;
+    private readonly char _delimiter = delimiter;
+
     public override void Resolve(ContractResolver resolver, ConfigurationDefinition definition)
     {
-        if (element.Reader is ScalarReader<T>)
+        if (_element.Reader is ScalarReader<T>)
         {
-            element.Resolve(resolver);
+            _element.Resolve(resolver);
         }
         else
         {
@@ -21,7 +24,7 @@ internal sealed class DelimitedReader<T>(ConfigurationDefinition<T> element, cha
     {
         value = [];
 
-        if (element.HasDefault)
+        if (_element.HasDefault)
         {
             context.Report(DiagnosticSeverity.Warning, key, "Default() before Delimited() is not used. Did you mean Delimited().Default(...)?", definition);
         }
@@ -31,19 +34,19 @@ internal sealed class DelimitedReader<T>(ConfigurationDefinition<T> element, cha
         {
             if (context.Source.GetChildNames(key).Count > 0)
             {
-                context.Report(DiagnosticSeverity.Warning, key, $"has child entries, but a single '{delimiter}'-delimited value is expected", definition);
+                context.Report(DiagnosticSeverity.Warning, key, $"has child entries, but a single '{_delimiter}'-delimited value is expected", definition);
             }
 
             return ReadStatus.Missing;
         }
 
         // Resolution guarantees a scalar element.
-        var scalar = (ScalarReader<T>)element.Reader;
+        var scalar = (ScalarReader<T>)_element.Reader;
         var primitive = scalar.GetPrimitive(context);
 
-        if (!Converters.List(primitive.Converter, delimiter).TryParse(raw, out var items))
+        if (!Converters.List(primitive.Converter, _delimiter).TryParse(raw, out var items))
         {
-            context.Report(DiagnosticSeverity.Error, key, $"'{raw}' is not a valid '{delimiter}'-delimited list of {primitive.DisplayName}", definition);
+            context.Report(DiagnosticSeverity.Error, key, $"'{raw}' is not a valid '{_delimiter}'-delimited list of {primitive.DisplayName}", definition);
             return ReadStatus.Failed;
         }
 

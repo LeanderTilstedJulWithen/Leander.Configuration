@@ -314,14 +314,16 @@ public class PrimitiveRegistryTests
 
     private sealed class ConverterFallback<TValue>(IConverter<TValue> converter) : IPrimitiveFallback
     {
-        public IConverter<TValue> Converter => converter;
+        private readonly IConverter<TValue> _converter = converter;
+
+        public IConverter<TValue> Converter => _converter;
 
         public int Calls { get; private set; }
 
         public PrimitiveDefinition<T>? Define<T>()
         {
             Calls++;
-            return typeof(T) == typeof(TValue) ? PrimitiveDefinition.Define((IConverter<T>)converter) : null;
+            return typeof(T) == typeof(TValue) ? PrimitiveDefinition.Define((IConverter<T>)_converter) : null;
         }
     }
 

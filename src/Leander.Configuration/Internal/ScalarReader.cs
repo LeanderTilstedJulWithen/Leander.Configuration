@@ -5,15 +5,18 @@ namespace Leander.Configuration.Internal;
 // Reads a single value. The primitive is given either as a definition or as the name of a registered primitive.
 internal sealed class ScalarReader<T>(PrimitiveDefinition<T>? primitive, string? primitiveName) : ValueReader<T>
 {
+    private readonly PrimitiveDefinition<T>? _primitive = primitive;
+    private readonly string? _primitiveName = primitiveName;
+
     public override void Resolve(ContractResolver resolver, ConfigurationDefinition definition)
     {
-        if (primitiveName is not null)
+        if (_primitiveName is not null)
         {
-            resolver.Resolve<T>(this, definition.Key, primitiveName);
+            resolver.Resolve<T>(this, definition.Key, _primitiveName);
         }
         else
         {
-            resolver.Resolve(this, definition.Key, primitive!);
+            resolver.Resolve(this, definition.Key, _primitive!);
         }
     }
 

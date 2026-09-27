@@ -7,6 +7,7 @@ namespace Leander.Configuration.Internal;
 // Definitions that depend on a registered primitive that failed to resolve name that primitive as the cause.
 internal sealed class ContractResolver(PrimitiveRegistry registry, IReadOnlyList<PrimitiveFailure> primitiveFailures)
 {
+    private readonly PrimitiveRegistry _registry = registry;
     private readonly Dictionary<object, Primitive> _resolved = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<(Type Type, string? Name)> _failedPrimitives = [.. primitiveFailures.Select(f => (f.Type, f.Name))];
 
@@ -16,7 +17,7 @@ internal sealed class ContractResolver(PrimitiveRegistry registry, IReadOnlyList
 
     public void Resolve<T>(object owner, string key, PrimitiveDefinition<T> definition)
     {
-        if (registry.TryResolve(definition, out var primitive))
+        if (_registry.TryResolve(definition, out var primitive))
         {
             _resolved[owner] = primitive;
         }
@@ -32,7 +33,7 @@ internal sealed class ContractResolver(PrimitiveRegistry registry, IReadOnlyList
 
     public void Resolve<T>(object owner, string key, string primitiveName)
     {
-        if (registry.TryGet<T>(primitiveName, out var primitive))
+        if (_registry.TryGet<T>(primitiveName, out var primitive))
         {
             _resolved[owner] = primitive;
         }

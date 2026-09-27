@@ -5,13 +5,15 @@ namespace Leander.Configuration.Internal;
 // Reads one entry per element: Key:0, Key:1, ... Each element goes through the element definition.
 internal sealed class IndexedReader<T>(ConfigurationDefinition<T> element) : ValueReader<IReadOnlyList<T>>
 {
-    public override void Resolve(ContractResolver resolver, ConfigurationDefinition definition) => element.Resolve(resolver);
+    private readonly ConfigurationDefinition<T> _element = element;
+
+    public override void Resolve(ContractResolver resolver, ConfigurationDefinition definition) => _element.Resolve(resolver);
 
     public override ReadStatus Read(ReadContext context, ConfigurationDefinition definition, string key, out IReadOnlyList<T> value)
     {
         value = [];
 
-        if (element.HasDefault)
+        if (_element.HasDefault)
         {
             context.Report(DiagnosticSeverity.Warning, key, "Default() before Indexed() applies to elements, not the list. Did you mean Indexed().Default(...)?", definition);
         }
@@ -69,7 +71,7 @@ internal sealed class IndexedReader<T>(ConfigurationDefinition<T> element) : Val
         var elements = new List<T>(entries.Count);
         foreach (var (_, name) in entries)
         {
-            if (element.TryRead(context, $"{key}:{name}", out var item))
+            if (_element.TryRead(context, $"{key}:{name}", out var item))
             {
                 elements.Add(item);
             }

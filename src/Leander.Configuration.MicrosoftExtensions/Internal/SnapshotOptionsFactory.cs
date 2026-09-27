@@ -7,5 +7,8 @@ namespace Leander.Configuration.MicrosoftExtensions.Internal;
 internal sealed class SnapshotOptionsFactory<T>(ConfigurationSnapshot snapshot, Func<ConfigurationSnapshot, T> create) : IOptionsFactory<T>
     where T : class
 {
-    public T Create(string name) => create(snapshot);
+    private readonly ConfigurationSnapshot _snapshot = snapshot;
+    private readonly Func<ConfigurationSnapshot, T> _create = create;
+
+    public T Create(string name) => _create(_snapshot);
 }
