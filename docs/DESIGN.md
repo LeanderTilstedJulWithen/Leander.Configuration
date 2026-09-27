@@ -26,7 +26,7 @@ Leander.Configuration makes every configuration key an explicit, typed **definit
 
 - Replacing configuration sources/providers (JSON, environment variables, command line, secrets).
 - Our own DI container or options lifecycle.
-- A language-neutral schema system (kept possible, not built — see Tooling).
+- A language-neutral schema system (kept possible, not built — see Documentation and contract files).
 
 ## Relationship to Microsoft.Extensions.Configuration
 
@@ -52,9 +52,11 @@ src/
   Leander.Configuration.MicrosoftExtensions
                                       IConfiguration source adapter, DI / IOptions registration
                                       (not .Microsoft: that namespace would shadow Microsoft.Extensions.* inside it)
+  Leander.Configuration.Tooling       renders a contract descriptor: documentation, contract file, example configuration
+                                      depends on Leander.Configuration
 later:
   Leander.Configuration.Generators    source generator for options construction code
-  Leander.Configuration.Tool          export contract / documentation / example configuration
+  Leander.Configuration.Tool          command-line tool over Leander.Configuration.Tooling
 ```
 
 - **One package per project, with namespaces as separators.** Leander.Primitives has `Leander.Primitives`, `.Parsing`, `.Normalization` and `.Validation`. It can be extracted to its own repository later if needed.
@@ -276,7 +278,19 @@ Each diagnostic has a severity (`Error`, `Warning`, `Trace`), a key, a message a
 
 ### Sensitive values
 
-Diagnostics may echo raw values (`'Server=…;Password=…' is not valid`). A definition must eventually be able to mark itself sensitive so values are redacted. Deferred.
+Diagnostics echo raw values (`'Server=…;Password=…' is not valid`), and documentation shows defaults. A definition can mark itself sensitive:
+
+```csharp
+ConfigurationDefinition.Define<string>("Api:Key")
+    .Sensitive()
+    .Describe("Key for the payment provider.");
+```
+
+- **Sensitive belongs to the definition.** Whether a value is secret depends on what it's used for, not on its type: a plain `string` can be an API key. `IsSensitive` is on `ConfigurationDefinition`. A sensitive primitive (e.g. a connection string that is always secret) may come later.
+- **It carries over** to `.Indexed()`, `.Delimited()` and `.Optional()`, like the description.
+- **Diagnostics never contain a sensitive value.** `'abc' is not a valid Int32` becomes `value is not a valid Int32`. That covers parse errors, delimited list errors, and exception messages from normalizers and validators, which may contain the value too. Validator failure messages are fixed descriptions, so they stay.
+- **Primitives know nothing about keys**, so they can't decide on redaction. Primitive error messages will therefore leave the value out, and the configuration layer adds it back when the definition is not sensitive. Exception messages are dropped for sensitive definitions.
+- **Descriptors and documentation** mark the definition as sensitive and never show its default. Example configuration uses a placeholder.
 
 ## Options objects
 
@@ -292,24 +306,105 @@ new DatabaseOptions
 
 This is handwritten at first. A source generator may later emit exactly this code. It generates explicit construction, never convention-based mapping, and never invents application types.
 
-## Tooling (later)
+## Documentation and contract files
 
-The contract lists every definition, and both definition hierarchies expose their metadata, so a tool can export:
+Documentation is a key motivation for the project: every key, its type, its rules and its default, generated from the same definitions the application reads with.
 
-- a contract artifact (build product, tracked in Git, CI can detect drift)
-- documentation
-- example configuration files
+### One model, several renderers
+
+A built contract produces a **contract descriptor**: plain data describing every definition and primitive. Every output is rendered from it:
+
+```
+ConfigurationContract ──► ContractDescriptor ──┬──► Markdown documentation
+                                               ├──► contract file (JSON)
+                                               └──► example configuration (later)
+```
+
+- **The descriptor lives in `Leander.Configuration`.** It needs the contract's internals (readers, resolved primitives, default values), and building it inside the core keeps those internals internal. The descriptor itself is public, so anyone can write a renderer.
+- **Renderers live in `Leander.Configuration.Tooling`.** The core stays about reading configuration, and output formats can change without touching it.
+- **Text only.** The descriptor holds strings, not `Type`s or delegates: type names, formatted defaults, rule descriptions. A descriptor built from a running contract and one read back from a contract file are the same kind of object, so they can be compared.
+- **"Descriptor", not "Description".** `Description` is already the string property on definitions and primitives, and `Describe(...)` is the builder method that sets it.
+- **Library calls first.** The application or a test gets the descriptor from the contract and writes the files. A command-line tool that finds the contract in an assembly needs discovery conventions and comes later.
+
+### The descriptor
+
+```
+ContractDescriptor
+  Definitions        every definition in the contract, in registration order
+  Primitives         the registered primitives that definitions use
+
+DefinitionDescriptor
+  Key                "Database:ConnectionStrings"
+  Description
+  IsSensitive
+  Value              ValueDescriptor
+
+ValueDescriptor
+  Type               display name, e.g. "Int32", "IReadOnlyList<String>"
+  Presence           Required | Default | Optional
+  Default            formatted with the primitive's converter; null when there is none or the definition is sensitive
+  Form               Scalar | Indexed | Delimited
+  Primitive          Scalar only: a reference to a registered primitive, or an inline PrimitiveDescriptor
+  Delimiter          Delimited only
+  Element            Indexed and Delimited only: the ValueDescriptor of each element
+  Normalizers        list-level rule descriptions
+  Validators         list-level rule descriptions
+
+PrimitiveDescriptor
+  Type, Name         Name is null for the default primitive of a type
+  Description
+  Converter          description, once converters have one (see Open questions)
+  Normalizers        descriptions of the resolved rules, including those from the type's default
+  Validators
+```
+
+- **Values are recursive.** A list's element is a value with its own presence, default and form, which covers element defaults, `.Indexed().Indexed()`, and optional elements once they exist.
+- **Defaults are formatted by the converter**, so a `TimeSpan` default reads `00:00:30`, the same text that would be written in the source. A list default formats each element.
+- **Registered primitives are referenced; everything else is inline.** A definition that uses a registered primitive refers to it by type and name, and the primitive is described once. A derived primitive (`Email.Validate(...)`) keeps the name "Email" but has different rules, so it is described inline on the definition. This also answers "honest documentation for derived primitives".
+
+### Documentation
+
+Markdown, because it renders on GitHub and diffs well when committed. Definitions are grouped by their first key segment. Each group has a summary table, followed by a section per key. Registered primitives are described once, at the end, and linked from the keys that use them:
+
+```markdown
+## Database
+
+| Key                          | Type                     | Presence | Default |
+|------------------------------|--------------------------|----------|---------|
+| `Database:CommandTimeout`    | Int32                    | default  | `30`    |
+| `Database:ConnectionStrings` | list of ConnectionString | required |         |
+
+### `Database:ConnectionStrings`
+Connection strings, tried in order.
+- **Form:** indexed: `Database:ConnectionStrings:0`, `:1`, …
+- **Element:** [ConnectionString](#connectionstring)
+- **List rules:** must not be empty
+
+## Primitives
+
+### Email
+String. An e-mail address.
+- **Normalized:** trims whitespace
+- **Validated:** must contain @
+```
+
+### Contract file
+
+The contract file is the descriptor as JSON, with a format version.
+
+- **It is descriptive.** It is never imported and run. Normalizers and validators are code, and JSON can't hold them. This follows from "code is the authoring format".
+- **Programs that share configuration share code**, i.e. a library with the primitives and definitions. Each program builds its own contract from the definitions it uses, which may be a subset.
+- **The file is for comparing.** It is committed, so CI can detect drift. Later, two contract files can be checked against each other without loading either program, e.g. "both read `Database:CommandTimeout`, but one says Int32 with default 30 and the other says Int32 (Hex), required".
 
 ## Open questions
 
 - **Append vs replace** when a definition is combined with its type's default (currently append).
-- **Honest documentation for derived primitives.** `Email.Validate(...)` still looks like "Email". Perhaps "derived from Email". Revisit when documentation becomes a concern.
 - **Validators organisation.** One `Validators` class, or one class per type (`StringValidation`, …).
-- **Converter descriptions.** Validators and normalizers have a `Description`, but converters don't.
+- **Converter descriptions.** Validators and normalizers have a `Description`, but converters don't. Documentation needs one for named converters like "Hex" and custom date formats.
+- **Registered or derived.** A definition built with `Define<int>(key)` gets a fresh, unnamed primitive definition that resolves to the default for `int`. The descriptor should treat it as a reference to that default, not as an inline primitive. How exactly "resolves to a registered primitive" is detected is still open.
 - **Enum fallback visibility.** It uses reflection, and should perhaps be reported as a trace diagnostic.
 - **Defaults.** Typed vs string defaults.
 - **Collections.** Dictionaries.
-- **Sensitive values.** API and redaction rules.
 - **Reload.** `IOptionsMonitor` support. v1 reads once at startup.
 - **Tests.** There are none yet, for either project.
 
@@ -318,5 +413,5 @@ The contract lists every definition, and both definition hierarchies expose thei
 1. **Core.** Done: definitions, source abstraction, reader, pipeline, diagnostics, exception with report.
 2. **Primitives.** Done: parsing, normalization, validation, primitive definitions, registry with defaults and fallbacks, contract builder. Tests pending.
 3. **Microsoft adapter.** `IConfiguration` source, DI and `IOptions<T>` registration.
-4. **Tooling.** Contract export, docs, example configuration.
+4. **Documentation.** Sensitive values, contract descriptor, Markdown documentation, contract file. Later: example configuration, comparing contract files, command-line tool.
 5. **Generator.** Options construction code.

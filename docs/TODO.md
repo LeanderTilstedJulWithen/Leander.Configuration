@@ -15,6 +15,12 @@
 - [ ] Allow nested `Delimited()` with different delimiters, e.g. `"1,2,3;2,3;1"`. Reject only the same delimiter twice, and `Indexed()` inside `Delimited()`.
 - [ ] Opt-in handling of warnings when reading: ignore them, or treat them as errors. Keep the diagnostics model simple.
 
+## Documentation
+- [ ] Sensitive values: `.Sensitive()` / `IsSensitive`, carried over by `Indexed()` / `Delimited()` / `Optional()`, and redacted diagnostics (see DESIGN.md, Sensitive values).
+- [ ] Contract descriptor in `Leander.Configuration` (see DESIGN.md, Documentation and contract files).
+- [ ] `Leander.Configuration.Tooling` project with the Markdown renderer.
+- [ ] Contract file: the descriptor as JSON, written and read back.
+
 ## Later
 - [x] `IConfiguration` adapter: implement `IValueSource` directly (`GetSection(key).Value`, `GetChildren()`).
 - [ ] `Uri` formatting: trailing `/` from `AbsoluteUri`, if it matters.
