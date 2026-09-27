@@ -21,6 +21,11 @@ internal sealed class DelimitedReader<T>(ConfigurationDefinition<T> element, cha
     {
         value = [];
 
+        if (element.HasDefault)
+        {
+            context.Report(DiagnosticSeverity.Warning, key, "Default() before Delimited() is not used. Did you mean Delimited().Default(...)?", definition);
+        }
+
         var raw = context.Source.GetValue(key);
         if (raw is null)
         {

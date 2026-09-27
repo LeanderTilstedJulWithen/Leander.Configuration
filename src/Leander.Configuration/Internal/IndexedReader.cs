@@ -11,6 +11,11 @@ internal sealed class IndexedReader<T>(ConfigurationDefinition<T> element) : Val
     {
         value = [];
 
+        if (element.HasDefault)
+        {
+            context.Report(DiagnosticSeverity.Warning, key, "Default() before Indexed() applies to elements, not the list. Did you mean Indexed().Default(...)?", definition);
+        }
+
         var names = context.Source.GetChildNames(key);
         var hasValue = context.Source.GetValue(key) is not null;
 

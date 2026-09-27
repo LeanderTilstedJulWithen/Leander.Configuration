@@ -191,6 +191,10 @@ ConfigurationDefinition.Define("Database:ConnectionStrings", Primitives.Connecti
 - **`.Delimited()` requires a scalar element.** Otherwise the contract fails to build. Item diagnostics use `Key[i]`.
 - **Index rules.** Index names must be integers and are ordered numerically. A non-integer or duplicate index is an error, and gaps produce a warning.
 - **Mismatched form.** A value in the other form (e.g. `Key:0` exists but the definition is delimited or scalar) produces a warning.
+- **Element defaults.** `.Default(x).Indexed()` is allowed, but the default belongs to each element, not the list. It only applies to an entry that exists without a value, so reading warns and suggests `.Indexed().Default(...)`. For `.Delimited()` an element default is never used, with the same kind of warning.
+- **Optional lists.** `.Indexed().Optional()` is allowed: a missing list is `null`. That's different from a supplied, empty list.
+- **Optional elements** (planned). `.Optional().Indexed()` gives `IReadOnlyList<T?>`, and a gap in the indices becomes `null` instead of a warning.
+- **`.Optional().Delimited()`** (planned) fails the contract build with a message that names `Optional()`.
 - **Dictionaries** (`Key:Name`) are not designed yet.
 
 ### Defaults and presence
@@ -304,7 +308,7 @@ The contract lists every definition, and both definition hierarchies expose thei
 - **Converter descriptions.** Validators and normalizers have a `Description`, but converters don't.
 - **Enum fallback visibility.** It uses reflection, and should perhaps be reported as a trace diagnostic.
 - **Defaults.** Typed vs string defaults.
-- **Collections.** Dictionaries. Optional collections and optional elements: `.Indexed().Optional()` (the list may be missing) vs `.Optional().Indexed()` (elements may be missing).
+- **Collections.** Dictionaries.
 - **Sensitive values.** API and redaction rules.
 - **Reload.** `IOptionsMonitor` support. v1 reads once at startup.
 - **Tests.** There are none yet, for either project.
