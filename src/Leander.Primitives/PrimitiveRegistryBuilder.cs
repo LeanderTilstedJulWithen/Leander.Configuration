@@ -68,6 +68,7 @@ public sealed class PrimitiveRegistryBuilder
     {
         var fallbacks = _fallbacks.ToList();
         var defaults = new Dictionary<(Type Type, string? Name), Primitive>();
+        var registered = new Dictionary<PrimitiveDefinition, Primitive>(ReferenceEqualityComparer.Instance);
         var failed = new List<PrimitiveFailure>();
 
         foreach (var ((type, name), definition) in _definitions.Where(entry => entry.Key.Name is null))
@@ -75,6 +76,7 @@ public sealed class PrimitiveRegistryBuilder
             if (definition.ResolveIn(registry: null) is { } primitive)
             {
                 defaults[(type, name)] = primitive;
+                registered[definition] = primitive;
             }
             else
             {
@@ -82,7 +84,7 @@ public sealed class PrimitiveRegistryBuilder
             }
         }
 
-        var defaultsRegistry = new PrimitiveRegistry(defaults, fallbacks);
+        var defaultsRegistry = new PrimitiveRegistry(defaults, new Dictionary<PrimitiveDefinition, Primitive>(), fallbacks);
         var primitives = new Dictionary<(Type Type, string? Name), Primitive>(defaults);
 
         foreach (var ((type, name), definition) in _definitions.Where(entry => entry.Key.Name is not null))
@@ -90,6 +92,7 @@ public sealed class PrimitiveRegistryBuilder
             if (definition.ResolveIn(defaultsRegistry) is { } primitive)
             {
                 primitives[(type, name)] = primitive;
+                registered[definition] = primitive;
             }
             else
             {
@@ -100,6 +103,6 @@ public sealed class PrimitiveRegistryBuilder
         }
 
         failures = failed;
-        return new PrimitiveRegistry(primitives, fallbacks);
+        return new PrimitiveRegistry(primitives, registered, fallbacks);
     }
 }

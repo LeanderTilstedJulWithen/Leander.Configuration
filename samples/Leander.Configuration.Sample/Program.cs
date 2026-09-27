@@ -1,9 +1,13 @@
 using Leander.Configuration;
 using Leander.Configuration.Sample;
+using Leander.Configuration.Tooling;
 
 // The contract is built once at startup. It fails fast if a primitive cannot be resolved or a key is defined twice.
+// Registered primitives are described once in the documentation and linked from the keys that use them.
 var contract = new ConfigurationContractBuilder()
     .RegisterDefaultPrimitives()
+    .Register(SamplePrimitives.Email)
+    .Register(SamplePrimitives.Port)
     .Register(ServerConfiguration.Host)
     .Register(ServerConfiguration.Port)
     .Register(ServerConfiguration.RequestTimeout)
@@ -12,6 +16,7 @@ var contract = new ConfigurationContractBuilder()
     .Register(ServerConfiguration.Features)
     .Register(ServerConfiguration.AdminEmail)
     .Register(ServerConfiguration.BackupEmail)
+    .Register(ServerConfiguration.ApiKey)
     .Register(ServerConfiguration.Verbosity)
     .Build();
 
@@ -50,6 +55,7 @@ Console.WriteLine($"  AllowedOrigins  {string.Join(", ", options.AllowedOrigins)
 Console.WriteLine($"  Features        {string.Join(", ", options.Features)}");
 Console.WriteLine($"  AdminEmail      {options.AdminEmail}");
 Console.WriteLine($"  BackupEmail     {options.BackupEmail ?? "(none)"}");
+Console.WriteLine($"  ApiKey          {(options.ApiKey is null ? "(none)" : "(set)")}");
 Console.WriteLine($"  Verbosity       {options.Verbosity}");
 Console.WriteLine();
 
@@ -62,3 +68,16 @@ catch (InvalidConfigurationException exception)
 {
     Console.WriteLine(exception.Message);
 }
+
+// The contract describes itself. Documentation and the contract file are rendered from the same descriptor.
+// The contract file can be committed, so changes to the contract show up in review.
+var descriptor = contract.CreateDescriptor();
+var documentationPath = Path.Combine(AppContext.BaseDirectory, "configuration.md");
+var contractPath = Path.Combine(AppContext.BaseDirectory, "configuration.contract.json");
+File.WriteAllText(documentationPath, MarkdownDocumentation.Write(descriptor, "Server configuration"));
+File.WriteAllText(contractPath, ContractFile.Write(descriptor));
+
+Console.WriteLine();
+Console.WriteLine("Documentation:");
+Console.WriteLine($"  {documentationPath}");
+Console.WriteLine($"  {contractPath}");

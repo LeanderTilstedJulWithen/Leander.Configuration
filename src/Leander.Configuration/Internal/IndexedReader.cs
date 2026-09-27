@@ -1,4 +1,6 @@
 using System.Globalization;
+using Leander.Configuration.Descriptors;
+using Leander.Primitives.Internal;
 
 namespace Leander.Configuration.Internal;
 
@@ -8,6 +10,15 @@ internal sealed class IndexedReader<T>(ConfigurationDefinition<T> element) : Val
     private readonly ConfigurationDefinition<T> _element = element;
 
     public override void Resolve(ContractResolver resolver, ConfigurationDefinition definition) => _element.Resolve(resolver);
+
+    public override ValueDescriptor Describe(DescriptorContext context) =>
+        new(TypeNames.Get(typeof(IReadOnlyList<T>)), ValuePresence.Required, ValueForm.Indexed)
+        {
+            Element = _element.CreateValueDescriptor(context),
+        };
+
+    public override string Format(DescriptorContext context, IReadOnlyList<T> value) =>
+        $"[{string.Join(", ", value.Select(item => _element.Reader.Format(context, item)))}]";
 
     public override ReadStatus Read(ReadContext context, ConfigurationDefinition definition, string key, out IReadOnlyList<T> value)
     {

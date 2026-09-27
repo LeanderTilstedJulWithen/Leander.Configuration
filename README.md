@@ -5,6 +5,7 @@
 - **Leander.Primitives** describes kinds of values: how they are parsed, normalized and validated.
 - **Leander.Configuration** describes configuration keys and reads them into a validated snapshot.
 - **Leander.Configuration.MicrosoftExtensions** reads an `IConfiguration` as a source and exposes options as `IOptions<T>`.
+- **Leander.Configuration.Tooling** renders a contract as Markdown documentation and as a JSON contract file.
 
 ## Why
 
@@ -96,5 +97,21 @@ builder.Services
     .AddConfigurationContract(contract, builder.Configuration) // throws InvalidConfigurationException listing every problem
     .AddOptionsFrom(ServerOptions.From);                       // IOptions<ServerOptions>
 ```
+
+A secret is marked with `Sensitive()`: its value never appears in diagnostics (`value is not a valid Int32`), and documentation never shows its default.
+
+## Documentation and contract files
+
+The contract describes itself. Documentation and a contract file are rendered from the same descriptor:
+
+```csharp
+var descriptor = contract.CreateDescriptor();
+File.WriteAllText("configuration.md", MarkdownDocumentation.Write(descriptor, "Server configuration"));
+File.WriteAllText("configuration.contract.json", ContractFile.Write(descriptor));
+```
+
+The documentation lists every key with its type, presence, default, form and rules, grouped by the first key segment. Registered primitives are described once and linked from the keys that use them.
+
+The contract file is JSON and descriptive: validators are code, so it can't be run. Commit it, and a change to the configuration contract shows up in review. Programs that share configuration share the C# definitions, not the file.
 
 See [samples/Leander.Configuration.Sample](samples/Leander.Configuration.Sample) for a complete example, and [samples/Leander.Configuration.MicrosoftExtensions.Sample](samples/Leander.Configuration.MicrosoftExtensions.Sample) for a host with `IOptions<T>`.

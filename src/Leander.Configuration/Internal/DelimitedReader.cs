@@ -1,3 +1,5 @@
+using Leander.Configuration.Descriptors;
+using Leander.Primitives.Internal;
 using Leander.Primitives.Parsing;
 
 namespace Leander.Configuration.Internal;
@@ -19,6 +21,16 @@ internal sealed class DelimitedReader<T>(ConfigurationDefinition<T> element, cha
             resolver.Failures.Add($"{definition.Key}: Delimited() requires a single-value element definition.");
         }
     }
+
+    public override ValueDescriptor Describe(DescriptorContext context) =>
+        new(TypeNames.Get(typeof(IReadOnlyList<T>)), ValuePresence.Required, ValueForm.Delimited)
+        {
+            Delimiter = _delimiter,
+            Element = _element.CreateValueDescriptor(context),
+        };
+
+    public override string Format(DescriptorContext context, IReadOnlyList<T> value) =>
+        string.Join(_delimiter, value.Select(item => _element.Reader.Format(context, item)));
 
     public override ReadStatus Read(ReadContext context, ConfigurationDefinition definition, string key, out IReadOnlyList<T> value)
     {

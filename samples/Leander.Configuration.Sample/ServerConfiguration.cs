@@ -55,6 +55,13 @@ public static class ServerConfiguration
             .Optional()
             .Describe("Where operational alerts are also sent, if set.");
 
+    // Sensitive: the value never appears in diagnostics, and documentation never shows it.
+    public static readonly ConfigurationDefinition<string?> ApiKey =
+        ConfigurationDefinition.Define<string>("Server:ApiKey")
+            .Sensitive()
+            .Optional()
+            .Describe("Key for calling the payment provider. Payments are disabled when missing.");
+
     public static readonly ConfigurationDefinition<Verbosity> Verbosity =
         ConfigurationDefinition.Define<Verbosity>("Logging:Verbosity")
             .Default(Sample.Verbosity.Normal)

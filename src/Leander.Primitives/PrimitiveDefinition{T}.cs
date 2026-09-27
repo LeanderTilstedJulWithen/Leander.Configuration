@@ -29,6 +29,10 @@ public sealed class PrimitiveDefinition<T> : PrimitiveDefinition
 
     public IReadOnlyList<IValidator<T>> Validators => _settings.Validators;
 
+    // A definition that adds nothing to the default for T, e.g. PrimitiveDefinition.Define<T>().
+    internal bool IsEmpty =>
+        Name is null && Description is null && Converter is null && Normalizers.Count == 0 && Validators.Count == 0;
+
     internal static PrimitiveDefinition<T> Create(string? name, IConverter<T>? converter) =>
         new(new Settings(name) { Converter = converter });
 

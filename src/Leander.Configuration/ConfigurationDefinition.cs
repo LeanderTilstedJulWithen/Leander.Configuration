@@ -1,3 +1,4 @@
+using Leander.Configuration.Descriptors;
 using Leander.Configuration.Internal;
 using Leander.Primitives;
 
@@ -38,6 +39,8 @@ public abstract class ConfigurationDefinition
         ConfigurationDefinition<T>.Create(key, new ScalarReader<T>(primitive: null, primitiveName));
 
     internal abstract void Resolve(ContractResolver resolver);
+
+    internal abstract ValueDescriptor CreateValueDescriptor(DescriptorContext context);
 
     // Reads the value of the definition as an object; used to read a whole contract.
     internal abstract bool TryRead(ReadContext context, out object? value);

@@ -10,6 +10,7 @@ public sealed record ServerOptions(
     IReadOnlyList<string> Features,
     string AdminEmail,
     string? BackupEmail,
+    string? ApiKey,
     Verbosity Verbosity)
 {
     // The snapshot is already validated, so reading values cannot fail.
@@ -22,5 +23,6 @@ public sealed record ServerOptions(
         configuration.Get(ServerConfiguration.Features),
         configuration.Get(ServerConfiguration.AdminEmail),
         configuration.Get(ServerConfiguration.BackupEmail),
+        configuration.Get(ServerConfiguration.ApiKey),
         configuration.Get(ServerConfiguration.Verbosity));
 }

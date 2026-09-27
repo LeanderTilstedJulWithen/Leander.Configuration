@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Leander.Configuration.Descriptors;
 using Leander.Configuration.Internal;
 using Leander.Primitives;
 
@@ -60,6 +61,26 @@ public sealed class ConfigurationContract
         diagnostics = context.Diagnostics;
         snapshot = failed ? null : new ConfigurationSnapshot(this, values, diagnostics);
         return !failed;
+    }
+
+    // A text-only description of every definition and the registered primitives they use,
+    // for documentation and contract files. Defaults of sensitive definitions are left out.
+    public ContractDescriptor CreateDescriptor()
+    {
+        var context = new DescriptorContext(this);
+        var definitions = new List<DefinitionDescriptor>(Definitions.Count);
+
+        foreach (var definition in Definitions)
+        {
+            context.IsSensitive = definition.IsSensitive;
+            definitions.Add(new DefinitionDescriptor(
+                definition.Key,
+                definition.Description,
+                definition.IsSensitive,
+                definition.CreateValueDescriptor(context)));
+        }
+
+        return new ContractDescriptor(definitions, context.Primitives);
     }
 
     internal Primitive<T> GetPrimitive<T>(object owner) => (Primitive<T>)_resolved[owner];

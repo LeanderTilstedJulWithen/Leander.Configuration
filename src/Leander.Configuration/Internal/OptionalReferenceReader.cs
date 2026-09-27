@@ -1,3 +1,5 @@
+using Leander.Configuration.Descriptors;
+
 namespace Leander.Configuration.Internal;
 
 // Reads an optional reference type. A present value goes through the inner definition, which never sees null.
@@ -17,6 +19,12 @@ internal sealed class OptionalReferenceReader<T>(ConfigurationDefinition<T> inne
 
         _inner.Resolve(resolver);
     }
+
+    // The inner definition describes the value; the optional definition sets the presence.
+    public override ValueDescriptor Describe(DescriptorContext context) => _inner.CreateValueDescriptor(context);
+
+    public override string Format(DescriptorContext context, T? value) =>
+        value is null ? "null" : _inner.Reader.Format(context, value);
 
     public override ReadStatus Read(ReadContext context, ConfigurationDefinition definition, string key, out T? value)
     {

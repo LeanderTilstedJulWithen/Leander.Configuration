@@ -1,3 +1,4 @@
+using Leander.Configuration.Descriptors;
 using Leander.Primitives;
 
 namespace Leander.Configuration.Internal;
@@ -46,6 +47,12 @@ internal sealed class ScalarReader<T>(PrimitiveDefinition<T>? primitive, string?
         Pipeline.Report(context, definition, key, errors);
         return success;
     }
+
+    public override ValueDescriptor Describe(DescriptorContext context) =>
+        context.DescribeScalar(context.Contract.GetPrimitive<T>(this));
+
+    public override string Format(DescriptorContext context, T value) =>
+        context.Contract.GetPrimitive<T>(this).Converter.Format(value);
 
     public Primitive<T> GetPrimitive(ReadContext context) => context.Contract.GetPrimitive<T>(this);
 }

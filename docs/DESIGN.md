@@ -112,7 +112,8 @@ Description = definition.Description                               // not inheri
 - `RegisterDefaults()` registers defaults for the built-in types (`string`, `bool`, the integer and floating-point types, `decimal`, `Guid`, `Uri`, `TimeSpan`, `DateTime` (UTC), `DateTimeOffset`). It also registers the named variants `"Hex"` (`int`, `uint`) and `"Local"` (`DateTime`), plus the enum fallback.
 - `IPrimitiveFallback.Define<T>()` supplies a default definition for types without a registered one. The enum fallback is the only place that uses reflection. Fallback results are cached by the registry.
 - `Build()` resolves the defaults first, then the named definitions against them (including fallbacks). It throws a single exception listing every definition without a converter.
-- `PrimitiveRegistry` stores resolved `Primitive<T>`s. It has `Get<T>(name = null)` and `TryGet<T>(name, out …)`, plus an internal `TryResolve(definition)` for definitions that are used without being registered.
+- `PrimitiveRegistry` stores resolved `Primitive<T>`s. It has `Get<T>(name = null)` and `TryGet<T>(name, out …)`, plus an internal `TryResolve(definition)` for definitions referenced directly, e.g. by a configuration definition.
+- **`TryResolve` is keyed by definition instance.** A registered definition gives the registered primitive, so `Define(key, Email)` and `Define<string>(key, "Email")` read the same primitive. A definition that adds nothing (`PrimitiveDefinition.Define<T>()`, as used by `ConfigurationDefinition.Define<T>(key)`) gives the default for `T`. Anything else, e.g. a derived definition, gives a new primitive that is not registered.
 
 ## Leander.Configuration
 
@@ -327,6 +328,13 @@ ConfigurationContract ──► ContractDescriptor ──┬──► Markdown d
 - **"Descriptor", not "Description".** `Description` is already the string property on definitions and primitives, and `Describe(...)` is the builder method that sets it.
 - **Library calls first.** The application or a test gets the descriptor from the contract and writes the files. A command-line tool that finds the contract in an assembly needs discovery conventions and comes later.
 
+```csharp
+var descriptor = contract.CreateDescriptor();                       // Leander.Configuration.Descriptors
+File.WriteAllText("configuration.md", MarkdownDocumentation.Write(descriptor, "Server configuration"));
+File.WriteAllText("configuration.contract.json", ContractFile.Write(descriptor));
+ContractDescriptor committed = ContractFile.Read(File.ReadAllText("configuration.contract.json"));
+```
+
 ### The descriptor
 
 ```
@@ -341,11 +349,12 @@ DefinitionDescriptor
   Value              ValueDescriptor
 
 ValueDescriptor
-  Type               display name, e.g. "Int32", "IReadOnlyList<String>"
+  Type               display name without Nullable<>, e.g. "Int32", "IReadOnlyList<String>"
   Presence           Required | Default | Optional
   Default            formatted with the primitive's converter; null when there is none or the definition is sensitive
   Form               Scalar | Indexed | Delimited
-  Primitive          Scalar only: a reference to a registered primitive, or an inline PrimitiveDescriptor
+  Primitive          Scalar only: a PrimitiveReference (type, name) to a registered primitive
+  InlinePrimitive    Scalar only: a PrimitiveDescriptor for a primitive that is not registered
   Delimiter          Delimited only
   Element            Indexed and Delimited only: the ValueDescriptor of each element
   Normalizers        list-level rule descriptions
@@ -354,44 +363,59 @@ ValueDescriptor
 PrimitiveDescriptor
   Type, Name         Name is null for the default primitive of a type
   Description
-  Converter          description, once converters have one (see Open questions)
   Normalizers        descriptions of the resolved rules, including those from the type's default
   Validators
+  Values             the names of an enum type; null for other types
 ```
+
+The descriptor types are records, so a renderer or a comparison can use `with` and value equality (except for the lists).
 
 - **Values are recursive.** A list's element is a value with its own presence, default and form, which covers element defaults, `.Indexed().Indexed()`, and optional elements once they exist.
 - **Defaults are formatted by the converter**, so a `TimeSpan` default reads `00:00:30`, the same text that would be written in the source. A list default formats each element.
-- **Registered primitives are referenced; everything else is inline.** A definition that uses a registered primitive refers to it by type and name, and the primitive is described once. A derived primitive (`Email.Validate(...)`) keeps the name "Email" but has different rules, so it is described inline on the definition. This also answers "honest documentation for derived primitives".
+- **Registered primitives are referenced; everything else is inline.** A definition that uses a registered primitive refers to it by type and name, and the primitive is described once. A derived primitive (`Email.Validate(...)`) keeps the name "Email" but has different rules, so it is described inline on the definition. This also answers "honest documentation for derived primitives". "Registered" is decided by primitive instance (see Registry, `TryResolve`), and includes the defaults supplied by fallbacks, such as enums.
+- **Primitives are listed in order of first use**, and only those some definition uses.
 
 ### Documentation
 
-Markdown, because it renders on GitHub and diffs well when committed. Definitions are grouped by their first key segment. Each group has a summary table, followed by a section per key. Registered primitives are described once, at the end, and linked from the keys that use them:
+`MarkdownDocumentation.Write(descriptor, title)` renders Markdown, because it renders on GitHub and diffs well when committed. Definitions are grouped by their first key segment, in order of first appearance. Each group has a summary table, followed by a section per key. Registered primitives are described once, at the end, and linked from the keys that use them:
 
 ```markdown
-## Database
+## Server
 
-| Key                          | Type                     | Presence | Default |
-|------------------------------|--------------------------|----------|---------|
-| `Database:CommandTimeout`    | Int32                    | default  | `30`    |
-| `Database:ConnectionStrings` | list of ConnectionString | required |         |
+| Key | Type | Presence | Default |
+|-----|------|----------|---------|
+| [`Server:Port`](#serverport) | [Int32 (Port)](#int32-port) | default | `8080` |
+| [`Server:AllowedOrigins`](#serverallowedorigins) | list of Uri | required |  |
 
-### `Database:ConnectionStrings`
-Connection strings, tried in order.
-- **Form:** indexed: `Database:ConnectionStrings:0`, `:1`, …
-- **Element:** [ConnectionString](#connectionstring)
-- **List rules:** must not be empty
+### `Server:AllowedOrigins`
+
+Origins allowed to call the server.
+
+- **Type:** list of Uri
+- **Presence:** required
+- **Form:** indexed: `Server:AllowedOrigins:0`, `Server:AllowedOrigins:1`, …
+- **Validated:** must not be empty
+- **Element:** Uri
 
 ## Primitives
 
-### Email
-String. An e-mail address.
-- **Normalized:** trims whitespace
-- **Validated:** must contain @
+### Int32 (Port)
+
+A TCP port.
+
+- **Validated:** must be between 1 and 65535
 ```
+
+- **Headings and type names use the display name**, `Int32 (Port)`, like diagnostics do.
+- **Elements are nested bullets** under **Element**, with their own presence, form and rules.
+- **Inline primitives show their rules on the key.** When a registered primitive has the same name, the type reads "String (derived from [Email](…))".
+- **Default primitives with nothing to say** (no description, rules or values), such as `String`, are not listed or linked. Enums are listed, with their values.
+- **Sensitive definitions** get a **Sensitive** line, and a default shows as *hidden*.
+- Lines end in `\n` on every platform, so the committed file doesn't change with the machine that wrote it.
 
 ### Contract file
 
-The contract file is the descriptor as JSON, with a format version.
+The contract file is the descriptor as JSON, with a format version: `ContractFile.Write(descriptor)` and `ContractFile.Read(json)`. Properties and enum values are camelCase, and nulls are left out. `Read` throws `FormatException` for another format version, and `JsonException` for malformed JSON or missing required properties.
 
 - **It is descriptive.** It is never imported and run. Normalizers and validators are code, and JSON can't hold them. This follows from "code is the authoring format".
 - **Programs that share configuration share code**, i.e. a library with the primitives and definitions. Each program builds its own contract from the definitions it uses, which may be a subset.
@@ -401,8 +425,8 @@ The contract file is the descriptor as JSON, with a format version.
 
 - **Append vs replace** when a definition is combined with its type's default (currently append).
 - **Validators organisation.** One `Validators` class, or one class per type (`StringValidation`, …).
-- **Converter descriptions.** Validators and normalizers have a `Description`, but converters don't. Documentation needs one for named converters like "Hex" and custom date formats.
-- **Registered or derived.** A definition built with `Define<int>(key)` gets a fresh, unnamed primitive definition that resolves to the default for `int`. The descriptor should treat it as a reference to that default, not as an inline primitive. How exactly "resolves to a registered primitive" is detected is still open.
+- **Converter descriptions.** Validators and normalizers have a `Description`, but converters don't. Documentation needs one for named converters like "Hex" and custom date formats. `PrimitiveDescriptor` gets a `Converter` property once they do.
+- **Type names in contract files** are short (`Int32`, `Verbosity`). Two application types with the same name in different namespaces can't be told apart.
 - **Enum fallback visibility.** It uses reflection, and should perhaps be reported as a trace diagnostic.
 - **Defaults.** Typed vs string defaults.
 - **Collections.** Dictionaries.
@@ -414,5 +438,5 @@ The contract file is the descriptor as JSON, with a format version.
 1. **Core.** Done: definitions, source abstraction, reader, pipeline, diagnostics, exception with report.
 2. **Primitives.** Done: parsing, normalization, validation, primitive definitions, registry with defaults and fallbacks, contract builder. Tests pending.
 3. **Microsoft adapter.** `IConfiguration` source, DI and `IOptions<T>` registration.
-4. **Documentation.** Sensitive values, contract descriptor, Markdown documentation, contract file. Later: example configuration, comparing contract files, command-line tool.
+4. **Documentation.** Done: sensitive values, contract descriptor, Markdown documentation, contract file. Later: example configuration, comparing contract files, command-line tool.
 5. **Generator.** Options construction code.

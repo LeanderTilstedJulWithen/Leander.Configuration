@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `Sensitive()`: diagnostics for the definition never contain its value, e.g. `value is not a valid Int32` instead of `'abc' is not a valid Int32`, and exception messages from normalizers and validators are left out. `ConfigurationDefinition.IsSensitive` reports it, and it carries over to `Indexed()`, `Delimited()` and `Optional()`.
 - Collections via `Indexed()` (`Key:0`, `Key:1`, …) and `Delimited()` (`"a,b,c"`), with list-level `Validate`/`Normalize` extension methods.
 - `ConfigurationContractBuilder` / `ConfigurationContract`: registers primitives and configuration definitions, resolves every definition's primitive, and rejects duplicate keys. `Build()` lists every failure at once, including registered primitives that cannot be resolved.
+- `ConfigurationContract.CreateDescriptor()`: a text-only description of the contract (`Leander.Configuration.Descriptors`): every definition with its type, presence, formatted default, form, elements and rules, and the registered primitives it uses. Defaults of sensitive definitions are left out.
 - `ConfigurationSnapshot`: the validated values of a contract, from `contract.Read(source)` (throws a single `InvalidConfigurationException`) or `contract.TryRead(...)`. A definition without a default is required.
 - `ConfigurationDiagnostic` with `DiagnosticSeverity` (`Error`, `Warning`, `Trace`).
 - `IValueSource`, `ValueSource.FromPairs` (case-insensitive, last key wins) and `ValueSource.FromDictionary` (uses the dictionary as-is).
@@ -32,6 +33,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `IConfiguration.AsValueSource()`: reads an `IConfiguration` (root or section) as an `IValueSource`, live and without copying.
 - `IServiceCollection.AddConfigurationContract(contract, configuration)`: reads the configuration immediately (throwing `InvalidConfigurationException` on failure) and registers the contract and snapshot as singletons. The snapshot is read once and not reloaded.
 - `IServiceCollection.AddOptionsFrom<T>(Func<ConfigurationSnapshot, T>)`: exposes `T` as `IOptions<T>`, `IOptionsSnapshot<T>` and `IOptionsMonitor<T>` through a factory, so options can be immutable records.
+
+#### Leander.Configuration.Tooling
+- `MarkdownDocumentation.Write(descriptor, title)`: documentation grouped by the first key segment, with a summary table per group, a section per key, and the registered primitives described once and linked.
+- `ContractFile.Write(descriptor)` / `ContractFile.Read(json)`: the descriptor as versioned JSON. The file is descriptive: it can be committed and compared, but not run.
 
 ### Notes
 - Leander.Configuration no longer references the sibling Leander.Parsing repository. It depends on Leander.Primitives instead.

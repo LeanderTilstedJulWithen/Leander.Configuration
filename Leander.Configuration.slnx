@@ -6,6 +6,7 @@
   <Folder Name="/src/">
     <Project Path="src/Leander.Configuration.MicrosoftExtensions/Leander.Configuration.MicrosoftExtensions.csproj" />
     <Project Path="src/Leander.Configuration/Leander.Configuration.csproj" />
+    <Project Path="src/Leander.Configuration.Tooling/Leander.Configuration.Tooling.csproj" />
     <Project Path="src/Leander.Primitives/Leander.Primitives.csproj" />
   </Folder>
   <Folder Name="/tests/">

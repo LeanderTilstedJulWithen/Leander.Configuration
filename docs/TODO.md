@@ -17,9 +17,13 @@
 
 ## Documentation
 - [x] Sensitive values: `.Sensitive()` / `IsSensitive`, carried over by `Indexed()` / `Delimited()` / `Optional()`, and redacted diagnostics (see DESIGN.md, Sensitive values).
-- [ ] Contract descriptor in `Leander.Configuration` (see DESIGN.md, Documentation and contract files).
-- [ ] `Leander.Configuration.Tooling` project with the Markdown renderer.
-- [ ] Contract file: the descriptor as JSON, written and read back.
+- [x] Contract descriptor in `Leander.Configuration` (see DESIGN.md, Documentation and contract files).
+- [x] `Leander.Configuration.Tooling` project with the Markdown renderer.
+- [x] Contract file: the descriptor as JSON, written and read back.
+- [ ] Tests for the descriptor, the Markdown renderer and the contract file round trip.
+- [ ] Example configuration (`appsettings.json`) rendered from the descriptor, with placeholders for sensitive values.
+- [ ] Compare two contract descriptors, e.g. two programs sharing keys, or the committed file against the current contract.
+- [ ] Command-line tool (`Leander.Configuration.Tool`) that finds the contract in an assembly.
 
 ## Later
 - [x] `IConfiguration` adapter: implement `IValueSource` directly (`GetSection(key).Value`, `GetChildren()`).

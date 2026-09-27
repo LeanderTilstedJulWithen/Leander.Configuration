@@ -1,4 +1,6 @@
+using Leander.Configuration.Descriptors;
 using Leander.Configuration.Internal;
+using Leander.Primitives.Internal;
 using Leander.Primitives.Normalization;
 using Leander.Primitives.Validation;
 
@@ -81,6 +83,20 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
         }
 
         Reader.Resolve(resolver, this);
+    }
+
+    internal override ValueDescriptor CreateValueDescriptor(DescriptorContext context)
+    {
+        var descriptor = Reader.Describe(context);
+
+        return descriptor with
+        {
+            Type = TypeNames.Get(Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T)),
+            Presence = IsOptional ? ValuePresence.Optional : HasDefault ? ValuePresence.Default : ValuePresence.Required,
+            Default = HasDefault && !context.IsSensitive ? Reader.Format(context, _settings.DefaultValue!) : null,
+            Normalizers = [.. descriptor.Normalizers, .. _settings.Normalizers.Select(normalizer => normalizer.Description)],
+            Validators = [.. descriptor.Validators, .. _settings.Validators.Select(validator => validator.Description)],
+        };
     }
 
     internal override bool TryRead(ReadContext context, out object? value)

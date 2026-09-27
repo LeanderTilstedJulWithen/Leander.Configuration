@@ -1,3 +1,5 @@
+using Leander.Configuration.Descriptors;
+
 namespace Leander.Configuration.Internal;
 
 internal enum ReadStatus
@@ -21,4 +23,10 @@ internal abstract class ValueReader<T>
         result = value;
         return true;
     }
+
+    // Describes how the value is read: its form, primitive and elements. The definition adds type, presence, default and rules.
+    public abstract ValueDescriptor Describe(DescriptorContext context);
+
+    // Formats a value as it would be written in the source, e.g. a default for documentation.
+    public abstract string Format(DescriptorContext context, T value);
 }
