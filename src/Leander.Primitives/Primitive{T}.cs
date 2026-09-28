@@ -5,48 +5,44 @@ using Leander.Primitives.Validation;
 
 namespace Leander.Primitives;
 
-// A complete primitive: the converter is always present.
-// Immutable: Describe, Normalize and Validate return a new primitive with the same name and base, and never throw.
+// A complete primitive: the name and converter are always present. Immutable, and the constructors never throw.
+// A derived primitive takes its base's converter, and its rules are added to the base's: the base's rules run first.
 public sealed class Primitive<T> : Primitive
 {
-    internal Primitive(
-        string? name,
-        string? description,
-        IConverter<T> converter,
-        IReadOnlyList<INormalizer<T>> normalizers,
-        IReadOnlyList<IValidator<T>> validators,
-        Primitive<T>? @base)
+    private IReadOnlyList<INormalizer<T>>? _allNormalizers;
+    private IReadOnlyList<IValidator<T>>? _allValidators;
+
+    public Primitive(string name, IConverter<T> converter)
+        : base(name)
     {
-        Name = name;
-        Description = description;
         Converter = converter;
-        Normalizers = normalizers;
-        Validators = validators;
+    }
+
+    public Primitive(string name, Primitive<T> @base)
+        : base(name)
+    {
+        Converter = @base.Converter;
         Base = @base;
     }
 
-    public override string? Name { get; }
-
     public override Type ValueType => typeof(T);
-
-    public override string? Description { get; }
 
     public override Primitive<T>? Base { get; }
 
     public IConverter<T> Converter { get; }
 
-    public IReadOnlyList<INormalizer<T>> Normalizers { get; }
+    // Its own normalizers; a base's normalizers run before these.
+    public IReadOnlyList<INormalizer<T>> Normalizers { get; init; } = [];
 
-    public IReadOnlyList<IValidator<T>> Validators { get; }
+    // Its own validators; a base's validators run before these.
+    public IReadOnlyList<IValidator<T>> Validators { get; init; } = [];
 
-    public Primitive<T> Describe(string description) =>
-        new(Name, description, Converter, Normalizers, Validators, Base);
+    // The base's rules followed by its own. Computed on first use, because init properties are set after the constructor.
+    private IReadOnlyList<INormalizer<T>> AllNormalizers =>
+        _allNormalizers ??= Base is null ? Normalizers : [.. Base.AllNormalizers, .. Normalizers];
 
-    public Primitive<T> Normalize(INormalizer<T> normalizer) =>
-        new(Name, Description, Converter, [.. Normalizers, normalizer], Validators, Base);
-
-    public Primitive<T> Validate(IValidator<T> validator) =>
-        new(Name, Description, Converter, Normalizers, [.. Validators, validator], Base);
+    private IReadOnlyList<IValidator<T>> AllValidators =>
+        _allValidators ??= Base is null ? Validators : [.. Base.AllValidators, .. Validators];
 
     // Parses, then accepts the parsed value (see TryAccept). On failure, value is default.
     public bool TryParse(string input, out T value) => TryParse(input, out value, null, redact: false);
@@ -64,7 +60,7 @@ public sealed class Primitive<T> : Primitive
     }
 
     // Normalizes, then validates a value that is already a T, e.g. a default. On failure, result is default.
-    public bool TryAccept(T value, out T result) => Rules.TryApply(Normalizers, Validators, value, out result, null);
+    public bool TryAccept(T value, out T result) => Rules.TryApply(AllNormalizers, AllValidators, value, out result, null);
 
     public bool TryAccept(T value, out T result, out IReadOnlyList<string> errors) =>
         TryAccept(value, redact: false, out result, out errors);
@@ -72,7 +68,7 @@ public sealed class Primitive<T> : Primitive
     internal bool TryAccept(T value, bool redact, out T result, out IReadOnlyList<string> errors)
     {
         var list = new List<string>();
-        var success = Rules.TryApply(Normalizers, Validators, value, out result, list, redact);
+        var success = Rules.TryApply(AllNormalizers, AllValidators, value, out result, list, redact);
         errors = list;
         return success;
     }
@@ -86,6 +82,6 @@ public sealed class Primitive<T> : Primitive
             return false;
         }
 
-        return Rules.TryApply(Normalizers, Validators, parsed, out value, errors, redact);
+        return Rules.TryApply(AllNormalizers, AllValidators, parsed, out value, errors, redact);
     }
 }
