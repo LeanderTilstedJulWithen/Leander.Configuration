@@ -20,16 +20,10 @@ internal sealed class ContractChecker
     {
         for (Primitive? current = primitive; current is not null; current = current.Base)
         {
-            if (current.Name is not { } name)
-            {
-                continue;
-            }
-
-            var entry = (current.ValueType, name);
+            var entry = (current.ValueType, current.Name);
             if (!_named.TryAdd(entry, current) && !ReferenceEquals(_named[entry], current) && _clashes.Add(entry))
             {
-                NameClashes.Add(
-                    $"{key}: another primitive is named {current.DisplayName}. Use Primitive.DeriveFrom to add rules under a new name.");
+                NameClashes.Add($"{key}: another primitive is named {current.DisplayName}. A primitive with different rules needs a name of its own.");
             }
         }
     }

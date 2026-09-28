@@ -30,7 +30,7 @@ public static class ServerConfiguration
 
     // Optional: a missing value is null, not an error. A present value is still validated.
     public static readonly ConfigurationDefinition<int?> MaxConnections =
-        ConfigurationDefinition.Define("Server:MaxConnections", Primitive.Int32.Validate(Validators.GreaterThan(0)))
+        ConfigurationDefinition.Define("Server:MaxConnections", SamplePrimitives.ConnectionLimit)
             .Optional()
             .Describe("Maximum number of concurrent connections. No limit when missing.");
 

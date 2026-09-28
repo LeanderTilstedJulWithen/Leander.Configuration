@@ -8,11 +8,8 @@ public sealed record ValueDescriptor(string Type, ValuePresence Presence, ValueF
     // Null without a default, and when the definition is sensitive.
     public string? Default { get; init; }
 
-    // Scalar only: a named primitive, described once in ContractDescriptor.Primitives.
+    // Scalar only: the primitive, described once in ContractDescriptor.Primitives.
     public PrimitiveReference? Primitive { get; init; }
-
-    // Scalar only: an unnamed primitive, e.g. Primitive.Int32 or one with extra rules.
-    public PrimitiveDescriptor? InlinePrimitive { get; init; }
 
     // Delimited only.
     public char? Delimiter { get; init; }

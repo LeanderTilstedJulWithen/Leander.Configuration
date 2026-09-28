@@ -4,8 +4,8 @@ using Leander.Configuration.Descriptors;
 namespace Leander.Configuration.Tooling;
 
 // Renders a contract descriptor as Markdown. Definitions are grouped by their first key segment, and each group has
-// a summary table followed by a section per key. Named primitives are described once, at the end, and linked
-// from the keys that use them. Unnamed primitives are described on the key.
+// a summary table followed by a section per key. Primitives are described once, at the end, and linked from the keys
+// that use them. Primitives with nothing to say (no description, rules, base or values) are left out.
 public static class MarkdownDocumentation
 {
     public static string Write(ContractDescriptor contract, string title = "Configuration")
@@ -18,6 +18,7 @@ public static class MarkdownDocumentation
     private sealed class Writer(ContractDescriptor contract)
     {
         private readonly ContractDescriptor _contract = contract;
+        private readonly List<PrimitiveDescriptor> _listed = [.. contract.Primitives.Where(IsWorthListing)];
         private readonly StringBuilder _text = new();
 
         public override string ToString() => _text.ToString();
@@ -48,12 +49,12 @@ public static class MarkdownDocumentation
                 }
             }
 
-            if (_contract.Primitives.Count > 0)
+            if (_listed.Count > 0)
             {
                 Line("## Primitives");
                 Line();
 
-                foreach (var primitive in _contract.Primitives)
+                foreach (var primitive in _listed)
                 {
                     WritePrimitive(primitive);
                 }
@@ -97,11 +98,6 @@ public static class MarkdownDocumentation
                     break;
             }
 
-            if (value.InlinePrimitive is { } inline)
-            {
-                WriteRules(inline.Normalizers, inline.Validators, inline.Values, indent);
-            }
-
             WriteRules(value.Normalizers, value.Validators, values: null, indent);
 
             if (value.Element is { } element)
@@ -131,7 +127,7 @@ public static class MarkdownDocumentation
 
             if (primitive.Base is { } @base)
             {
-                Line($"- **Derived from:** {Link(@base)}");
+                Line($"- **Derived from:** {PrimitiveText(@base)}");
             }
 
             WriteRules(primitive.Normalizers, primitive.Validators, primitive.Values, indent: "");
@@ -164,23 +160,33 @@ public static class MarkdownDocumentation
             ? ScalarText(value)
             : $"list of {TypeText(value.Element)}";
 
-        // A named primitive links to its description. An unnamed primitive is described on the key.
-        private static string ScalarText(ValueDescriptor value) =>
-            value.Primitive is { } reference ? Link(reference) : value.Type;
+        private string ScalarText(ValueDescriptor value) =>
+            value.Primitive is { } reference ? PrimitiveText(reference) : value.Type;
+
+        // A listed primitive links to its description; one with nothing to say is only named.
+        private string PrimitiveText(PrimitiveReference reference)
+        {
+            var heading = Heading(reference.Type, reference.Name);
+            return _listed.Any(primitive => primitive.Type == reference.Type && primitive.Name == reference.Name)
+                ? $"[{heading}](#{Anchor(heading)})"
+                : heading;
+        }
 
         private void Line(string text = "") => _text.Append(text).Append('\n');
 
-        private static string GroupName(string key) => key.Split(':')[0];
+        private static bool IsWorthListing(PrimitiveDescriptor primitive) =>
+            primitive.Description is not null ||
+            primitive.Base is not null ||
+            primitive.Normalizers.Count > 0 ||
+            primitive.Validators.Count > 0 ||
+            primitive.Values is not null;
 
-        private static string Link(PrimitiveReference reference)
-        {
-            var heading = Heading(reference.Type, reference.Name);
-            return $"[{heading}](#{Anchor(heading)})";
-        }
+        private static string GroupName(string key) => key.Split(':')[0];
 
         private static string Heading(PrimitiveDescriptor primitive) => Heading(primitive.Type, primitive.Name);
 
-        private static string Heading(string type, string? name) => name is null ? type : $"{type} ({name})";
+        // Like Primitive.DisplayName: "Int32 (Port)", or just "Int32" when the name is the type name.
+        private static string Heading(string type, string name) => name == type ? type : $"{type} ({name})";
 
         private static string PresenceText(ValuePresence presence) => presence switch
         {

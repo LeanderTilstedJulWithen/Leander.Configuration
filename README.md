@@ -33,16 +33,17 @@ Configuration is invalid:
 An `int` is not a port, and a `string` is not an e-mail address. A primitive gives the same underlying type its own rules, without a wrapper type:
 
 ```csharp
-public static readonly Primitive<int> Port =
-    Primitive.Create("Port", Converters.Int32)
-        .Validate(Validators.InRange(1, 65535))
-        .Describe("A TCP port.");
+public static readonly Primitive<int> Port = new("Port", Converters.Int32)
+{
+    Validators = [Validators.InRange(1, 65535)],
+    Description = "A TCP port.",
+};
 
 Port.TryParse("99999", out var port, out var errors);
 // false, errors: ["must be between 1 and 65535"]
 ```
 
-A primitive is always explicit and complete: sharing one is sharing a field. Ready-made primitives cover the common types (`Primitive.String`, `Primitive.Int32`, `Primitive.TimeSpan`, `Primitive.Enum<T>()`, …), and `Primitive.DeriveFrom("AdminPort", Port)` adds rules under a new name.
+A primitive is always explicit and complete, with a name and a converter: sharing one is sharing a field. Ready-made primitives cover the common types (`Primitive.String`, `Primitive.Int32`, `Primitive.TimeSpan`, `Primitive.Enum<T>()`, …). `new("AdminPort", Port) { Validators = [...] }` derives a primitive: it adds rules to Port's under a new name, and can never remove them.
 
 Primitives has no dependency on Leander.Configuration. Anything that turns text into values can use it: configuration, command-line arguments, query strings or files.
 

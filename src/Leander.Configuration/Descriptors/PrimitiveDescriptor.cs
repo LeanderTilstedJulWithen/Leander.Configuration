@@ -1,7 +1,7 @@
 namespace Leander.Configuration.Descriptors;
 
-// A primitive with all its rules, including those from its base. Name is null for an unnamed primitive.
-public sealed record PrimitiveDescriptor(string Type, string? Name, string? Description)
+// A primitive with its own rules. A derived primitive refers to its base, which has the base's rules.
+public sealed record PrimitiveDescriptor(string Type, string Name, string? Description)
 {
     // The primitive this one was derived from. Null otherwise.
     public PrimitiveReference? Base { get; init; }

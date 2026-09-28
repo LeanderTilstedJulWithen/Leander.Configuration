@@ -54,7 +54,7 @@ public sealed class ConfigurationContract
         return !failed;
     }
 
-    // A text-only description of every definition and the named primitives they use,
+    // A text-only description of every definition and the primitives they use,
     // for documentation and contract files. Defaults of sensitive definitions are left out.
     public ContractDescriptor CreateDescriptor()
     {

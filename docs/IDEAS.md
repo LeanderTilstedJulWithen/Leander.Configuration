@@ -68,7 +68,7 @@ Notes:
 - One level of this already exists: resolving a named primitive appends the type's default normalizers and validators to its own. `BasedOn` would extend that to any base primitive instead of adding a new concept.
 - Rule to keep it sound: a derived primitive can add rules but never remove them. Every AdminEmail is a valid Email.
 - Open: whether a derived primitive may replace the parser (probably, as long as the base validators still run), and cycle detection when `BasedOn` refers to a registered name.
-- Verdict: the most promising of the four.
+- Verdict: implemented as `new(name, base) { … }`, see DESIGN.md (Deriving). Cycles can't happen: a base must exist before the primitive derived from it.
 
 ### Explicit primitives, no registry
 

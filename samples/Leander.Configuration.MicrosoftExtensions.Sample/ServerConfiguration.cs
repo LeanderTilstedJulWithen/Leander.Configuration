@@ -8,10 +8,17 @@ namespace Leander.Configuration.MicrosoftExtensions.Sample;
 // Every configuration key the server knows about, with its type, presence and description.
 public static class ServerConfiguration
 {
-    public static readonly Primitive<int> PortPrimitive =
-        Primitive.Create("Port", Converters.Int32)
-            .Validate(Validators.InRange(1, 65535))
-            .Describe("A TCP port.");
+    public static readonly Primitive<int> PortPrimitive = new("Port", Converters.Int32)
+    {
+        Validators = [Validators.InRange(1, 65535)],
+        Description = "A TCP port.",
+    };
+
+    public static readonly Primitive<string> FilePathPrimitive = new("FilePath", Primitive.String)
+    {
+        Normalizers = [Normalizers.FullPath],
+        Description = "A file path, made absolute.",
+    };
 
     public static readonly ConfigurationDefinition<string> Host =
         ConfigurationDefinition.Define("Server:Host", Primitive.String)
@@ -38,7 +45,7 @@ public static class ServerConfiguration
 
     // Optional: not in appsettings.json, so it's null unless given, e.g. on the command line.
     public static readonly ConfigurationDefinition<string?> CertificatePath =
-        ConfigurationDefinition.Define("Server:CertificatePath", Primitive.String.Normalize(Normalizers.FullPath))
+        ConfigurationDefinition.Define("Server:CertificatePath", FilePathPrimitive)
             .Optional()
             .Describe("TLS certificate file. Plain HTTP when missing.");
 }
