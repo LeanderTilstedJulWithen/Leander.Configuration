@@ -121,6 +121,28 @@ The library supplies converters in `Converters`, and primitives for the same typ
 - **Enums are explicit.** `Primitive.Enum<T>()` and `Converters.Enum<T>()` are constrained to `where T : struct, Enum`, so no reflection is needed. `Primitive.Enum<T>()` is named after the enum type and gives the same instance on every call (a static field per `T`), so two keys using it don't clash.
 - **`Primitives` is not a type name.** A type `Primitives` inside the namespace `Leander.Primitives` would break name lookup for consumers, like `Configuration` would (see Configuration definitions). Hence `Primitive.Int32`.
 
+### List primitives
+
+Status: decided, not implemented yet (see TODO.md, Queued).
+
+A list is a kind of value too: "a comma-separated list of URIs, at least one" says what a value is, not where it lives. List rules and the delimited format belong to the primitive:
+
+```csharp
+public static readonly ListPrimitive<Uri> Origins = new("Origins", Primitive.Uri)
+{
+    Delimiter = ',',                                    // the default
+    Validators = [Validators.Collections.NotEmpty],    // list rules
+};
+```
+
+- **`ListPrimitive<T> : Primitive<IReadOnlyList<T>>`.** It can be used wherever a primitive can, and exposes `Element` and `Delimiter`. `Primitive<T>` is unsealed for this, but only the library can derive from it (the constructor for subclasses is not public).
+- **Items go through the element primitive**: parse, normalize and validate, with all its rules. Then the list's own normalizers and validators run on the list.
+- **The converter is delimited**: parsing splits on the delimiter, formatting joins the items' formatted values with it. This is `Converters.List(element, delimiter)`, with item rules added.
+- **Item errors name the item**, because a primitive knows nothing about keys: `item 2: 'x' is not a valid Uri`, or `item 2: value is not a valid Uri` when redacted. Items are counted from 0, like indexed keys. Every item is checked, and every failure is reported.
+- **Nested lists** are a list primitive whose element is another list primitive, e.g. `;` between rows and `,` within them. Using the same delimiter twice is the user's bug, and it isn't checked.
+- **Deriving** a list uses `new ListPrimitive<T>(name, baseList)`: it keeps the element and delimiter, and adds list rules. Deriving with the `Primitive<T>` constructor gives a plain primitive without `Element`, which can't be used with `Indexed` (see Collections).
+- **No shortcut** like `Primitive.List(Primitive.String)`. Every call would give a new instance with the same name, which clashes in a contract. Lists are declared as fields, like other primitives.
+
 ## Leander.Configuration
 
 ### Configuration definitions
@@ -145,7 +167,8 @@ public static class DatabaseConfiguration
 ```
 
 - **Every definition names its primitive.** There is no `Define<T>(key)` and no lookup by name. A type without a primitive doesn't compile.
-- **Value rules live on the primitive.** `ConfigurationDefinition` has no per-value `Validate`/`Normalize`. A one-off rule needs a primitive of its own, e.g. `new("MaxConnections", Primitive.Int32) { Validators = [...] }`.
+- **All value rules live on the primitive**, including list rules (see List primitives). `ConfigurationDefinition` has no `Validate`/`Normalize`. A one-off rule needs a primitive of its own, e.g. `new("MaxConnections", Primitive.Int32) { Validators = [...] }`.
+- **Definitions stay fluent.** `Default`, `Optional`, `Sensitive` and `Describe` are builder methods. Unlike primitives, a definition's identity (its key) doesn't change along the chain, and `Optional()` changes the type (`T` to `T?`), which a constructor can't do.
 - The entry point is `ConfigurationDefinition.Define`, not `Configuration.Define`. A type named `Configuration` inside the namespace `Leander.Configuration` would break name lookup for consumers.
 
 **Definitions are inert data.** This rule makes static initialization safe:
@@ -157,12 +180,12 @@ public static class DatabaseConfiguration
 ### Definition hierarchy
 
 - `ConfigurationDefinition` (abstract, non-generic): key, value type, description, required, has-default, optional, sensitive. Tooling enumerates this type. It also hosts the `Define` entry points.
-- `ConfigurationDefinition<T> : ConfigurationDefinition`: the typed reader, the default value, and list-level rules.
+- `ConfigurationDefinition<T> : ConfigurationDefinition`: the typed reader and the default value.
 
 ### Keys
 
 - The key separator is `:`, for compatibility with Microsoft configuration.
-- Keys are plain keys. The collection form is chosen with a builder method.
+- Keys are plain keys. The layout is chosen by the entry point: `Define` for one entry, `Indexed` for one entry per item.
 - A contract may not define the same key twice (case-insensitive).
 
 ### The value pipeline
@@ -170,9 +193,10 @@ public static class DatabaseConfiguration
 The stages are fixed, regardless of the order builder methods are called in:
 
 ```
-source lookup ──► presence ──► parse ──► normalize ──► validate ──► [list normalize ──► list validate] ──► value
-                  (Required/   (primitive converter, normalizers, validators)     (only after Indexed/Delimited)
-                   Default)
+source lookup ──► presence ──► parse ──► normalize ──► validate ──► value
+                  (Required/   (the primitive: converter, normalizers, validators;
+                   Default/     for a list, each item through the element primitive, then the list's rules)
+                   Optional)
 ```
 
 - **Presence.** `null` from the source means *missing*. Any other value, **including `""`**, is passed to the parser, and it's the parser's decision whether `""` is valid.
@@ -181,29 +205,28 @@ source lookup ──► presence ──► parse ──► normalize ──► v
 
 ### Collections
 
-A collection is written as a definition of its **element**, followed by an explicit method that maps it to a list definition:
+Status: decided, not implemented yet (see TODO.md, Queued). The code still has `.Indexed()`, `.Delimited()` and list-level `Validate`/`Normalize` on definitions.
+
+A list's format and rules are on its list primitive (see List primitives). The definition only says where the list lives:
 
 ```csharp
-ConfigurationDefinition.Define("Database:ConnectionStrings", AppPrimitives.ConnectionString)  // element rules on the primitive
-    .Indexed()                                    // ConfigurationDefinition<string> → ConfigurationDefinition<IReadOnlyList<string>>
-    .Validate(Validators.Collections.NotEmpty);   // list rule
+ConfigurationDefinition.Define("Server:AllowedOrigins", AppPrimitives.Origins);    // one entry: "a,b,c"
+ConfigurationDefinition.Indexed("Server:AllowedOrigins", AppPrimitives.Origins);   // Key:0, Key:1, …
 ```
 
-| Method         | Source shape                                                   |
-|----------------|----------------------------------------------------------------|
-| `.Indexed()`   | One entry per element: `Key:0`, `Key:1`, …                     |
-| `.Delimited()` | One entry holding a delimited list, e.g. `"a,b,c"`             |
+| Entry point                  | Source layout                                               |
+|------------------------------|-------------------------------------------------------------|
+| `Define(key, list)`          | One entry holding a delimited list, e.g. `"a,b,c"`          |
+| `Indexed(key, list)`         | One entry per item: `Key:0`, `Key:1`, …                     |
 
-- **List-level `Validate`/`Normalize`** are extension methods on `ConfigurationDefinition<IReadOnlyList<T>>`, because a list has no primitive of its own.
-- **The description carries over** to the list. A list is required unless it has its own default, e.g. `.Delimited().Default([])`.
-- **`.Indexed()` composes**: `.Indexed().Indexed()` reads `Key:0:0`, `Key:0:1`, …
-- **`.Delimited()` requires a scalar element.** Otherwise the contract fails to build. Item diagnostics use `Key[i]`.
+- **Delimited is not a layout.** A delimited list is one value with a text format, so `Define` reads it like any other primitive.
+- **`Indexed(key, list)`** takes a `ListPrimitive<T>` and gives a `ConfigurationDefinition<IReadOnlyList<T>>`. Each entry is read with `list.Element`, then the list's own rules run. The delimiter isn't used. If the element is a list primitive itself, each entry is a delimited list.
+- **Default, Optional, Sensitive and Describe apply to the list**, and there is no order to get wrong: nothing applies to elements. A list is required unless it has a default, e.g. `.Default([])`. `.Optional()` makes a missing list `null`, which is different from a supplied, empty list.
 - **Index rules.** Index names must be integers and are ordered numerically. A non-integer or duplicate index is an error, and gaps produce a warning.
-- **Mismatched form.** A value in the other form (e.g. `Key:0` exists but the definition is delimited or scalar) produces a warning.
-- **Element defaults.** `.Default(x).Indexed()` is allowed, but the default belongs to each element, not the list. It only applies to an entry that exists without a value, so reading warns and suggests `.Indexed().Default(...)`. For `.Delimited()` an element default is never used, with the same kind of warning.
-- **Optional lists.** `.Indexed().Optional()` is allowed: a missing list is `null`. That's different from a supplied, empty list.
-- **Optional elements** (planned). `.Optional().Indexed()` gives `IReadOnlyList<T?>`, and a gap in the indices becomes `null` instead of a warning.
-- **`.Optional().Delimited()`** (planned) fails the contract build with a message that names `Optional()`.
+- **Mismatched form.** A value in the other form (e.g. `Key:0` exists but the definition reads one entry) produces a warning.
+- **Diagnostics.** An indexed entry's errors are reported under its own key, `Key:2`. A delimited list's item errors are reported under `Key`, with the item in the message (see List primitives).
+- **Removed:** `.Indexed()` and `.Delimited()` as builder methods, list-level `Validate`/`Normalize` on definitions, element defaults and their warnings, the `Delimited()` scalar check, and `.Indexed().Indexed()` (nested indexed keys, `Key:0:0`; see IDEAS.md).
+- **Optional items**, where a gap in the indices becomes `null`, are not designed for this model yet.
 - **Dictionaries** (`Key:Name`) are not designed yet.
 
 ### Defaults and presence
@@ -236,7 +259,7 @@ var contract = new ConfigurationContractBuilder()
 
 - **`Build()` checks, it doesn't resolve.** Primitives are complete, so there is nothing to look up.
 - **Primitive names are unique per type.** Two different primitive instances with the same type and name in one contract are an error, e.g. an application's own `new("Int32", …)` next to `Primitive.Int32`. The same name on different types is fine: a "Utc" primitive for both `DateTime` and `DateTimeOffset`. The check covers the element primitives of lists and the bases of derived primitives.
-- **Failures.** Build throws one exception listing every failure: duplicate keys, then primitive name clashes, then per definition: invalid presence (see Defaults and presence) and invalid `Delimited()` uses.
+- **Failures.** Build throws one exception listing every failure: duplicate keys, then primitive name clashes, then per definition: invalid presence (see Defaults and presence).
 - **`ConfigurationContract`** is the complete list of definitions, which is also what tooling will enumerate.
 
 ### Sources
@@ -292,10 +315,10 @@ ConfigurationDefinition.Define("Api:Key", Primitive.String)
 ```
 
 - **Sensitive belongs to the definition.** Whether a value is secret depends on what it's used for, not on its type: a plain `string` can be an API key. `IsSensitive` is on `ConfigurationDefinition`. A sensitive primitive (e.g. a connection string that is always secret) may come later.
-- **It carries over** to `.Indexed()`, `.Delimited()` and `.Optional()`, like the description.
+- **It carries over** to `.Optional()`, like the description, and covers every item of a list.
 - **Diagnostics never contain a sensitive value.** `'abc' is not a valid Int32` becomes `value is not a valid Int32`. That covers parse errors, delimited list errors, and exception messages from normalizers and validators, which may contain the value too. Validator failure messages are fixed descriptions, so they stay.
 - **Primitives know nothing about keys**, so they can't decide on redaction. `Primitive<T>` has internal `TryParse`/`TryAccept` overloads with a `redact` flag, which Leander.Configuration passes. With it, the value and exception messages are left out. The public overloads still echo the input.
-- **The contract definition decides.** Sensitivity is taken from the definition in the contract, not from the element being read, because `.Indexed().Sensitive()` leaves the element definition as it was.
+- **The contract definition decides.** Sensitivity is taken from the definition in the contract, and passed down to everything read for it: items, and an optional definition's inner value.
 - **Descriptors and documentation** mark the definition as sensitive and never show its default. Example configuration uses a placeholder.
 
 ## Options objects
@@ -344,7 +367,7 @@ ContractDescriptor committed = ContractFile.Read(File.ReadAllText("configuration
 ```
 ContractDescriptor
   Definitions        every definition in the contract, in registration order
-  Primitives         the named primitives that definitions use, and their bases
+  Primitives         the primitives that definitions use, with their bases and elements
 
 DefinitionDescriptor
   Key                "Database:ConnectionStrings"
@@ -356,16 +379,15 @@ ValueDescriptor
   Type               display name without Nullable<>, e.g. "Int32", "IReadOnlyList<String>"
   Presence           Required | Default | Optional
   Default            formatted with the primitive's converter; null when there is none or the definition is sensitive
-  Form               Scalar | Indexed | Delimited
-  Primitive          Scalar only: a PrimitiveReference (type, name) to a primitive in ContractDescriptor.Primitives
-  Delimiter          Delimited only
-  Element            Indexed and Delimited only: the ValueDescriptor of each element
-  Normalizers        list-level rule descriptions
-  Validators         list-level rule descriptions
+  Form               Scalar | Indexed
+  Primitive          a PrimitiveReference (type, name) to a primitive in ContractDescriptor.Primitives;
+                     for Indexed, the list primitive
 
 PrimitiveDescriptor
   Type, Name
   Base               a PrimitiveReference for a derived primitive; null otherwise
+  Element            a PrimitiveReference for a list primitive; null otherwise
+  Delimiter          list primitives only
   Description
   Normalizers        descriptions of its own rules; the base's rules are on the base
   Validators
@@ -374,10 +396,12 @@ PrimitiveDescriptor
 
 The descriptor types are records, so a renderer or a comparison can use `with` and value equality (except for the lists).
 
-- **Values are recursive.** A list's element is a value with its own presence, default and form, which covers element defaults, `.Indexed().Indexed()`, and optional elements once they exist.
-- **Defaults are formatted by the converter**, so a `TimeSpan` default reads `00:00:30`, the same text that would be written in the source. A list default formats each element.
+Status: `Form` still has `Delimited`, and `ValueDescriptor` still has `Delimiter`, `Element` and list-level rules, until list primitives are implemented (see TODO.md, Queued).
+
+- **Values are flat.** A list is described by its primitive, which refers to its element primitive. There are no element values with their own presence or default.
+- **Defaults are formatted by the converter**, so a `TimeSpan` default reads `00:00:30`, the same text that would be written in the source. A list default is formatted by the list's converter.
 - **Primitives are referenced.** A definition refers to its primitive by type and name, and the primitive is described once. Names are unique per type within a contract (see Contract), so the reference is unambiguous.
-- **Primitives are listed in order of first use**, each followed by its bases, and only those some definition uses, directly or as a base. That includes ready-made primitives such as `Int32`, so the contract file is complete.
+- **Primitives are listed in order of first use**, each followed by its bases and elements, and only those some definition uses. That includes ready-made primitives such as `Int32`, so the contract file is complete.
 
 ### Documentation
 
@@ -389,17 +413,15 @@ The descriptor types are records, so a renderer or a comparison can use `with` a
 | Key | Type | Presence | Default |
 |-----|------|----------|---------|
 | [`Server:Port`](#serverport) | [Int32 (Port)](#int32-port) | default | `8080` |
-| [`Server:AllowedOrigins`](#serverallowedorigins) | list of Uri | required |  |
+| [`Server:AllowedOrigins`](#serverallowedorigins) | [IReadOnlyList<Uri> (Origins)](#ireadonlylisturi-origins) | required |  |
 
 ### `Server:AllowedOrigins`
 
 Origins allowed to call the server.
 
-- **Type:** list of Uri
+- **Type:** [IReadOnlyList<Uri> (Origins)](#ireadonlylisturi-origins)
 - **Presence:** required
 - **Form:** indexed: `Server:AllowedOrigins:0`, `Server:AllowedOrigins:1`, …
-- **Validated:** must not be empty
-- **Element:** Uri
 
 ## Primitives
 
@@ -408,10 +430,17 @@ Origins allowed to call the server.
 A TCP port.
 
 - **Validated:** must be between 1 and 65535
+
+### IReadOnlyList<Uri> (Origins)
+
+- **Element:** Uri
+- **Delimiter:** `,`
+- **Validated:** must not be empty
 ```
 
 - **Headings and type names use the display name**, `Int32 (Port)`, like diagnostics do.
-- **Elements are nested bullets** under **Element**, with their own presence, form and rules.
+- **List primitives** show their element (linked when it's listed) and delimiter, then their own rules. A key only shows its form. They always have something to say, so they are always listed.
+- **Angle brackets are escaped** in text (`IReadOnlyList\<Uri\>`), or GitHub reads `<Uri>` as an HTML tag. The example above leaves that out for readability.
 - **Primitives with nothing to say** (no description, rules, base or values), such as `Primitive.String`, are not listed or linked. The key shows only the type.
 - **Derived primitives** say so in their section: "**Derived from:** [String (Email)](…)", followed by their own rules. The base's rules are in the base's section. A base with nothing to say, as in `new("Port", Primitive.Int32)`, is named without a link: "**Derived from:** Int32".
 - **Sensitive definitions** get a **Sensitive** line, and a default shows as *hidden*.

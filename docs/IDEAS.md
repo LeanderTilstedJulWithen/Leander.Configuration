@@ -109,5 +109,26 @@ Notes:
 - The cost is terseness: `Define<int>("Port")` becomes `Define("Port", Primitives.Int32)`.
 - The one real argument for the registry is app-wide policy in one place: every string trimmed, every `DateTime` UTC. Without a registry, the application defines its own `MyPrimitives.String` and uses it everywhere. That is explicit, and visible in the definitions.
 - Named variants like Hex become plain fields (`Primitives.Int32Hex`), not registered names.
-- This addresses how Primitives grew and why the contract needs a build step. It doesn't address the other source of small rules: combining modifiers in Configuration (`Optional` × `Default` × `Indexed` × `Delimited` × `Sensitive`). That is a separate question.
+- This addresses how Primitives grew and why the contract needs a build step. It doesn't address the other source of small rules: combining modifiers in Configuration (`Optional` × `Default` × `Indexed` × `Delimited` × `Sensitive`). That is a separate question, see Configuration below.
 - Verdict: accepted, see DESIGN.md (Primitives, Deriving, Ready-made primitives). It removes more than it adds, and it keeps Primitives as the interesting part rather than a support library for Configuration.
+
+## Configuration
+
+### Constructors for configuration definitions
+
+After primitives moved to constructors, the same could be done for configuration definitions.
+
+Notes:
+- The problem that made fluent primitives go away doesn't exist here: a definition's identity is its key, and the key doesn't change along the chain.
+- `Optional()` changes the type (`T` to `T?`), which a constructor can't do. It would need a public class per shape, two of them for optional value and reference types.
+- C# allows an object initializer only after `new`, so factory methods and `init` properties can't be combined.
+- The real problem was the order of `.Default(x).Indexed()` (element or list?). Choosing the layout at creation (`Indexed(key, list)`) and moving list rules to list primitives solves that without constructors.
+- Verdict: dropped. Definitions stay fluent, see DESIGN.md (Configuration definitions, Collections).
+
+### Nested indexed keys
+
+`.Indexed().Indexed()` read `Key:0:0`, `Key:0:1`, … With list primitives, `Indexed(key, list)` reads one level. An indexed list of delimited lists still works (the element is a list primitive), but an indexed list of indexed lists doesn't.
+
+Notes:
+- Nothing used it. It could come back as an `Indexed(key, list)` overload whose element is itself indexed.
+- Verdict: dropped for now.
