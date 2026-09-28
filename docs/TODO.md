@@ -1,6 +1,7 @@
 # TODO
 
 ## Tests
+- [ ] Rewrite the tests removed with the registry: `Primitive.Create` / `DeriveFrom` / ready-made primitives, the contract builder (name clashes, duplicate keys, presence, `Delimited()`), and reading (`ConfigurationContractTests`).
 - [x] `ConfigurationContractBuilder`: duplicate keys, resolving primitives (by definition and by name), invalid `Delimited()` use, every failure reported at once.
 - [x] `ConfigurationContract.Read` / `TryRead` and `ConfigurationSnapshot`: scalars, required unless default, `Default(null)` / `Default(default)`, `Indexed()` / `Delimited()` collections, list-level rules, diagnostics, exception message, `Get` outside the contract.
 - [x] `Optional()`: value and reference types, missing gives `null`, present values go through the primitive, `IsOptional` / `IsRequired`, and the build error for a default with `Optional()` in either order.
