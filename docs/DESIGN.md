@@ -82,40 +82,43 @@ Normalizers and validators carry a `Description`. Contravariance lets a single v
 A **primitive** is a reusable kind of value with its rules, similar to a SQL `CREATE DOMAIN`:
 
 ```csharp
-public static readonly Primitive<string> Email =
-    Primitive.Create("Email", Converters.String)
-        .Normalize(Normalizers.Trim)
-        .Validate(Validators.Create<string>("must contain @", v => v.Contains('@')))
-        .Describe("An e-mail address.");
+public static readonly Primitive<string> Email = new("Email", Converters.String)
+{
+    Normalizers = [Normalizers.Trim],
+    Validators = [Validators.Create<string>("must contain @", v => v.Contains('@'))],
+    Description = "An e-mail address.",
+};
 ```
 
-- **Explicit and complete.** A primitive always has its converter. There is no registry, no default primitive per type, and nothing is looked up by type or name. Every configuration definition names its primitive.
+- **Explicit and complete.** A primitive always has its name and converter. There is no registry, no default primitive per type, and nothing is looked up by type or name. Every configuration definition names its primitive.
 - **Sharing is a C# field.** A primitive used by several keys is the same instance. The compiler is the registry.
-- `Primitive<T>` is immutable and fluent, and its builder methods never throw. `Normalize`, `Validate` and `Describe` return a new primitive with the same name. The normalizer and validator lists are never `null`, only empty.
-- **The name is optional.** `Primitive.Create(converter)` gives an unnamed primitive. The name is for display (`Int32 (Port)` in messages and documentation) and for referring to a primitive in a contract file. An unnamed primitive displays as its type, e.g. `Int32`.
+- **Constructors and `init` properties, no fluent methods.** There is one way to build a primitive, and it's plain C#. `Primitive<T>` is an immutable class, not a record: identity matters (see Contract), value equality would get in the way. Its constructors never throw. The normalizer and validator lists are never `null`, only empty.
+- **The name is required.** A primitive with different rules is a different kind of value, so it gets a different name. The name is shown in messages and documentation, and refers to the primitive in a contract file. It's displayed as `Int32 (Port)`, or just `Int32` when the name equals the type name.
 - **Explicit over convenient.** Out of the box means "the library supplies the parts", not "every type just works". The application decides how a `TimeSpan` or `DateTime` is read, and that decision is visible in the definition.
 
 ### Deriving
 
-A derived primitive is a primitive plus rules. It gets a name of its own and records its base:
+A derived primitive is a primitive plus rules. The second constructor takes a name and a base:
 
 ```csharp
-public static readonly Primitive<string> AdminEmail =
-    Primitive.DeriveFrom("AdminEmail", Email)
-        .Validate(Validators.Create<string>("must be on our domain", v => v.EndsWith("@example.com")));
+public static readonly Primitive<string> AdminEmail = new("AdminEmail", Email)
+{
+    Validators = [Validators.Create<string>("must be on our domain", v => v.EndsWith("@example.com"))],
+};
 ```
 
-- **A derived primitive can add rules but never remove them.** It keeps the base's converter, normalizers and validators, and appends its own. Every AdminEmail is a valid Email.
+- **A derived primitive can add rules but never remove them.** It takes the base's converter. `Normalizers` and `Validators` hold only its own rules. The base's rules always run first: all normalizers (base, then own), then all validators (base, then own). Every AdminEmail is a valid Email.
 - **The description is not inherited.** A new name deserves its own description.
 - **`Base`** refers to the base primitive, for documentation ("derived from Email").
-- `Email.Validate(...)` is still possible, but it keeps the name "Email". Used next to `Email` in the same contract, that is a name clash (see Contract). `DeriveFrom` is the way to add rules under a new name.
+- **Not `with`.** `with` copies the name and lets rules be replaced, which is the opposite of deriving.
 
 ### Ready-made primitives
 
-The library supplies converters in `Converters`, and unnamed primitives for the same types as static properties on `Primitive`: `string`, `bool`, the integer and floating-point types, `decimal`, `Guid`, `Uri`, `TimeSpan`, `DateTime` (UTC), `DateTimeOffset`. The variants are named: `Primitive.Int32Hex` and `Primitive.UInt32Hex` ("Hex"), `Primitive.DateTimeLocal` ("Local").
+The library supplies converters in `Converters`, and primitives for the same types as static properties on `Primitive`: `string`, `bool`, the integer and floating-point types, `decimal`, `Guid`, `Uri`, `TimeSpan`, `DateTime` (UTC), `DateTimeOffset`.
 
+- **Named after their type**, so `Primitive.Int32` is named "Int32" and displays as `Int32`. The variants have their own names: `Primitive.Int32Hex` and `Primitive.UInt32Hex` ("Hex"), `Primitive.DateTimeLocal` ("Local").
 - **Convenience, not policy.** They are plain values. An application that wants every string trimmed defines its own string primitive and uses it everywhere.
-- **Enums are explicit.** `Primitive.Enum<T>()` and `Converters.Enum<T>()` are constrained to `where T : struct, Enum`, so no reflection is needed. Every call gives a new instance: to share an enum primitive, keep it in a field.
+- **Enums are explicit.** `Primitive.Enum<T>()` and `Converters.Enum<T>()` are constrained to `where T : struct, Enum`, so no reflection is needed. `Primitive.Enum<T>()` is named after the enum type and gives the same instance on every call (a static field per `T`), so two keys using it don't clash.
 - **`Primitives` is not a type name.** A type `Primitives` inside the namespace `Leander.Primitives` would break name lookup for consumers, like `Configuration` would (see Configuration definitions). Hence `Primitive.Int32`.
 
 ## Leander.Configuration
@@ -142,7 +145,7 @@ public static class DatabaseConfiguration
 ```
 
 - **Every definition names its primitive.** There is no `Define<T>(key)` and no lookup by name. A type without a primitive doesn't compile.
-- **Value rules live on the primitive.** `ConfigurationDefinition` has no per-value `Validate`/`Normalize`. For a one-off rule, use an unnamed primitive: `Define("Server:MaxConnections", Primitive.Int32.Validate(...))` (see Contract for names).
+- **Value rules live on the primitive.** `ConfigurationDefinition` has no per-value `Validate`/`Normalize`. A one-off rule needs a primitive of its own, e.g. `new("MaxConnections", Primitive.Int32) { Validators = [...] }`.
 - The entry point is `ConfigurationDefinition.Define`, not `Configuration.Define`. A type named `Configuration` inside the namespace `Leander.Configuration` would break name lookup for consumers.
 
 **Definitions are inert data.** This rule makes static initialization safe:
@@ -232,7 +235,7 @@ var contract = new ConfigurationContractBuilder()
 ```
 
 - **`Build()` checks, it doesn't resolve.** Primitives are complete, so there is nothing to look up.
-- **Primitive names are unique per type.** Two different primitive instances with the same type and name in one contract are an error, e.g. `Email` next to `Email.Validate(...)`. The message suggests `DeriveFrom`. The same name on different types is fine: a "Utc" primitive for both `DateTime` and `DateTimeOffset`. Unnamed primitives are exempt. The check covers the element primitives of lists and the bases of derived primitives.
+- **Primitive names are unique per type.** Two different primitive instances with the same type and name in one contract are an error, e.g. an application's own `new("Int32", …)` next to `Primitive.Int32`. The same name on different types is fine: a "Utc" primitive for both `DateTime` and `DateTimeOffset`. The check covers the element primitives of lists and the bases of derived primitives.
 - **Failures.** Build throws one exception listing every failure: duplicate keys, then primitive name clashes, then per definition: invalid presence (see Defaults and presence) and invalid `Delimited()` uses.
 - **`ConfigurationContract`** is the complete list of definitions, which is also what tooling will enumerate.
 
@@ -354,18 +357,17 @@ ValueDescriptor
   Presence           Required | Default | Optional
   Default            formatted with the primitive's converter; null when there is none or the definition is sensitive
   Form               Scalar | Indexed | Delimited
-  Primitive          Scalar only: a PrimitiveReference (type, name) to a named primitive
-  InlinePrimitive    Scalar only: a PrimitiveDescriptor for an unnamed primitive
+  Primitive          Scalar only: a PrimitiveReference (type, name) to a primitive in ContractDescriptor.Primitives
   Delimiter          Delimited only
   Element            Indexed and Delimited only: the ValueDescriptor of each element
   Normalizers        list-level rule descriptions
   Validators         list-level rule descriptions
 
 PrimitiveDescriptor
-  Type, Name         Name is null for an unnamed primitive
+  Type, Name
   Base               a PrimitiveReference for a derived primitive; null otherwise
   Description
-  Normalizers        descriptions of all rules, including those from the base
+  Normalizers        descriptions of its own rules; the base's rules are on the base
   Validators
   Values             the names of an enum type; null for other types
 ```
@@ -374,8 +376,8 @@ The descriptor types are records, so a renderer or a comparison can use `with` a
 
 - **Values are recursive.** A list's element is a value with its own presence, default and form, which covers element defaults, `.Indexed().Indexed()`, and optional elements once they exist.
 - **Defaults are formatted by the converter**, so a `TimeSpan` default reads `00:00:30`, the same text that would be written in the source. A list default formats each element.
-- **Named primitives are referenced; unnamed ones are inline.** A definition that uses a named primitive refers to it by type and name, and the primitive is described once. Names are unique per type within a contract (see Contract), so the reference is unambiguous. An unnamed primitive, such as `Primitive.Int32` or `Primitive.Int32.Validate(...)`, is described inline on the definition.
-- **Primitives are listed in order of first use**, and only those some definition uses, directly or as a base.
+- **Primitives are referenced.** A definition refers to its primitive by type and name, and the primitive is described once. Names are unique per type within a contract (see Contract), so the reference is unambiguous.
+- **Primitives are listed in order of first use**, each followed by its bases, and only those some definition uses, directly or as a base. That includes ready-made primitives such as `Int32`, so the contract file is complete.
 
 ### Documentation
 
@@ -410,8 +412,8 @@ A TCP port.
 
 - **Headings and type names use the display name**, `Int32 (Port)`, like diagnostics do.
 - **Elements are nested bullets** under **Element**, with their own presence, form and rules.
-- **Inline primitives show their rules on the key**, and an enum's values. An unnamed primitive with nothing to say, such as `Primitive.String`, shows only its type.
-- **Derived primitives** say so in their section: "**Derived from:** [String (Email)](…)". Their rules include the base's. An unnamed base, as in `DeriveFrom("Port", Primitive.Int32)`, is not listed or linked.
+- **Primitives with nothing to say** (no description, rules, base or values), such as `Primitive.String`, are not listed or linked. The key shows only the type.
+- **Derived primitives** say so in their section: "**Derived from:** [String (Email)](…)", followed by their own rules. The base's rules are in the base's section. A base with nothing to say, as in `new("Port", Primitive.Int32)`, is named without a link: "**Derived from:** Int32".
 - **Sensitive definitions** get a **Sensitive** line, and a default shows as *hidden*.
 - Lines end in `\n` on every platform, so the committed file doesn't change with the machine that wrote it.
 
