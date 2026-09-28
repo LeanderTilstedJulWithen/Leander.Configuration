@@ -5,7 +5,8 @@ using Leander.Primitives.Validation;
 
 namespace Leander.Primitives;
 
-// A resolved primitive definition: the converter is always present, and the lists include the defaults for T.
+// A complete primitive: the converter is always present.
+// Immutable: Describe, Normalize and Validate return a new primitive with the same name and base, and never throw.
 public sealed class Primitive<T> : Primitive
 {
     internal Primitive(
@@ -13,13 +14,15 @@ public sealed class Primitive<T> : Primitive
         string? description,
         IConverter<T> converter,
         IReadOnlyList<INormalizer<T>> normalizers,
-        IReadOnlyList<IValidator<T>> validators)
+        IReadOnlyList<IValidator<T>> validators,
+        Primitive<T>? @base = null)
     {
         Name = name;
         Description = description;
         Converter = converter;
         Normalizers = normalizers;
         Validators = validators;
+        Base = @base;
     }
 
     public override string? Name { get; }
@@ -28,11 +31,22 @@ public sealed class Primitive<T> : Primitive
 
     public override string? Description { get; }
 
+    public override Primitive<T>? Base { get; }
+
     public IConverter<T> Converter { get; }
 
     public IReadOnlyList<INormalizer<T>> Normalizers { get; }
 
     public IReadOnlyList<IValidator<T>> Validators { get; }
+
+    public Primitive<T> Describe(string description) =>
+        new(Name, description, Converter, Normalizers, Validators, Base);
+
+    public Primitive<T> Normalize(INormalizer<T> normalizer) =>
+        new(Name, Description, Converter, [.. Normalizers, normalizer], Validators, Base);
+
+    public Primitive<T> Validate(IValidator<T> validator) =>
+        new(Name, Description, Converter, Normalizers, [.. Validators, validator], Base);
 
     // Parses, then accepts the parsed value (see TryAccept). On failure, value is default.
     public bool TryParse(string input, out T value) => TryParse(input, out value, null, redact: false);
