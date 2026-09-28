@@ -110,4 +110,4 @@ Notes:
 - The one real argument for the registry is app-wide policy in one place: every string trimmed, every `DateTime` UTC. Without a registry, the application defines its own `MyPrimitives.String` and uses it everywhere. That is explicit, and visible in the definitions.
 - Named variants like Hex become plain fields (`Primitives.Int32Hex`), not registered names.
 - This addresses how Primitives grew and why the contract needs a build step. It doesn't address the other source of small rules: combining modifiers in Configuration (`Optional` × `Default` × `Indexed` × `Delimited` × `Sensitive`). That is a separate question.
-- Verdict: proposed. It removes more than it adds, and it keeps Primitives as the interesting part rather than a support library for Configuration.
+- Verdict: accepted, see DESIGN.md (Primitives, Deriving, Ready-made primitives). It removes more than it adds, and it keeps Primitives as the interesting part rather than a support library for Configuration.
