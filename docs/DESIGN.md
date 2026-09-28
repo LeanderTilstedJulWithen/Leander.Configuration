@@ -411,7 +411,7 @@ A TCP port.
 - **Headings and type names use the display name**, `Int32 (Port)`, like diagnostics do.
 - **Elements are nested bullets** under **Element**, with their own presence, form and rules.
 - **Inline primitives show their rules on the key**, and an enum's values. An unnamed primitive with nothing to say, such as `Primitive.String`, shows only its type.
-- **Derived primitives** read "String (AdminEmail), derived from [String (Email)](…)".
+- **Derived primitives** say so in their section: "**Derived from:** [String (Email)](…)". Their rules include the base's. An unnamed base, as in `DeriveFrom("Port", Primitive.Int32)`, is not listed or linked.
 - **Sensitive definitions** get a **Sensitive** line, and a default shows as *hidden*.
 - Lines end in `\n` on every platform, so the committed file doesn't change with the machine that wrote it.
 
@@ -437,7 +437,7 @@ The contract file is the descriptor as JSON, with a format version: `ContractFil
 ## Milestones
 
 1. **Core.** Done: definitions, source abstraction, reader, pipeline, diagnostics, exception with report.
-2. **Primitives.** Done: parsing, normalization, validation, primitive definitions, contract builder. In progress: explicit primitives replace the registry (see IDEAS.md).
+2. **Primitives.** Done: parsing, normalization, validation, explicit primitives with deriving and ready-made primitives, contract builder. Tests pending.
 3. **Microsoft adapter.** `IConfiguration` source, DI and `IOptions<T>` registration.
 4. **Documentation.** Done: sensitive values, contract descriptor, Markdown documentation, contract file. Later: example configuration, comparing contract files, command-line tool.
 5. **Generator.** Options construction code.

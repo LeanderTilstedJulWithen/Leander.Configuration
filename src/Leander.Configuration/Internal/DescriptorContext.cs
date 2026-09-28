@@ -4,7 +4,8 @@ using Leander.Primitives.Internal;
 
 namespace Leander.Configuration.Internal;
 
-// The state of describing one contract: the named primitives found so far, in order of first use.
+// The state of describing one contract: the named primitives found so far, in order of first use,
+// each followed by its bases.
 internal sealed class DescriptorContext
 {
     private readonly HashSet<Primitive> _described = new(ReferenceEqualityComparer.Instance);
@@ -27,17 +28,22 @@ internal sealed class DescriptorContext
             return descriptor with { InlinePrimitive = Describe(primitive) };
         }
 
-        if (_described.Add(primitive))
+        // An unnamed base, e.g. DeriveFrom("Port", Primitive.Int32), is not listed: its rules are part of the derived primitive.
+        for (Primitive<T>? current = primitive; current is { Name: not null } && _described.Add(current); current = current.Base)
         {
-            _primitives.Add(Describe(primitive));
+            _primitives.Add(Describe(current));
         }
 
-        return descriptor with { Primitive = new PrimitiveReference(TypeNames.Get(typeof(T)), primitive.Name) };
+        return descriptor with { Primitive = Reference(primitive)! };
     }
+
+    private static PrimitiveReference? Reference<T>(Primitive<T>? primitive) =>
+        primitive is { Name: { } name } ? new PrimitiveReference(TypeNames.Get(typeof(T)), name) : null;
 
     private static PrimitiveDescriptor Describe<T>(Primitive<T> primitive) =>
         new(TypeNames.Get(typeof(T)), primitive.Name, primitive.Description)
         {
+            Base = Reference(primitive.Base),
             Normalizers = [.. primitive.Normalizers.Select(normalizer => normalizer.Description)],
             Validators = [.. primitive.Validators.Select(validator => validator.Description)],
             Values = typeof(T).IsEnum ? Enum.GetNames(typeof(T)) : null,

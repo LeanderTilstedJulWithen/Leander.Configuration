@@ -1,9 +1,11 @@
 namespace Leander.Configuration.Descriptors;
 
-// A resolved primitive. The rules include those inherited from the default for its type.
-// Name is null for the default primitive of a type.
+// A primitive with all its rules, including those from its base. Name is null for an unnamed primitive.
 public sealed record PrimitiveDescriptor(string Type, string? Name, string? Description)
 {
+    // The primitive this one was derived from. Null otherwise.
+    public PrimitiveReference? Base { get; init; }
+
     public IReadOnlyList<string> Normalizers { get; init; } = [];
 
     public IReadOnlyList<string> Validators { get; init; } = [];
