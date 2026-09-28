@@ -2,12 +2,9 @@ using Leander.Configuration;
 using Leander.Configuration.Sample;
 using Leander.Configuration.Tooling;
 
-// The contract is built once at startup. It fails fast if a primitive cannot be resolved or a key is defined twice.
-// Registered primitives are described once in the documentation and linked from the keys that use them.
+// The contract is built once at startup. It fails fast if a key is defined twice or two primitives share a name.
+// Named primitives are described once in the documentation and linked from the keys that use them.
 var contract = new ConfigurationContractBuilder()
-    .RegisterDefaultPrimitives()
-    .Register(SamplePrimitives.Email)
-    .Register(SamplePrimitives.Port)
     .Register(ServerConfiguration.Host)
     .Register(ServerConfiguration.Port)
     .Register(ServerConfiguration.RequestTimeout)

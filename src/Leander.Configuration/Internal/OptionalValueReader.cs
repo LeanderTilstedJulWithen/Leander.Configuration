@@ -10,14 +10,14 @@ internal sealed class OptionalValueReader<T>(ConfigurationDefinition<T> inner) :
     private readonly ConfigurationDefinition<T> _inner = inner;
 
     // A default set before Optional() would make the value never null.
-    public override void Resolve(ContractResolver resolver, ConfigurationDefinition definition)
+    public override void Check(ContractChecker checker, ConfigurationDefinition definition)
     {
         if (_inner.HasDefault)
         {
-            resolver.Failures.Add($"{definition.Key}: Optional() cannot be combined with a default.");
+            checker.Failures.Add($"{definition.Key}: Optional() cannot be combined with a default.");
         }
 
-        _inner.Resolve(resolver);
+        _inner.Check(checker);
     }
 
     // The inner definition describes the value; the optional definition sets the presence.

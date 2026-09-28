@@ -9,7 +9,7 @@ internal sealed class IndexedReader<T>(ConfigurationDefinition<T> element) : Val
 {
     private readonly ConfigurationDefinition<T> _element = element;
 
-    public override void Resolve(ContractResolver resolver, ConfigurationDefinition definition) => _element.Resolve(resolver);
+    public override void Check(ContractChecker checker, ConfigurationDefinition definition) => _element.Check(checker);
 
     public override ValueDescriptor Describe(DescriptorContext context) =>
         new(TypeNames.Get(typeof(IReadOnlyList<T>)), ValuePresence.Required, ValueForm.Indexed)

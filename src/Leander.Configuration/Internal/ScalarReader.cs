@@ -3,23 +3,15 @@ using Leander.Primitives;
 
 namespace Leander.Configuration.Internal;
 
-// Reads a single value. The primitive is given either as a definition or as the name of a registered primitive.
-internal sealed class ScalarReader<T>(PrimitiveDefinition<T>? primitive, string? primitiveName) : ValueReader<T>
+// Reads a single value with its primitive.
+internal sealed class ScalarReader<T>(Primitive<T> primitive) : ValueReader<T>
 {
-    private readonly PrimitiveDefinition<T>? _primitive = primitive;
-    private readonly string? _primitiveName = primitiveName;
+    private readonly Primitive<T> _primitive = primitive;
 
-    public override void Resolve(ContractResolver resolver, ConfigurationDefinition definition)
-    {
-        if (_primitiveName is not null)
-        {
-            resolver.Resolve<T>(this, definition.Key, _primitiveName);
-        }
-        else
-        {
-            resolver.Resolve(this, definition.Key, _primitive!);
-        }
-    }
+    public Primitive<T> Primitive => _primitive;
+
+    public override void Check(ContractChecker checker, ConfigurationDefinition definition) =>
+        checker.Check(definition.Key, _primitive);
 
     public override ReadStatus Read(ReadContext context, ConfigurationDefinition definition, string key, out T value)
     {
@@ -36,23 +28,19 @@ internal sealed class ScalarReader<T>(PrimitiveDefinition<T>? primitive, string?
             return ReadStatus.Missing;
         }
 
-        var success = GetPrimitive(context).TryParse(raw, context.IsSensitive, out value, out var errors);
+        var success = _primitive.TryParse(raw, context.IsSensitive, out value, out var errors);
         Pipeline.Report(context, definition, key, errors);
         return success ? ReadStatus.Read : ReadStatus.Failed;
     }
 
     public override bool TryProcess(ReadContext context, ConfigurationDefinition definition, string key, T value, out T result)
     {
-        var success = GetPrimitive(context).TryAccept(value, context.IsSensitive, out result, out var errors);
+        var success = _primitive.TryAccept(value, context.IsSensitive, out result, out var errors);
         Pipeline.Report(context, definition, key, errors);
         return success;
     }
 
-    public override ValueDescriptor Describe(DescriptorContext context) =>
-        context.DescribeScalar(context.Contract.GetPrimitive<T>(this));
+    public override ValueDescriptor Describe(DescriptorContext context) => context.DescribeScalar(_primitive);
 
-    public override string Format(DescriptorContext context, T value) =>
-        context.Contract.GetPrimitive<T>(this).Converter.Format(value);
-
-    public Primitive<T> GetPrimitive(ReadContext context) => context.Contract.GetPrimitive<T>(this);
+    public override string Format(DescriptorContext context, T value) => _primitive.Converter.Format(value);
 }

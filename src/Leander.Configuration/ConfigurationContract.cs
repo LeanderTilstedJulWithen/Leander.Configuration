@@ -1,30 +1,21 @@
 using System.Diagnostics.CodeAnalysis;
 using Leander.Configuration.Descriptors;
 using Leander.Configuration.Internal;
-using Leander.Primitives;
 
 namespace Leander.Configuration;
 
-// The complete, resolved set of configuration definitions of an application.
+// The complete, checked set of configuration definitions of an application.
 public sealed class ConfigurationContract
 {
     private readonly HashSet<ConfigurationDefinition> _definitionSet;
-    private readonly IReadOnlyDictionary<object, Primitive> _resolved;
 
-    internal ConfigurationContract(
-        IReadOnlyList<ConfigurationDefinition> definitions,
-        PrimitiveRegistry primitives,
-        IReadOnlyDictionary<object, Primitive> resolved)
+    internal ConfigurationContract(IReadOnlyList<ConfigurationDefinition> definitions)
     {
         Definitions = definitions;
-        Primitives = primitives;
         _definitionSet = [.. definitions];
-        _resolved = resolved;
     }
 
     public IReadOnlyList<ConfigurationDefinition> Definitions { get; }
-
-    public PrimitiveRegistry Primitives { get; }
 
     public bool Contains(ConfigurationDefinition definition) => _definitionSet.Contains(definition);
 
@@ -63,11 +54,11 @@ public sealed class ConfigurationContract
         return !failed;
     }
 
-    // A text-only description of every definition and the registered primitives they use,
+    // A text-only description of every definition and the named primitives they use,
     // for documentation and contract files. Defaults of sensitive definitions are left out.
     public ContractDescriptor CreateDescriptor()
     {
-        var context = new DescriptorContext(this);
+        var context = new DescriptorContext();
         var definitions = new List<DefinitionDescriptor>(Definitions.Count);
 
         foreach (var definition in Definitions)
@@ -82,6 +73,4 @@ public sealed class ConfigurationContract
 
         return new ContractDescriptor(definitions, context.Primitives);
     }
-
-    internal Primitive<T> GetPrimitive<T>(object owner) => (Primitive<T>)_resolved[owner];
 }

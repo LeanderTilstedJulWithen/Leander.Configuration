@@ -67,10 +67,10 @@ public abstract class Primitive
     public static Primitive<TEnum> Enum<TEnum>() where TEnum : struct, Enum => Create(Converters.Enum<TEnum>());
 
     public static Primitive<T> Create<T>(IConverter<T> converter) =>
-        new(name: null, description: null, converter, [], []);
+        new(name: null, description: null, converter, [], [], @base: null);
 
     public static Primitive<T> Create<T>(string name, IConverter<T> converter) =>
-        new(name, description: null, converter, [], []);
+        new(name, description: null, converter, [], [], @base: null);
 
     // Keeps the base's converter and rules; rules added afterwards are appended. The description is not inherited.
     public static Primitive<T> DeriveFrom<T>(string name, Primitive<T> @base) =>

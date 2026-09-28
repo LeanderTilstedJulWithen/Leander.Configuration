@@ -1,49 +1,36 @@
 using Leander.Primitives;
-using Leander.Primitives.Internal;
 
 namespace Leander.Configuration.Internal;
 
-// Resolves the primitive of every scalar reader in a contract, keyed by the reader instance.
-// Definitions that depend on a registered primitive that failed to resolve name that primitive as the cause.
-internal sealed class ContractResolver(PrimitiveRegistry registry, IReadOnlyList<PrimitiveFailure> primitiveFailures)
+// Collects the problems of a contract while its definitions are checked.
+// Primitive names must be unique per type: two different instances with the same type and name are a clash.
+internal sealed class ContractChecker
 {
-    private readonly PrimitiveRegistry _registry = registry;
-    private readonly Dictionary<object, Primitive> _resolved = new(ReferenceEqualityComparer.Instance);
-    private readonly HashSet<(Type Type, string? Name)> _failedPrimitives = [.. primitiveFailures.Select(f => (f.Type, f.Name))];
+    private readonly Dictionary<(Type Type, string Name), Primitive> _named = [];
+    private readonly HashSet<(Type Type, string Name)> _clashes = [];
 
-    public IReadOnlyDictionary<object, Primitive> Resolved => _resolved;
+    // Name clashes, one per type and name, in order of discovery.
+    public List<string> NameClashes { get; } = [];
 
-    public List<string> Failures { get; } = [.. primitiveFailures.Select(f => f.Message)];
+    // Per definition: invalid presence and invalid Delimited() uses.
+    public List<string> Failures { get; } = [];
 
-    public void Resolve<T>(object owner, string key, PrimitiveDefinition<T> definition)
+    // Checks the primitive and its bases.
+    public void Check(string key, Primitive primitive)
     {
-        if (_registry.TryResolve(definition, out var primitive))
+        for (Primitive? current = primitive; current is not null; current = current.Base)
         {
-            _resolved[owner] = primitive;
-        }
-        else if (_failedPrimitives.Contains((typeof(T), null)))
-        {
-            Failures.Add($"{key}: the default primitive for {TypeNames.Get(typeof(T))} could not be resolved.");
-        }
-        else
-        {
-            Failures.Add($"{key}: no converter is available for {TypeNames.Get(typeof(T))}.");
-        }
-    }
+            if (current.Name is not { } name)
+            {
+                continue;
+            }
 
-    public void Resolve<T>(object owner, string key, string primitiveName)
-    {
-        if (_registry.TryGet<T>(primitiveName, out var primitive))
-        {
-            _resolved[owner] = primitive;
-        }
-        else if (_failedPrimitives.Contains((typeof(T), primitiveName)))
-        {
-            Failures.Add($"{key}: primitive '{primitiveName}' for {TypeNames.Get(typeof(T))} could not be resolved.");
-        }
-        else
-        {
-            Failures.Add($"{key}: no primitive named '{primitiveName}' is registered for {TypeNames.Get(typeof(T))}.");
+            var entry = (current.ValueType, name);
+            if (!_named.TryAdd(entry, current) && !ReferenceEquals(_named[entry], current) && _clashes.Add(entry))
+            {
+                NameClashes.Add(
+                    $"{key}: another primitive is named {current.DisplayName}. Use Primitive.DeriveFrom to add rules under a new name.");
+            }
         }
     }
 }

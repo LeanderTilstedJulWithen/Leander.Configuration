@@ -44,7 +44,9 @@ public static class Converters
         .AddFormat("c")
         .Build();
 
-    public static IConverter<TEnum> Enum<TEnum>() where TEnum : struct, Enum => EnumConverterCache<TEnum>.Instance;
+    // [Flags] changes how the enum itself behaves (e.g. ToString), so parsing follows it too.
+    public static IConverter<TEnum> Enum<TEnum>() where TEnum : struct, Enum =>
+        new EnumConverter<TEnum>(isFlags: typeof(TEnum).IsDefined(typeof(FlagsAttribute), inherit: false));
 
     public static IConverter<IReadOnlyList<T>> List<T>(IConverter<T> elementConverter, char delimiter = ',') =>
         new ListConverter<T>(elementConverter, delimiter);

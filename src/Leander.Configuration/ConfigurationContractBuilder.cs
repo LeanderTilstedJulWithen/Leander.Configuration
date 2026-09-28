@@ -1,30 +1,10 @@
 using Leander.Configuration.Internal;
-using Leander.Primitives;
 
 namespace Leander.Configuration;
 
 public sealed class ConfigurationContractBuilder
 {
-    private readonly PrimitiveRegistryBuilder _primitives = new();
     private readonly List<ConfigurationDefinition> _definitions = [];
-
-    public ConfigurationContractBuilder RegisterDefaultPrimitives()
-    {
-        _primitives.RegisterDefaults();
-        return this;
-    }
-
-    public ConfigurationContractBuilder Register<T>(PrimitiveDefinition<T> primitive)
-    {
-        _primitives.Register(primitive);
-        return this;
-    }
-
-    public ConfigurationContractBuilder RegisterFallback(IPrimitiveFallback fallback)
-    {
-        _primitives.RegisterFallback(fallback);
-        return this;
-    }
 
     public ConfigurationContractBuilder Register(ConfigurationDefinition definition)
     {
@@ -32,30 +12,29 @@ public sealed class ConfigurationContractBuilder
         return this;
     }
 
-    // Builds the primitives first, then resolves the primitive of every definition against them.
-    // Throws one exception listing every failure: primitives that cannot be resolved, duplicate keys,
-    // definitions whose primitive cannot be resolved, and invalid presence (a null default, or a default with Optional()).
+    // Checks the definitions; primitives are complete, so nothing is resolved.
+    // Throws one exception listing every failure: duplicate keys, primitive name clashes,
+    // invalid presence (a null default, or a default with Optional()) and invalid Delimited() uses.
     public ConfigurationContract Build()
     {
-        var primitives = _primitives.Build(out var primitiveFailures);
-        var resolver = new ContractResolver(primitives, primitiveFailures);
-
-        foreach (var duplicate in _definitions.GroupBy(d => d.Key, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1))
-        {
-            resolver.Failures.Add($"{duplicate.Key}: defined more than once.");
-        }
+        var checker = new ContractChecker();
+        var duplicates = _definitions
+            .GroupBy(d => d.Key, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .Select(g => $"{g.Key}: defined more than once.");
 
         foreach (var definition in _definitions)
         {
-            definition.Resolve(resolver);
+            definition.Check(checker);
         }
 
-        if (resolver.Failures.Count > 0)
+        List<string> failures = [.. duplicates, .. checker.NameClashes, .. checker.Failures];
+        if (failures.Count > 0)
         {
             throw new InvalidOperationException(
-                "Configuration contract could not be built:" + Environment.NewLine + string.Join(Environment.NewLine, resolver.Failures));
+                "Configuration contract could not be built:" + Environment.NewLine + string.Join(Environment.NewLine, failures));
         }
 
-        return new ConfigurationContract([.. _definitions], primitives, resolver.Resolved);
+        return new ConfigurationContract([.. _definitions]);
     }
 }

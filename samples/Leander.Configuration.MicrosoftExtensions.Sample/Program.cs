@@ -16,9 +16,8 @@ var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
     ContentRootPath = AppContext.BaseDirectory,
 });
 
-// The contract is built once at startup. It fails fast if a primitive cannot be resolved or a key is defined twice.
+// The contract is built once at startup. It fails fast if a key is defined twice or two primitives share a name.
 var contract = new ConfigurationContractBuilder()
-    .RegisterDefaultPrimitives()
     .Register(ServerConfiguration.Host)
     .Register(ServerConfiguration.Port)
     .Register(ServerConfiguration.AllowedOrigins)

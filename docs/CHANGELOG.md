@@ -11,18 +11,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `Leander.Primitives.Parsing`: converters, parsers and formatters, copied from Leander.Parsing with only the namespace changed. `IFormatter<T>` is now contravariant (`IFormatter<in T>`).
 - `Leander.Primitives.Validation`: `IValidator<in T>` with `Description` and `Validate`, and `Validators` (`Create`, `NotEmpty`, `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, `LessThanOrEqual`, `InRange`, `Collections.NotEmpty`).
 - `Leander.Primitives.Normalization`: `INormalizer<T>` with `Description` and `Normalize`, and `Normalizers` (`Create`, `Trim`, `FullPath`).
-- `PrimitiveDefinition<T>`: an immutable, fluent definition of a kind of value (name, description, converter, normalizers, validators). A definition without a name is the default for its type.
-- `Primitive<T>`: a resolved definition. The converter falls back to the type's default, and normalizers and validators are appended to the default's.
+- `Primitive<T>`: an immutable, fluent, always complete kind of value (optional name, description, converter, normalizers, validators), created with `Primitive.Create(converter)` or `Primitive.Create(name, converter)`. Primitives are explicit: there is no registry and no default per type, and sharing one is sharing a field.
+- `Primitive.DeriveFrom(name, base)`: a new named primitive that keeps the base's converter and rules and can only add rules. `Base` refers to the base.
+- Ready-made primitives for the built-in types (`Primitive.String`, `Primitive.Int32`, `Primitive.TimeSpan`, …), the named variants `Primitive.Int32Hex`, `Primitive.UInt32Hex` and `Primitive.DateTimeLocal`, and `Primitive.Enum<T>()`.
 - `Primitive<T>.TryParse` (parse, normalize, validate) and `Primitive<T>.TryAccept` (normalize, validate), each with an overload that returns every error. Primitives can be used without Leander.Configuration.
-- `PrimitiveRegistry` / `PrimitiveRegistryBuilder`: primitives keyed by `(type, name)`, with `(type, null)` as the default. `RegisterDefaults()` covers the built-in types, `"Hex"` and `"Local"`. `Build()` reports every unresolvable definition at once.
-- `IPrimitiveFallback`, with a built-in enum fallback.
 
 #### Leander.Configuration
-- `ConfigurationDefinition<T>`: key, presence (`Required`/`Default`), description, and a primitive given as a definition or a registered name.
+- `ConfigurationDefinition<T>`: key, presence (`Required`/`Default`), description, and its primitive: `ConfigurationDefinition.Define(key, primitive)`.
 - `Optional()`: `ConfigurationDefinition<T>` becomes `ConfigurationDefinition<T?>` (`Nullable<T>` for value types, annotated `T?` for reference types), and a missing value is `null` instead of an error. `ConfigurationDefinition.IsOptional` reports it. The contract build rejects a null default on a non-optional definition, and a default combined with `Optional()`.
 - `Sensitive()`: diagnostics for the definition never contain its value, e.g. `value is not a valid Int32` instead of `'abc' is not a valid Int32`, and exception messages from normalizers and validators are left out. `ConfigurationDefinition.IsSensitive` reports it, and it carries over to `Indexed()`, `Delimited()` and `Optional()`.
 - Collections via `Indexed()` (`Key:0`, `Key:1`, …) and `Delimited()` (`"a,b,c"`), with list-level `Validate`/`Normalize` extension methods.
-- `ConfigurationContractBuilder` / `ConfigurationContract`: registers primitives and configuration definitions, resolves every definition's primitive, and rejects duplicate keys. `Build()` lists every failure at once, including registered primitives that cannot be resolved.
+- `ConfigurationContractBuilder` / `ConfigurationContract`: registers configuration definitions, and rejects duplicate keys and two different primitives of the same type with the same name. `Build()` lists every failure at once.
 - `ConfigurationContract.CreateDescriptor()`: a text-only description of the contract (`Leander.Configuration.Descriptors`): every definition with its type, presence, formatted default, form, elements and rules, and the registered primitives it uses. Defaults of sensitive definitions are left out.
 - `ConfigurationSnapshot`: the validated values of a contract, from `contract.Read(source)` (throws a single `InvalidConfigurationException`) or `contract.TryRead(...)`. A definition without a default is required.
 - `ConfigurationDiagnostic` with `DiagnosticSeverity` (`Error`, `Warning`, `Trace`).

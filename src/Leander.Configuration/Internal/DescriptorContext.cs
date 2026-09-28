@@ -4,14 +4,11 @@ using Leander.Primitives.Internal;
 
 namespace Leander.Configuration.Internal;
 
-// The state of describing one contract: the registered primitives found so far, in order of first use.
-internal sealed class DescriptorContext(ConfigurationContract contract)
+// The state of describing one contract: the named primitives found so far, in order of first use.
+internal sealed class DescriptorContext
 {
-    private readonly ConfigurationContract _contract = contract;
     private readonly HashSet<Primitive> _described = new(ReferenceEqualityComparer.Instance);
     private readonly List<PrimitiveDescriptor> _primitives = [];
-
-    public ConfigurationContract Contract => _contract;
 
     public IReadOnlyList<PrimitiveDescriptor> Primitives => _primitives;
 
@@ -19,12 +16,13 @@ internal sealed class DescriptorContext(ConfigurationContract contract)
     // Set per contract definition, like ReadContext.IsSensitive.
     public bool IsSensitive { get; set; }
 
-    // Registered primitives are described once and referenced; any other primitive is described inline.
+    // Named primitives are described once and referenced; unnamed primitives are described inline.
+    // Names are unique per type within a contract (see ContractChecker), so the reference is unambiguous.
     public ValueDescriptor DescribeScalar<T>(Primitive<T> primitive)
     {
         var descriptor = new ValueDescriptor(TypeNames.Get(typeof(T)), ValuePresence.Required, ValueForm.Scalar);
 
-        if (!_contract.Primitives.IsRegistered(primitive))
+        if (primitive.Name is null)
         {
             return descriptor with { InlinePrimitive = Describe(primitive) };
         }

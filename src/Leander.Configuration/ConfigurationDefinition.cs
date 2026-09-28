@@ -27,18 +27,10 @@ public abstract class ConfigurationDefinition
     // A sensitive value is left out of diagnostics and documentation. See Sensitive().
     public abstract bool IsSensitive { get; }
 
-    // Uses the default primitive for T.
-    public static ConfigurationDefinition<T> Define<T>(string key) =>
-        ConfigurationDefinition<T>.Create(key, new ScalarReader<T>(PrimitiveDefinition.Define<T>(), primitiveName: null));
+    public static ConfigurationDefinition<T> Define<T>(string key, Primitive<T> primitive) =>
+        ConfigurationDefinition<T>.Create(key, new ScalarReader<T>(primitive));
 
-    public static ConfigurationDefinition<T> Define<T>(string key, PrimitiveDefinition<T> primitive) =>
-        ConfigurationDefinition<T>.Create(key, new ScalarReader<T>(primitive, primitiveName: null));
-
-    // Uses a primitive registered under the given name.
-    public static ConfigurationDefinition<T> Define<T>(string key, string primitiveName) =>
-        ConfigurationDefinition<T>.Create(key, new ScalarReader<T>(primitive: null, primitiveName));
-
-    internal abstract void Resolve(ContractResolver resolver);
+    internal abstract void Check(ContractChecker checker);
 
     internal abstract ValueDescriptor CreateValueDescriptor(DescriptorContext context);
 

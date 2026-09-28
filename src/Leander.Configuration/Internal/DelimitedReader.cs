@@ -10,15 +10,15 @@ internal sealed class DelimitedReader<T>(ConfigurationDefinition<T> element, cha
     private readonly ConfigurationDefinition<T> _element = element;
     private readonly char _delimiter = delimiter;
 
-    public override void Resolve(ContractResolver resolver, ConfigurationDefinition definition)
+    public override void Check(ContractChecker checker, ConfigurationDefinition definition)
     {
         if (_element.Reader is ScalarReader<T>)
         {
-            _element.Resolve(resolver);
+            _element.Check(checker);
         }
         else
         {
-            resolver.Failures.Add($"{definition.Key}: Delimited() requires a single-value element definition.");
+            checker.Failures.Add($"{definition.Key}: Delimited() requires a single-value element definition.");
         }
     }
 
@@ -52,9 +52,9 @@ internal sealed class DelimitedReader<T>(ConfigurationDefinition<T> element, cha
             return ReadStatus.Missing;
         }
 
-        // Resolution guarantees a scalar element.
+        // The contract check guarantees a scalar element.
         var scalar = (ScalarReader<T>)_element.Reader;
-        var primitive = scalar.GetPrimitive(context);
+        var primitive = scalar.Primitive;
 
         if (!Converters.List(primitive.Converter, _delimiter).TryParse(raw, out var items))
         {

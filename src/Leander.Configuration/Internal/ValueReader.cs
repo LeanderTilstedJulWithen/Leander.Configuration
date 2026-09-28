@@ -13,7 +13,7 @@ internal enum ReadStatus
 // Presence rules and definition-level rules are handled by the definition.
 internal abstract class ValueReader<T>
 {
-    public abstract void Resolve(ContractResolver resolver, ConfigurationDefinition definition);
+    public abstract void Check(ContractChecker checker, ConfigurationDefinition definition);
 
     public abstract ReadStatus Read(ReadContext context, ConfigurationDefinition definition, string key, out T value);
 

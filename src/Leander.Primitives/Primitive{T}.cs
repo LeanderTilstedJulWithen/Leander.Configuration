@@ -15,7 +15,7 @@ public sealed class Primitive<T> : Primitive
         IConverter<T> converter,
         IReadOnlyList<INormalizer<T>> normalizers,
         IReadOnlyList<IValidator<T>> validators,
-        Primitive<T>? @base = null)
+        Primitive<T>? @base)
     {
         Name = name;
         Description = description;

@@ -71,18 +71,18 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
             IsSensitive = IsSensitive,
         });
 
-    internal override void Resolve(ContractResolver resolver)
+    internal override void Check(ContractChecker checker)
     {
         if (HasDefault && IsOptional)
         {
-            resolver.Failures.Add($"{Key}: Optional() cannot be combined with a default.");
+            checker.Failures.Add($"{Key}: Optional() cannot be combined with a default.");
         }
         else if (HasDefault && _settings.DefaultValue is null)
         {
-            resolver.Failures.Add($"{Key}: the default is null, but the definition is not optional.");
+            checker.Failures.Add($"{Key}: the default is null, but the definition is not optional.");
         }
 
-        Reader.Resolve(resolver, this);
+        Reader.Check(checker, this);
     }
 
     internal override ValueDescriptor CreateValueDescriptor(DescriptorContext context)
