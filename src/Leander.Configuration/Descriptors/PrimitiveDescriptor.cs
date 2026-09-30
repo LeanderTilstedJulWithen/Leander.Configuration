@@ -6,6 +6,12 @@ public sealed record PrimitiveDescriptor(string Type, string Name, string? Descr
     // The primitive this one was derived from. Null otherwise.
     public PrimitiveReference? Base { get; init; }
 
+    // A list primitive's element. Null otherwise.
+    public PrimitiveReference? Element { get; init; }
+
+    // List primitives only.
+    public char? Delimiter { get; init; }
+
     public IReadOnlyList<string> Normalizers { get; init; } = [];
 
     public IReadOnlyList<string> Validators { get; init; } = [];

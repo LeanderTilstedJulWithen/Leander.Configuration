@@ -1,5 +1,4 @@
 using Leander.Primitives;
-using Leander.Primitives.Validation;
 
 namespace Leander.Configuration.Sample;
 
@@ -35,14 +34,12 @@ public static class ServerConfiguration
             .Describe("Maximum number of concurrent connections. No limit when missing.");
 
     public static readonly ConfigurationDefinition<IReadOnlyList<Uri>> AllowedOrigins =
-        ConfigurationDefinition.Define("Server:AllowedOrigins", Primitive.Uri)
-            .Indexed()
-            .Validate(Validators.Collections.NotEmpty)
+        ConfigurationDefinition.Indexed("Server:AllowedOrigins", SamplePrimitives.Origins)
             .Describe("Origins allowed to call the server.");
 
+    // One entry holding a delimited list, read like any other value.
     public static readonly ConfigurationDefinition<IReadOnlyList<string>> Features =
-        ConfigurationDefinition.Define("Server:Features", Primitive.String)
-            .Delimited()
+        ConfigurationDefinition.Define("Server:Features", SamplePrimitives.Features)
             .Describe("Comma-separated list of enabled features.");
 
     public static readonly ConfigurationDefinition<string> AdminEmail =

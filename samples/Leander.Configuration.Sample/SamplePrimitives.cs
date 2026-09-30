@@ -27,4 +27,16 @@ public static class SamplePrimitives
         Validators = [Validators.GreaterThan(0)],
         Description = "A maximum number of connections.",
     };
+
+    // A list is a primitive too: its rules are on the list, the item rules on the element.
+    public static readonly ListPrimitive<Uri> Origins = new("Origins", Primitive.Uri)
+    {
+        Validators = [Validators.Collections.NotEmpty],
+        Description = "Origins, at least one.",
+    };
+
+    public static readonly ListPrimitive<string> Features = new("Features", Primitive.String)
+    {
+        Description = "Comma-separated feature names.",
+    };
 }

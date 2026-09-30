@@ -14,7 +14,7 @@ public sealed class ConfigurationContractBuilder
 
     // Checks the definitions; primitives are complete, so nothing is resolved.
     // Throws one exception listing every failure: duplicate keys, primitive name clashes,
-    // invalid presence (a null default, or a default with Optional()) and invalid Delimited() uses.
+    // and invalid presence (a null default, or a default with Optional()).
     public ConfigurationContract Build()
     {
         var checker = new ContractChecker();

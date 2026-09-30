@@ -20,6 +20,17 @@ public static class ServerConfiguration
         Description = "A file path, made absolute.",
     };
 
+    public static readonly ListPrimitive<Uri> OriginsPrimitive = new("Origins", Primitive.Uri)
+    {
+        Validators = [Validators.Collections.NotEmpty],
+        Description = "Origins, at least one.",
+    };
+
+    public static readonly ListPrimitive<string> FeaturesPrimitive = new("Features", Primitive.String)
+    {
+        Description = "Comma-separated feature names.",
+    };
+
     public static readonly ConfigurationDefinition<string> Host =
         ConfigurationDefinition.Define("Server:Host", Primitive.String)
             .Default("localhost")
@@ -32,14 +43,11 @@ public static class ServerConfiguration
 
     // A JSON array becomes indexed keys: Server:AllowedOrigins:0, Server:AllowedOrigins:1, ...
     public static readonly ConfigurationDefinition<IReadOnlyList<Uri>> AllowedOrigins =
-        ConfigurationDefinition.Define("Server:AllowedOrigins", Primitive.Uri)
-            .Indexed()
-            .Validate(Validators.Collections.NotEmpty)
+        ConfigurationDefinition.Indexed("Server:AllowedOrigins", OriginsPrimitive)
             .Describe("Origins allowed to call the server.");
 
     public static readonly ConfigurationDefinition<IReadOnlyList<string>> Features =
-        ConfigurationDefinition.Define("Server:Features", Primitive.String)
-            .Delimited()
+        ConfigurationDefinition.Define("Server:Features", FeaturesPrimitive)
             .Default([])
             .Describe("Comma-separated list of enabled features.");
 

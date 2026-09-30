@@ -1,33 +1,27 @@
 using System.Globalization;
 using Leander.Configuration.Descriptors;
-using Leander.Primitives.Internal;
+using Leander.Primitives;
 
 namespace Leander.Configuration.Internal;
 
-// Reads one entry per element: Key:0, Key:1, ... Each element goes through the element definition.
-internal sealed class IndexedReader<T>(ConfigurationDefinition<T> element) : ValueReader<IReadOnlyList<T>>
+// Reads one entry per item: Key:0, Key:1, ... Each item goes through the list's element primitive,
+// then the list's own rules run on the list. The delimiter isn't used.
+internal sealed class IndexedReader<T>(ListPrimitive<T> list) : ValueReader<IReadOnlyList<T>>
 {
-    private readonly ConfigurationDefinition<T> _element = element;
+    private readonly ListPrimitive<T> _list = list;
+    private readonly ScalarReader<T> _element = new(list.Element);
 
-    public override void Check(ContractChecker checker, ConfigurationDefinition definition) => _element.Check(checker);
+    public override void Check(ContractChecker checker, ConfigurationDefinition definition) =>
+        checker.Check(definition.Key, _list);
 
-    public override ValueDescriptor Describe(DescriptorContext context) =>
-        new(TypeNames.Get(typeof(IReadOnlyList<T>)), ValuePresence.Required, ValueForm.Indexed)
-        {
-            Element = _element.CreateValueDescriptor(context),
-        };
+    public override ValueDescriptor Describe(DescriptorContext context) => context.DescribeValue(_list, ValueForm.Indexed);
 
-    public override string Format(DescriptorContext context, IReadOnlyList<T> value) =>
-        $"[{string.Join(", ", value.Select(item => _element.Reader.Format(context, item)))}]";
+    // Like any list default: formatted by the list's converter.
+    public override string Format(DescriptorContext context, IReadOnlyList<T> value) => _list.Converter.Format(value);
 
     public override ReadStatus Read(ReadContext context, ConfigurationDefinition definition, string key, out IReadOnlyList<T> value)
     {
         value = [];
-
-        if (_element.HasDefault)
-        {
-            context.Report(DiagnosticSeverity.Warning, key, "Default() before Indexed() applies to elements, not the list. Did you mean Indexed().Default(...)?", definition);
-        }
 
         var names = context.Source.GetChildNames(key);
         var hasValue = context.Source.GetValue(key) is not null;
@@ -79,16 +73,24 @@ internal sealed class IndexedReader<T>(ConfigurationDefinition<T> element) : Val
             context.Report(DiagnosticSeverity.Warning, key, "indices are not contiguous from 0", definition);
         }
 
-        var elements = new List<T>(entries.Count);
+        var items = new List<T>(entries.Count);
         foreach (var (_, name) in entries)
         {
-            if (_element.TryRead(context, $"{key}:{name}", out var item))
+            var itemKey = $"{key}:{name}";
+            switch (_element.Read(context, definition, itemKey, out var item))
             {
-                elements.Add(item);
-            }
-            else
-            {
-                failed = true;
+                case ReadStatus.Read:
+                    items.Add(item);
+                    break;
+
+                case ReadStatus.Missing:
+                    context.Report(DiagnosticSeverity.Error, itemKey, "value is required", definition);
+                    failed = true;
+                    break;
+
+                default:
+                    failed = true;
+                    break;
             }
         }
 
@@ -97,7 +99,17 @@ internal sealed class IndexedReader<T>(ConfigurationDefinition<T> element) : Val
             return ReadStatus.Failed;
         }
 
-        value = elements;
-        return ReadStatus.Read;
+        // Only the list's rules: the items went through the element primitive already.
+        var errors = new List<string>();
+        var success = _list.TryApplyRules(items, out value, errors, context.IsSensitive);
+        Pipeline.Report(context, definition, key, errors);
+        return success ? ReadStatus.Read : ReadStatus.Failed;
+    }
+
+    public override bool TryProcess(ReadContext context, ConfigurationDefinition definition, string key, IReadOnlyList<T> value, out IReadOnlyList<T> result)
+    {
+        var success = _list.TryAccept(value, context.IsSensitive, out result, out var errors);
+        Pipeline.Report(context, definition, key, errors);
+        return success;
     }
 }

@@ -5,7 +5,7 @@ namespace Leander.Configuration.Tooling;
 
 // Renders a contract descriptor as Markdown. Definitions are grouped by their first key segment, and each group has
 // a summary table followed by a section per key. Primitives are described once, at the end, and linked from the keys
-// that use them. Primitives with nothing to say (no description, rules, base or values) are left out.
+// that use them. Primitives with nothing to say (no description, rules, base, element or values) are left out.
 public static class MarkdownDocumentation
 {
     public static string Write(ContractDescriptor contract, string title = "Configuration")
@@ -74,7 +74,11 @@ public static class MarkdownDocumentation
 
             Line($"- **Type:** {TypeText(definition.Value)}");
             Line($"- **Presence:** {PresenceDetail(definition.Value)}");
-            WriteDetails(definition.Value, definition.Key, indent: "");
+
+            if (definition.Value.Form == ValueForm.Indexed)
+            {
+                Line($"- **Form:** indexed: {Code($"{definition.Key}:0")}, {Code($"{definition.Key}:1")}, …");
+            }
 
             if (definition.IsSensitive)
             {
@@ -84,39 +88,9 @@ public static class MarkdownDocumentation
             Line();
         }
 
-        // Form, rules and elements. Elements are nested one level deeper.
-        private void WriteDetails(ValueDescriptor value, string key, string indent)
-        {
-            switch (value.Form)
-            {
-                case ValueForm.Indexed:
-                    Line($"{indent}- **Form:** indexed: {Code($"{key}:0")}, {Code($"{key}:1")}, …");
-                    break;
-
-                case ValueForm.Delimited:
-                    Line($"{indent}- **Form:** one value, separated by {Code(value.Delimiter?.ToString() ?? "")}");
-                    break;
-            }
-
-            WriteRules(value.Normalizers, value.Validators, values: null, indent);
-
-            if (value.Element is { } element)
-            {
-                var elementIndent = indent + "  ";
-                Line($"{indent}- **Element:** {TypeText(element)}");
-
-                if (element.Presence != ValuePresence.Required)
-                {
-                    Line($"{elementIndent}- **Presence:** {PresenceDetail(element)}");
-                }
-
-                WriteDetails(element, value.Form == ValueForm.Indexed ? $"{key}:n" : key, elementIndent);
-            }
-        }
-
         private void WritePrimitive(PrimitiveDescriptor primitive)
         {
-            Line($"### {Heading(primitive)}");
+            Line($"### {Text(Heading(primitive))}");
             Line();
 
             if (primitive.Description is { } description)
@@ -130,53 +104,58 @@ public static class MarkdownDocumentation
                 Line($"- **Derived from:** {PrimitiveText(@base)}");
             }
 
-            WriteRules(primitive.Normalizers, primitive.Validators, primitive.Values, indent: "");
+            if (primitive.Element is { } element)
+            {
+                Line($"- **Element:** {PrimitiveText(element)}");
+            }
 
-            if (primitive.Base is not null || primitive.Normalizers.Count > 0 || primitive.Validators.Count > 0 || primitive.Values is not null)
+            if (primitive.Delimiter is { } delimiter)
+            {
+                Line($"- **Delimiter:** {Code(delimiter.ToString())}");
+            }
+
+            if (primitive.Values is { } values)
+            {
+                Line($"- **Values:** {string.Join(", ", values.Select(Code))}");
+            }
+
+            if (primitive.Normalizers.Count > 0)
+            {
+                Line($"- **Normalized:** {string.Join("; ", primitive.Normalizers)}");
+            }
+
+            if (primitive.Validators.Count > 0)
+            {
+                Line($"- **Validated:** {string.Join("; ", primitive.Validators)}");
+            }
+
+            if (HasDetails(primitive))
             {
                 Line();
             }
         }
 
-        private void WriteRules(IReadOnlyList<string> normalizers, IReadOnlyList<string> validators, IReadOnlyList<string>? values, string indent)
-        {
-            if (values is not null)
-            {
-                Line($"{indent}- **Values:** {string.Join(", ", values.Select(Code))}");
-            }
-
-            if (normalizers.Count > 0)
-            {
-                Line($"{indent}- **Normalized:** {string.Join("; ", normalizers)}");
-            }
-
-            if (validators.Count > 0)
-            {
-                Line($"{indent}- **Validated:** {string.Join("; ", validators)}");
-            }
-        }
-
-        private string TypeText(ValueDescriptor value) => value.Form == ValueForm.Scalar || value.Element is null
-            ? ScalarText(value)
-            : $"list of {TypeText(value.Element)}";
-
-        private string ScalarText(ValueDescriptor value) =>
-            value.Primitive is { } reference ? PrimitiveText(reference) : value.Type;
+        private string TypeText(ValueDescriptor value) =>
+            value.Primitive is { } reference ? PrimitiveText(reference) : Text(value.Type);
 
         // A listed primitive links to its description; one with nothing to say is only named.
         private string PrimitiveText(PrimitiveReference reference)
         {
             var heading = Heading(reference.Type, reference.Name);
             return _listed.Any(primitive => primitive.Type == reference.Type && primitive.Name == reference.Name)
-                ? $"[{heading}](#{Anchor(heading)})"
-                : heading;
+                ? $"[{Text(heading)}](#{Anchor(heading)})"
+                : Text(heading);
         }
 
         private void Line(string text = "") => _text.Append(text).Append('\n');
 
         private static bool IsWorthListing(PrimitiveDescriptor primitive) =>
-            primitive.Description is not null ||
+            primitive.Description is not null || HasDetails(primitive);
+
+        // The lines under a primitive's description. A list primitive always has its element.
+        private static bool HasDetails(PrimitiveDescriptor primitive) =>
             primitive.Base is not null ||
+            primitive.Element is not null ||
             primitive.Normalizers.Count > 0 ||
             primitive.Validators.Count > 0 ||
             primitive.Values is not null;
@@ -213,6 +192,9 @@ public static class MarkdownDocumentation
         };
 
         private static string Cell(string text) => text.Replace("|", "\\|");
+
+        // Plain text outside code spans. GitHub would read <Uri> in IReadOnlyList<Uri> as an HTML tag.
+        private static string Text(string text) => text.Replace("<", "\\<").Replace(">", "\\>");
 
         // GitHub's heading anchors: lower case, spaces become hyphens, other punctuation is dropped.
         private static string Anchor(string heading)

@@ -40,7 +40,7 @@ internal sealed class ScalarReader<T>(Primitive<T> primitive) : ValueReader<T>
         return success;
     }
 
-    public override ValueDescriptor Describe(DescriptorContext context) => context.DescribeScalar(_primitive);
+    public override ValueDescriptor Describe(DescriptorContext context) => context.DescribeValue(_primitive, ValueForm.Scalar);
 
     public override string Format(DescriptorContext context, T value) => _primitive.Converter.Format(value);
 }

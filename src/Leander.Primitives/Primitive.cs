@@ -19,6 +19,11 @@ public abstract class Primitive
     // The primitive this one was derived from. Null otherwise.
     public abstract Primitive? Base { get; }
 
+    // The descriptions of its own rules, for code that doesn't know T, e.g. descriptors.
+    internal abstract IReadOnlyList<string> NormalizerDescriptions { get; }
+
+    internal abstract IReadOnlyList<string> ValidatorDescriptions { get; }
+
     // Ready-made primitives, named after their type, except the variants. Convenience, not policy.
     public static Primitive<string> String { get; } = new("String", Converters.String);
 

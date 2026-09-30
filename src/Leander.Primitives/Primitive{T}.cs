@@ -7,7 +7,8 @@ namespace Leander.Primitives;
 
 // A complete primitive: the name and converter are always present. Immutable, and the constructors never throw.
 // A derived primitive takes its base's converter, and its rules are added to the base's: the base's rules run first.
-public sealed class Primitive<T> : Primitive
+// Not sealed, for ListPrimitive<T>. The hooks are private protected, so a subclass outside the library can't change how values are read.
+public class Primitive<T> : Primitive
 {
     private IReadOnlyList<INormalizer<T>>? _allNormalizers;
     private IReadOnlyList<IValidator<T>>? _allValidators;
@@ -37,6 +38,10 @@ public sealed class Primitive<T> : Primitive
     // Its own validators; a base's validators run before these.
     public IReadOnlyList<IValidator<T>> Validators { get; init; } = [];
 
+    internal override IReadOnlyList<string> NormalizerDescriptions => [.. Normalizers.Select(normalizer => normalizer.Description)];
+
+    internal override IReadOnlyList<string> ValidatorDescriptions => [.. Validators.Select(validator => validator.Description)];
+
     // The base's rules followed by its own. Computed on first use, because init properties are set after the constructor.
     private IReadOnlyList<INormalizer<T>> AllNormalizers =>
         _allNormalizers ??= Base is null ? Normalizers : [.. Base.AllNormalizers, .. Normalizers];
@@ -60,7 +65,7 @@ public sealed class Primitive<T> : Primitive
     }
 
     // Normalizes, then validates a value that is already a T, e.g. a default. On failure, result is default.
-    public bool TryAccept(T value, out T result) => Rules.TryApply(AllNormalizers, AllValidators, value, out result, null);
+    public bool TryAccept(T value, out T result) => TryAccept(value, out result, null, redact: false);
 
     public bool TryAccept(T value, out T result, out IReadOnlyList<string> errors) =>
         TryAccept(value, redact: false, out result, out errors);
@@ -68,20 +73,54 @@ public sealed class Primitive<T> : Primitive
     internal bool TryAccept(T value, bool redact, out T result, out IReadOnlyList<string> errors)
     {
         var list = new List<string>();
-        var success = Rules.TryApply(AllNormalizers, AllValidators, value, out result, list, redact);
+        var success = TryAccept(value, out result, list, redact);
         errors = list;
         return success;
     }
 
-    private bool TryParse(string input, out T value, List<string>? errors, bool redact)
+    // Without an error list, the first failure stops.
+    internal bool TryParse(string input, out T value, List<string>? errors, bool redact)
     {
-        if (!Converter.TryParse(input, out var parsed))
+        if (!TryConvert(input, out var converted, errors, redact))
         {
-            errors?.Add(redact ? $"value is not a valid {DisplayName}" : $"'{input}' is not a valid {DisplayName}");
             value = default!;
             return false;
         }
 
-        return Rules.TryApply(AllNormalizers, AllValidators, parsed, out value, errors, redact);
+        return TryApplyRules(converted, out value, errors, redact);
+    }
+
+    internal bool TryAccept(T value, out T result, List<string>? errors, bool redact)
+    {
+        if (!TryAcceptItems(value, out var accepted, errors, redact))
+        {
+            result = default!;
+            return false;
+        }
+
+        return TryApplyRules(accepted, out result, errors, redact);
+    }
+
+    // Only this primitive's rules (the base's, then its own), not its items'. For a list whose items were accepted one by one.
+    internal bool TryApplyRules(T value, out T result, List<string>? errors, bool redact) =>
+        Rules.TryApply(AllNormalizers, AllValidators, value, out result, errors, redact);
+
+    // Turns the input into a T, before this primitive's rules run.
+    private protected virtual bool TryConvert(string input, out T value, List<string>? errors, bool redact)
+    {
+        if (Converter.TryParse(input, out value))
+        {
+            return true;
+        }
+
+        errors?.Add(redact ? $"value is not a valid {DisplayName}" : $"'{input}' is not a valid {DisplayName}");
+        return false;
+    }
+
+    // Accepts the items of a value made of items, before this primitive's rules run. A plain value has none.
+    private protected virtual bool TryAcceptItems(T value, out T result, List<string>? errors, bool redact)
+    {
+        result = value;
+        return true;
     }
 }

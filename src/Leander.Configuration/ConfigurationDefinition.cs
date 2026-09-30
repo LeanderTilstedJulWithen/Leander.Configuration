@@ -30,6 +30,10 @@ public abstract class ConfigurationDefinition
     public static ConfigurationDefinition<T> Define<T>(string key, Primitive<T> primitive) =>
         ConfigurationDefinition<T>.Create(key, new ScalarReader<T>(primitive));
 
+    // One entry per item: Key:0, Key:1, ... The list's delimiter isn't used; Define(key, list) reads one delimited entry.
+    public static ConfigurationDefinition<IReadOnlyList<T>> Indexed<T>(string key, ListPrimitive<T> list) =>
+        ConfigurationDefinition<IReadOnlyList<T>>.Create(key, new IndexedReader<T>(list));
+
     internal abstract void Check(ContractChecker checker);
 
     internal abstract ValueDescriptor CreateValueDescriptor(DescriptorContext context);

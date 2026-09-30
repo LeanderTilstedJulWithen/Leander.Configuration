@@ -10,15 +10,9 @@ internal sealed class ListConverter<T>(IConverter<T> elementConverter, char deli
         var list = new List<T>();
         result = list;
 
-        var trimmed = input.Trim();
-        if (trimmed.Length == 0)
+        foreach (var segment in Split(input, _delimiter))
         {
-            return true;
-        }
-
-        foreach (var segment in trimmed.Split(_delimiter))
-        {
-            if (!_elementConverter.TryParse(segment.Trim(), out var element))
+            if (!_elementConverter.TryParse(segment, out var element))
             {
                 result = [];
                 return false;
@@ -31,4 +25,11 @@ internal sealed class ListConverter<T>(IConverter<T> elementConverter, char deli
     }
 
     public string Format(IReadOnlyList<T> value) => string.Join(_delimiter, value.Select(_elementConverter.Format));
+
+    // The trimmed items of a delimited list. Empty input is an empty list.
+    internal static string[] Split(string input, char delimiter)
+    {
+        var trimmed = input.Trim();
+        return trimmed.Length == 0 ? [] : [.. trimmed.Split(delimiter).Select(segment => segment.Trim())];
+    }
 }

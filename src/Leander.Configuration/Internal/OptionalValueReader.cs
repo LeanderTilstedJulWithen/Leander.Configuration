@@ -28,20 +28,8 @@ internal sealed class OptionalValueReader<T>(ConfigurationDefinition<T> inner) :
 
     public override ReadStatus Read(ReadContext context, ConfigurationDefinition definition, string key, out T? value)
     {
-        value = null;
-
         var status = _inner.Reader.Read(context, definition, key, out var raw);
-        if (status != ReadStatus.Read)
-        {
-            return status;
-        }
-
-        if (!_inner.TryProcess(context, key, raw, out var processed))
-        {
-            return ReadStatus.Failed;
-        }
-
-        value = processed;
-        return ReadStatus.Read;
+        value = status == ReadStatus.Read ? raw : null;
+        return status;
     }
 }

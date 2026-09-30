@@ -1,14 +1,12 @@
 using Leander.Configuration.Descriptors;
 using Leander.Configuration.Internal;
 using Leander.Primitives.Internal;
-using Leander.Primitives.Normalization;
-using Leander.Primitives.Validation;
 
 namespace Leander.Configuration;
 
 // Definitions are immutable: every builder method returns a new definition.
 // Builder methods never throw; problems are reported when the contract is built or the definition is read.
-// Value rules live on the primitive. Definition-level normalizers and validators exist only for lists (see ConfigurationDefinitionExtensions).
+// Rules live on the primitive, list rules on the list primitive. A definition only says where the value lives and its presence.
 public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
 {
     private readonly Settings _settings;
@@ -44,24 +42,6 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
     public ConfigurationDefinition<T> Default(T value) =>
         new(_settings with { HasDefault = true, DefaultValue = value });
 
-    // Everything configured so far applies to each element; everything configured afterwards applies to the list.
-    public ConfigurationDefinition<IReadOnlyList<T>> Indexed() => ToList(new IndexedReader<T>(this));
-
-    public ConfigurationDefinition<IReadOnlyList<T>> Delimited(char delimiter = ',') => ToList(new DelimitedReader<T>(this, delimiter));
-
-    internal ConfigurationDefinition<T> AddNormalizer(INormalizer<T> normalizer) =>
-        new(_settings with { Normalizers = [.. _settings.Normalizers, normalizer] });
-
-    internal ConfigurationDefinition<T> AddValidator(IValidator<T> validator) =>
-        new(_settings with { Validators = [.. _settings.Validators, validator] });
-
-    private ConfigurationDefinition<IReadOnlyList<T>> ToList(ValueReader<IReadOnlyList<T>> reader) =>
-        new(new ConfigurationDefinition<IReadOnlyList<T>>.Settings(Key, reader)
-        {
-            Description = Description,
-            IsSensitive = IsSensitive,
-        });
-
     // Used by Optional(). The reader turns T into TOptional, i.e. T?.
     internal ConfigurationDefinition<TOptional> ToOptional<TOptional>(ValueReader<TOptional> reader) =>
         new(new ConfigurationDefinition<TOptional>.Settings(Key, reader)
@@ -94,41 +74,34 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
             Type = TypeNames.Get(Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T)),
             Presence = IsOptional ? ValuePresence.Optional : HasDefault ? ValuePresence.Default : ValuePresence.Required,
             Default = HasDefault && !context.IsSensitive ? Reader.Format(context, _settings.DefaultValue!) : null,
-            Normalizers = [.. descriptor.Normalizers, .. _settings.Normalizers.Select(normalizer => normalizer.Description)],
-            Validators = [.. descriptor.Validators, .. _settings.Validators.Select(validator => validator.Description)],
         };
     }
 
     internal override bool TryRead(ReadContext context, out object? value)
     {
-        var success = TryRead(context, Key, out var typed);
+        var success = TryRead(context, out T typed);
         value = typed;
         return success;
     }
 
-    internal bool TryRead(ReadContext context, string key, out T value)
+    private bool TryRead(ReadContext context, out T value)
     {
-        switch (Reader.Read(context, this, key, out var raw))
+        switch (Reader.Read(context, this, Key, out value))
         {
             case ReadStatus.Read:
-                return TryProcess(context, key, raw, out value);
+                return true;
 
+            // The default goes through the primitive's rules, like a value from the source.
             case ReadStatus.Missing when HasDefault:
-                if (!Reader.TryProcess(context, this, key, _settings.DefaultValue!, out var defaultValue))
-                {
-                    value = default!;
-                    return false;
-                }
+                return Reader.TryProcess(context, this, Key, _settings.DefaultValue!, out value);
 
-                return TryProcess(context, key, defaultValue, out value);
-
-            // T is nullable, so default is null. The pipeline never sees it.
+            // T is nullable, so default is null. The primitive never sees it.
             case ReadStatus.Missing when IsOptional:
                 value = default!;
                 return true;
 
             case ReadStatus.Missing:
-                context.Report(DiagnosticSeverity.Error, key, "value is required", this);
+                context.Report(DiagnosticSeverity.Error, Key, "value is required", this);
                 value = default!;
                 return false;
 
@@ -137,10 +110,6 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
                 return false;
         }
     }
-
-    // Applies definition-level rules.
-    internal bool TryProcess(ReadContext context, string key, T value, out T result) =>
-        Pipeline.TryProcess(context, this, key, _settings.Normalizers, _settings.Validators, value, out result);
 
     private sealed record Settings(string Key, ValueReader<T> Reader)
     {
@@ -153,9 +122,5 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
         public bool IsSensitive { get; init; }
 
         public T? DefaultValue { get; init; }
-
-        public IReadOnlyList<INormalizer<T>> Normalizers { get; init; } = [];
-
-        public IReadOnlyList<IValidator<T>> Validators { get; init; } = [];
     }
 }

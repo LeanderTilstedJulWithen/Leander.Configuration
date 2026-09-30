@@ -123,24 +123,22 @@ The library supplies converters in `Converters`, and primitives for the same typ
 
 ### List primitives
 
-Status: decided, not implemented yet (see TODO.md, Queued).
-
 A list is a kind of value too: "a comma-separated list of URIs, at least one" says what a value is, not where it lives. List rules and the delimited format belong to the primitive:
 
 ```csharp
-public static readonly ListPrimitive<Uri> Origins = new("Origins", Primitive.Uri)
+public static readonly ListPrimitive<Uri> Origins = new("Origins", Primitive.Uri, delimiter: ',')   // ',' is the default
 {
-    Delimiter = ',',                                    // the default
     Validators = [Validators.Collections.NotEmpty],    // list rules
 };
 ```
 
-- **`ListPrimitive<T> : Primitive<IReadOnlyList<T>>`.** It can be used wherever a primitive can, and exposes `Element` and `Delimiter`. `Primitive<T>` is unsealed for this, but only the library can derive from it (the constructor for subclasses is not public).
-- **Items go through the element primitive**: parse, normalize and validate, with all its rules. Then the list's own normalizers and validators run on the list.
-- **The converter is delimited**: parsing splits on the delimiter, formatting joins the items' formatted values with it. This is `Converters.List(element, delimiter)`, with item rules added.
+- **`ListPrimitive<T> : Primitive<IReadOnlyList<T>>`.** It can be used wherever a primitive can, and exposes `Element` and `Delimiter`. `Primitive<T>` is unsealed for this. Its public constructors can't stop other subclasses, but the hooks are `private protected`, so a subclass outside the library can't change how values are read.
+- **The delimiter is a constructor argument**, not an `init` property: the converter is built in the constructor, and a derived list can't change the format.
+- **Items go through the element primitive**: parse, normalize and validate, with all its rules. Then the list's own normalizers and validators run on the list. A value that is already a list, e.g. a default, goes through `TryAccept` the same way: each item through the element's `TryAccept`, then the list's rules.
+- **The converter is delimited**: parsing splits on the delimiter and trims each item, and empty input is an empty list. Formatting joins the items' formatted values with it. This is `Converters.List` over the element primitive, so item rules are applied, but the converter reports only success or failure.
 - **Item errors name the item**, because a primitive knows nothing about keys: `item 2: 'x' is not a valid Uri`, or `item 2: value is not a valid Uri` when redacted. Items are counted from 0, like indexed keys. Every item is checked, and every failure is reported.
 - **Nested lists** are a list primitive whose element is another list primitive, e.g. `;` between rows and `,` within them. Using the same delimiter twice is the user's bug, and it isn't checked.
-- **Deriving** a list uses `new ListPrimitive<T>(name, baseList)`: it keeps the element and delimiter, and adds list rules. Deriving with the `Primitive<T>` constructor gives a plain primitive without `Element`, which can't be used with `Indexed` (see Collections).
+- **Deriving** a list uses `new ListPrimitive<T>(name, baseList)`: it keeps the element and delimiter, and adds list rules. Deriving with the `Primitive<T>` constructor gives a plain primitive without `Element`, which can't be used with `Indexed` (see Collections). It still checks its items through the converter, but its errors don't name the item.
 - **No shortcut** like `Primitive.List(Primitive.String)`. Every call would give a new instance with the same name, which clashes in a contract. Lists are declared as fields, like other primitives.
 
 ## Leander.Configuration
@@ -204,8 +202,6 @@ source lookup ──► presence ──► parse ──► normalize ──► v
 - All validators run, and every failure becomes a diagnostic. An exception thrown by a normalizer or validator becomes an error diagnostic. A failing normalizer skips validation.
 
 ### Collections
-
-Status: decided, not implemented yet (see TODO.md, Queued). The code still has `.Indexed()`, `.Delimited()` and list-level `Validate`/`Normalize` on definitions.
 
 A list's format and rules are on its list primitive (see List primitives). The definition only says where the list lives:
 
@@ -395,8 +391,6 @@ PrimitiveDescriptor
 ```
 
 The descriptor types are records, so a renderer or a comparison can use `with` and value equality (except for the lists).
-
-Status: `Form` still has `Delimited`, and `ValueDescriptor` still has `Delimiter`, `Element` and list-level rules, until list primitives are implemented (see TODO.md, Queued).
 
 - **Values are flat.** A list is described by its primitive, which refers to its element primitive. There are no element values with their own presence or default.
 - **Defaults are formatted by the converter**, so a `TimeSpan` default reads `00:00:30`, the same text that would be written in the source. A list default is formatted by the list's converter.

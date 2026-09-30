@@ -1,4 +1,5 @@
 using Leander.Primitives;
+using Leander.Primitives.Internal;
 
 namespace Leander.Configuration.Internal;
 
@@ -12,10 +13,10 @@ internal sealed class ContractChecker
     // Name clashes, one per type and name, in order of discovery.
     public List<string> NameClashes { get; } = [];
 
-    // Per definition: invalid presence and invalid Delimited() uses.
+    // Per definition: invalid presence.
     public List<string> Failures { get; } = [];
 
-    // Checks the primitive and its bases.
+    // Checks the primitive, its bases, and the elements of list primitives.
     public void Check(string key, Primitive primitive)
     {
         for (Primitive? current = primitive; current is not null; current = current.Base)
@@ -24,6 +25,11 @@ internal sealed class ContractChecker
             if (!_named.TryAdd(entry, current) && !ReferenceEquals(_named[entry], current) && _clashes.Add(entry))
             {
                 NameClashes.Add($"{key}: another primitive is named {current.DisplayName}. A primitive with different rules needs a name of its own.");
+            }
+
+            if (current is IListPrimitive list)
+            {
+                Check(key, list.Element);
             }
         }
     }
