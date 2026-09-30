@@ -45,6 +45,18 @@ Port.TryParse("99999", out var port, out var errors);
 
 A primitive is always explicit and complete, with a name and a converter: sharing one is sharing a field. Ready-made primitives cover the common types (`Primitive.String`, `Primitive.Int32`, `Primitive.TimeSpan`, `Primitive.Enum<T>()`, …). `new("AdminPort", Port) { Validators = [...] }` derives a primitive: it adds rules to Port's under a new name, and can never remove them.
 
+A list is a primitive too. Each item goes through the element primitive with all its rules, then the list's own rules run on the list:
+
+```csharp
+public static readonly ListPrimitive<Uri> Origins = new("Origins", Primitive.Uri) // delimiter ',' by default
+{
+    Validators = [Validators.Collections.NotEmpty],
+};
+
+Origins.TryParse("https://a.example, not a uri", out var origins, out var errors);
+// false, errors: ["item 1: 'not a uri' is not a valid Uri"]
+```
+
 Primitives has no dependency on Leander.Configuration. Anything that turns text into values can use it: configuration, command-line arguments, query strings or files.
 
 ## Leander.Configuration
@@ -58,9 +70,7 @@ public static readonly ConfigurationDefinition<int> Port =
         .Describe("The port to listen on.");
 
 public static readonly ConfigurationDefinition<IReadOnlyList<Uri>> AllowedOrigins =
-    ConfigurationDefinition.Define("Server:AllowedOrigins", Primitive.Uri)
-        .Indexed()
-        .Validate(Validators.Collections.NotEmpty)
+    ConfigurationDefinition.Indexed("Server:AllowedOrigins", SamplePrimitives.Origins)
         .Describe("Origins allowed to call the server.");
 
 public static readonly ConfigurationDefinition<string?> BackupEmail =
@@ -70,6 +80,8 @@ public static readonly ConfigurationDefinition<string?> BackupEmail =
 ```
 
 A definition without a default is required. `Optional()` turns `T` into `T?`: a missing value is `null` instead of an error, and a present value still goes through the primitive's rules.
+
+With a list primitive, `Define(key, list)` reads one delimited entry (`"a,b,c"`), and `Indexed(key, list)` reads one entry per item (`Key:0`, `Key:1`, …), as a JSON array becomes.
 
 Definitions are registered in a contract, built once at startup. `Build()` fails if a key is defined twice, two different primitives of the same type share a name, or a default doesn't fit (`null` on a non-optional key, or any default on an optional one). Reading a source gives a snapshot that is already validated:
 
