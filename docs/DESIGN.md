@@ -1,6 +1,6 @@
 # Leander.Configuration — Design Overview
 
-Status: draft. Leander.Primitives and the Leander.Configuration core are implemented. There are no tests yet. This document records the decisions made so far and the questions still open.
+Status: draft. Leander.Primitives, Leander.Configuration, Leander.Configuration.MicrosoftExtensions and Leander.Configuration.Tooling are implemented and tested. This document records the decisions made so far and the questions still open.
 
 ## Purpose
 
@@ -39,7 +39,7 @@ We **replace `.Bind()`**. The binder decides how strings are converted to object
 | DI container, hosting               | Diagnostics and the fail-fast report               |
 |                                     | Construction of options objects                    |
 
-Options objects can still be exposed as `IOptions<T>` by registering a factory. Consumers will not notice the difference. Because reading and validating happen together, `ValidateOnStart()` is unnecessary.
+Options objects can still be exposed as `IOptions<T>`, `IOptionsSnapshot<T>` and `IOptionsMonitor<T>`: `AddOptionsFrom` registers a factory that builds them from the snapshot. Consumers will not notice the difference. Because reading and validating happen together, `ValidateOnStart()` is unnecessary.
 
 ## Project layout
 
@@ -257,7 +257,7 @@ Presence decides what happens when the source has no value. A definition has exa
 | `Define("Port", Primitive.Int32)`               | error: "value is required" | `int`  |
 | `Define("Port", Primitive.Int32).Default(8080)` | the default                | `int`  |
 | `Define("Port", Primitive.Int32).Optional()`    | `null`                     | `int?` |
-- **Optional is explicit and shows in the type.** `.Optional()` maps `ConfigurationDefinition<T>` to `ConfigurationDefinition<T?>`, like `.Indexed()` maps to a list. A consumer can't forget that the value may be missing, and a required `int` is never quietly set to `0`.
+- **Optional is explicit and shows in the type.** `.Optional()` maps `ConfigurationDefinition<T>` to `ConfigurationDefinition<T?>`. A consumer can't forget that the value may be missing, and a required `int` is never quietly set to `0`.
 - **`T?` for both kinds of type.** For a value type, `T?` is `Nullable<T>`. For a reference type, it's the annotated `T?`. C# can't overload on constraints alone, so these are two extension methods (`where T : struct` and `where T : class`) in separate classes, but the caller sees one `.Optional()`.
 - **Optional belongs to the definition, not the primitive.** Presence is about where a value lives, not what it is. Primitives stay non-nullable, and `Email` is the same primitive for a required and an optional key.
 - **Primitives never see null.** A missing optional value skips the pipeline and gives `null`. A present value goes through the primitive's rules as usual, so rules need no nullable variants.
@@ -293,7 +293,7 @@ In-memory sources:
 - `ValueSource.FromPairs(pairs)`: copies the pairs into a case-insensitive dictionary. When keys differ only in case, the last one wins.
 - `ValueSource.FromDictionary(dictionary, keyComparer)`: uses the dictionary as-is, without copying. `keyComparer` must be the dictionary's own comparer, so that child names are matched the same way as values are looked up.
 
-`Leander.Configuration.Microsoft` will implement `IValueSource` over `IConfiguration`.
+Leander.Configuration.MicrosoftExtensions reads an `IConfiguration` with `configuration.AsValueSource()`. It reads live, without copying, and a section reads its keys relative to the section.
 
 ### Snapshot
 

@@ -10,7 +10,7 @@ Decided and set in motion. Pick up here, in this order.
 - [x] Samples, README and CHANGELOG for list primitives.
 - [x] Tests for Leander.Configuration.MicrosoftExtensions: `AsValueSource` (values, child names, sections), `AddConfigurationContract` (with and without `ReadOptions`, the exception on invalid configuration), and `AddOptionsFrom` (`IOptions<T>`, `IOptionsSnapshot<T>`, `IOptionsMonitor<T>`).
 - [x] XML documentation comments (`///`) for the public API instead of `//` comments, so users get them in IntelliSense. `GenerateDocumentationFile` in every src project, so a missing comment is a CS1591 warning.
-- [ ] Run both samples and check their output. Fix documentation drift, e.g. DESIGN.md (Sources) still says "`Leander.Configuration.Microsoft` will implement `IValueSource`", which is done as Leander.Configuration.MicrosoftExtensions.
+- [x] Run both samples and check their output. Fix documentation drift, e.g. DESIGN.md (Sources) still says "`Leander.Configuration.Microsoft` will implement `IValueSource`", which is done as Leander.Configuration.MicrosoftExtensions.
 
 ## Tests
 - [x] Rewrite the tests removed with the registry: `Primitive<T>` constructors, deriving (base rules first, own rules only in `Validators`), ready-made and enum primitives, display names, list primitives, the contract builder (name clashes, duplicate keys, presence), and reading (`ConfigurationContractTests`).
