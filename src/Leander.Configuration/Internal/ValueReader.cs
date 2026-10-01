@@ -29,4 +29,7 @@ internal abstract class ValueReader<T>
 
     // Formats a value as it would be written in the source, e.g. a default for documentation.
     public abstract string Format(DescriptorContext context, T value);
+
+    // Formats each item of a list value, for indexed lists. Null for other values.
+    public virtual IReadOnlyList<string>? FormatItems(DescriptorContext context, T value) => null;
 }

@@ -19,7 +19,7 @@ var contract = new ConfigurationContractBuilder()
 
 // In a real application these values come from IConfiguration (appsettings.json, environment variables, ...).
 // Server:MaxConnections is missing, so it's null.
-var valid = ValueSource.FromPairs(new Dictionary<string, string?>
+var validPairs = new Dictionary<string, string?>
 {
     ["Server:Host"] = "example.com",
     ["Server:AllowedOrigins:0"] = "https://example.com",
@@ -28,7 +28,12 @@ var valid = ValueSource.FromPairs(new Dictionary<string, string?>
     ["Admin:Email"] = "  ops@example.com ",
     ["Admin:BackupEmail"] = " backup@example.com",
     ["Logging:Verbosity"] = "verbose",
-});
+};
+
+var valid = ValueSource.FromPairs(validPairs);
+
+// A misspelled key isn't an error by itself: Server:Port just falls back to its default.
+var misspelled = ValueSource.FromPairs(validPairs.Append(new("Server:Prot", "8080")));
 
 var invalid = ValueSource.FromPairs(new Dictionary<string, string?>
 {
@@ -66,15 +71,31 @@ catch (InvalidConfigurationException exception)
     Console.WriteLine(exception.Message);
 }
 
-// The contract describes itself. Documentation and the contract file are rendered from the same descriptor.
-// The contract file can be committed, so changes to the contract show up in review.
+// Server and Admin belong to this application, so a key there that the contract doesn't define is a mistake.
+// Logging is shared with Microsoft.Extensions.Logging, so it isn't checked. WarningsAsErrors makes the mistake fail the read.
+Console.WriteLine();
+Console.WriteLine("Misspelled key, read strictly:");
+try
+{
+    contract.Read(misspelled, new ReadOptions { CheckedSections = ["Server", "Admin"], WarningsAsErrors = true });
+}
+catch (InvalidConfigurationException exception)
+{
+    Console.WriteLine(exception.Message);
+}
+
+// The contract describes itself. Documentation, the contract file and an example configuration are rendered
+// from the same descriptor. The contract file can be committed, so changes to the contract show up in review.
 var descriptor = contract.CreateDescriptor();
 var documentationPath = Path.Combine(AppContext.BaseDirectory, "configuration.md");
 var contractPath = Path.Combine(AppContext.BaseDirectory, "configuration.contract.json");
+var examplePath = Path.Combine(AppContext.BaseDirectory, "appsettings.example.json");
 File.WriteAllText(documentationPath, MarkdownDocumentation.Write(descriptor, "Server configuration"));
 File.WriteAllText(contractPath, ContractFile.Write(descriptor));
+File.WriteAllText(examplePath, ExampleConfiguration.Write(descriptor));
 
 Console.WriteLine();
 Console.WriteLine("Documentation:");
 Console.WriteLine($"  {documentationPath}");
 Console.WriteLine($"  {contractPath}");
+Console.WriteLine($"  {examplePath}");

@@ -1,3 +1,4 @@
+using Leander.Primitives.Parsing;
 using Leander.Primitives.Validation;
 
 namespace Leander.Primitives.Tests.Validation;
@@ -5,22 +6,24 @@ namespace Leander.Primitives.Tests.Validation;
 public class ValidatorsTests
 {
     [Fact]
-    public void Create_ReturnsNullWhenValidAndDescriptionWhenInvalid()
+    public void Create_ReturnsNoFailuresWhenValidAndTheDescriptionWhenInvalid()
     {
         var validator = Validators.Create<int>("must be even", value => value % 2 == 0);
 
-        Assert.Equal("must be even", validator.Description);
-        Assert.Null(validator.Validate(2));
-        Assert.Equal("must be even", validator.Validate(3));
+        Assert.Equal("must be even", validator.Description.FormatWith(Converters.Int32));
+        Assert.Empty(validator.Validate(2));
+        Assert.Equal(["must be even"], Failures(validator, 3, Converters.Int32));
+        Assert.True(validator.IsValid(2));
+        Assert.False(validator.IsValid(3));
     }
 
     [Fact]
     public void NotEmpty_RejectsNullAndEmptyStrings()
     {
-        Assert.Equal("must not be empty", Validators.NotEmpty.Validate(""));
-        Assert.Equal("must not be empty", Validators.NotEmpty.Validate(null!));
-        Assert.Null(Validators.NotEmpty.Validate(" "));
-        Assert.Null(Validators.NotEmpty.Validate("x"));
+        Assert.Equal(["must not be empty"], Failures(Validators.NotEmpty, "", Converters.String));
+        Assert.Equal(["must not be empty"], Failures(Validators.NotEmpty, null!, Converters.String));
+        Assert.Empty(Validators.NotEmpty.Validate(" "));
+        Assert.Empty(Validators.NotEmpty.Validate("x"));
     }
 
     [Theory]
@@ -61,48 +64,55 @@ public class ValidatorsTests
         AssertValidity(Validators.InRange(1, 10), value, valid, "must be between 1 and 10");
 
     [Fact]
+    public void Bounds_AreFormattedWithTheGivenFormatter()
+    {
+        var validator = Validators.LessThanOrEqual(255);
+
+        Assert.Equal("must be less than or equal to 0xFF", validator.Description.FormatWith(Converters.Int32Hex));
+        Assert.Equal(["must be less than or equal to 0xFF"], Failures(validator, 256, Converters.Int32Hex));
+    }
+
+    [Fact]
+    public void Text_ToString_FormatsInvariantly()
+    {
+        Assert.Equal("must be greater than 1.5", Validators.GreaterThan(1.5).Description.ToString());
+    }
+
+    [Fact]
     public void Comparisons_WorkForAnyComparableType()
     {
         var validator = Validators.GreaterThan(TimeSpan.Zero);
 
-        Assert.Null(validator.Validate(TimeSpan.FromSeconds(1)));
-        Assert.NotNull(validator.Validate(TimeSpan.Zero));
+        Assert.True(validator.IsValid(TimeSpan.FromSeconds(1)));
+        Assert.Single(validator.Validate(TimeSpan.Zero));
     }
 
     [Fact]
-    public void CollectionsNotEmpty_AppliesToTypedCollections()
+    public void CollectionsNotEmpty_RejectsEmptyLists()
     {
-        IValidator<IReadOnlyList<string>> validator = Validators.Collections.NotEmpty;
+        var validator = Validators.Collections.NotEmpty<string>();
 
-        Assert.Equal("must not be empty", validator.Validate([]));
-        Assert.Null(validator.Validate(["a"]));
+        Assert.Single(validator.Validate([]));
+        Assert.Empty(validator.Validate(["a"]));
     }
 
     [Fact]
-    public void CollectionsNotEmpty_DisposesEnumerator()
+    public void Create_WithFormattableDescription()
     {
-        var disposed = false;
+        var validator = Validators.Create(
+            FormattableText.Create<int>(formatter => $"must be at most {formatter.Format(255)}"),
+            value => value <= 255);
 
-        IEnumerable<int> Values()
-        {
-            try
-            {
-                yield return 1;
-                yield return 2;
-            }
-            finally
-            {
-                disposed = true;
-            }
-        }
-
-        Assert.Null(Validators.Collections.NotEmpty.Validate(Values()));
-        Assert.True(disposed);
+        Assert.Equal(["must be at most 0xFF"], Failures(validator, 256, Converters.Int32Hex));
     }
+
+    private static IEnumerable<string> Failures<T>(IValidator<T> validator, T value, IFormatter<T> formatter) =>
+        validator.Validate(value).Select(failure => failure.FormatWith(formatter));
 
     private static void AssertValidity(IValidator<int> validator, int value, bool valid, string description)
     {
-        Assert.Equal(description, validator.Description);
-        Assert.Equal(valid ? null : description, validator.Validate(value));
+        Assert.Equal(description, validator.Description.FormatWith(Converters.Int32));
+        Assert.Equal(valid, validator.IsValid(value));
+        Assert.Equal(valid ? [] : [description], Failures(validator, value, Converters.Int32));
     }
 }

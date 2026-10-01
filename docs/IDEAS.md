@@ -112,6 +112,77 @@ Notes:
 - This addresses how Primitives grew and why the contract needs a build step. It doesn't address the other source of small rules: combining modifiers in Configuration (`Optional` × `Default` × `Indexed` × `Delimited` × `Sensitive`). That is a separate question, see Configuration below.
 - Verdict: accepted, see DESIGN.md (Primitives, Deriving, Ready-made primitives). It removes more than it adds, and it keeps Primitives as the interesting part rather than a support library for Configuration.
 
+### Formatting bounds in rule descriptions
+
+A rule doesn't know the primitive's converter, but its bounds should be formatted with it: `0xFF` on a Hex primitive.
+
+Tried, in order:
+- Placeholders in descriptions (`"upper bound {0}"`) and an `Arguments` list on the public interfaces, filled in by the primitive. Dropped: string formatting and loose arguments on the public interface.
+- An internal `IFormattableRule<out T>` with `Describe(IFormatter<T>)`, implemented by the built-in rules. It had to be covariant while `IValidator<in T>` was contravariant, so a rule used through contravariance silently fell back to its `Description`. Replaced by the next one.
+- `Describe(IFormatter<T>)` on `IValidator<T>` and `INormalizer<T>` as a default interface member, with validators made invariant. It left two texts that must agree (`Description` and `Describe`), and a convention: a failure message equal to `Description` was formatted, any other wasn't. Replaced by the next one.
+- `IFormattableText<T>` for both descriptions and failures. Accepted, see Structured validation failures and formattable text.
+
+Also considered:
+- A structured `RuleText` (template and arguments) as the description. Tidier, but still formatting on the public interface.
+- The formatter passed in: `Validators.LessThanOrEqual(255, Converters.Int32Hex)`. Nothing hidden, but it repeats the converter.
+- Rules bound when the primitive is built: `Validators = [v => v.LessThanOrEqual(255)]`. Always exact, but it reopens how primitives are constructed.
+
+### Structured validation failures and formattable text
+
+`Validate` returns a string, so a failure message is final when the validator writes it. A structured failure would carry its parts: the text, values of `T` such as bounds, and the checked value. The primitive could then:
+
+- **format every value with its converter:** `must be at most 0xFF, but was 0x100`;
+- **redact only the checked value** for sensitive definitions. Today redaction relies on validators never echoing the value, which is a convention, not a guarantee;
+- **keep the failure structured** for tooling or localization.
+
+It is the same idea as an opt-in `IDiagnosticParser<T>` for parse errors (see DESIGN.md, Parse error messages).
+
+Notes:
+- It became possible when validators were made invariant: a failure carrying values of `T` produces `T`, which a contravariant `IValidator<in T>` couldn't return.
+- One shape: an interpolated-string handler, so a custom rule stays one line. `Bound(…)` and `Value(…)` mark the parts the primitive formats, and redacts in the case of `Value`:
+  ```csharp
+  Validators.Create<int>(v => v <= 255, v => $"must be at most {Bound(255)}, but was {Value(v)}");
+  ```
+- Changing what `Validate` returns is breaking after 1.0.0. Adding a second, opt-in method alongside it (as a default interface member) is not.
+- The current rule, "a failure message equal to `Description` is formatted", is a convention the library imposes and then relies on. A user's own message behaves differently without the interface saying so. Structure in the return type removes the convention.
+- **Principle: interfaces allow the general case, and conventions live in the helpers.** Our own habits, such as one failure per rule, belong in `Validators.*`, not in the contract every implementer must follow.
+
+Proposed shape, for before 1.0.0:
+
+```csharp
+public interface IValidator<T>
+{
+    IFormattableText<T> Description { get; }
+    IReadOnlyList<IFormattableText<T>> Validate(T value);   // empty when valid
+    bool IsValid(T value) => Validate(value).Count == 0;    // optional fast path, e.g. TryParse without errors
+}
+
+public interface INormalizer<T>
+{
+    IFormattableText<T> Description { get; }
+    T Normalize(T value);
+}
+
+public interface IFormattableText<out T>
+{
+    string FormatWith(IFormatter<T> formatter);
+}
+```
+
+- **The primitive is the only consumer.** It holds both the rules and the converter, so it knows how to format the text, and it turns it into a string at its boundary: `TryParse` errors, diagnostics and descriptors stay strings. Only rule authors see the new type. Callers of primitives never do.
+- **One type for descriptions and failures.** A description in the documentation and a failure message are the same kind of text. A property, not `Describe(formatter)`: the verb blurred "describe it" and "get its description".
+- **A validator may report several failures**, e.g. a password policy reporting each unmet requirement. One failure per validator was our convention, from one documentation line per rule, and the interface shouldn't make it a rule for everyone. The built-in rules and `Validators.Create` keep returning one. `Description` still describes the rule in one line.
+- **Empty means valid**, not null: one way to say it.
+- **`IReadOnlyList`, not `IEnumerable`.** A lazy `yield` enumeration would run the validator after `Validate` returned, outside the primitive's `try/catch`, so its exceptions would escape instead of becoming errors. A list also makes `Count` cheap. Valid values return a shared empty array.
+- **`IsValid` is a default interface member**, so the two can't disagree unless a rule overrides it for speed.
+- **Redaction is conservative.** For a sensitive definition, every value of `T` in the text is hidden, bounds included. Telling bounds from the checked value can come later, when there is a use case.
+- **Covariant text.** `IFormattableText<out T>` only hands values of `T` to the formatter.
+- **`Validators.Create(description, isValid)` stays one line.** Its text formats as the plain description.
+- **Localization later:** e.g. `ILocalizableText<T> : IFormattableText<T>` with a key and arguments, and `FormatWith` as the fallback. It should adapt to `Microsoft.Extensions.Localization` rather than become its own vocabulary.
+- **Naming:** not `FormattableString`, which `System` already has, with object arguments and a format-string mini-language.
+- `ToString()` can't be required by an interface. The library's own texts override it with an invariant formatter, for debugging only.
+- Verdict: accepted and implemented, see DESIGN.md (Primitives). Still open: telling bounds from the checked value for redaction, the list item index as structure instead of the `item 2:` prefix, and localization.
+
 ## Configuration
 
 ### Constructors for configuration definitions
@@ -132,3 +203,62 @@ Notes:
 Notes:
 - Nothing used it. It could come back as an `Indexed(key, list)` overload whose element is itself indexed.
 - Verdict: dropped for now.
+
+### Optional items in indexed lists
+
+A gap in the indices (`Key:0`, `Key:2`) could become a `null` item instead of a warning, with the items compacted as they are now.
+
+Notes:
+- It needs a list primitive with nullable items, which isn't designed. Primitives never see null (see DESIGN.md, Defaults and presence), so the null would have to be handled by the list, not the element.
+- Nothing asks for it. The current behaviour, a warning and compacted items, is a reasonable answer.
+- Verdict: not planned.
+
+### A configurable contract builder
+
+The contract builder could take policies before definitions are registered, e.g.:
+
+```csharp
+new ConfigurationContractBuilder()
+    .RequireDescriptions()
+    .SetDiagnosticLevel(DiagnosticSeverity.Warning)
+    .Register(...)
+    .Build();
+```
+
+Notes:
+- The design has been simplified since this came up: primitives are explicit, builder methods never throw, and `Build()` reports every failure at once. There may be nothing left to configure.
+- Policies on reading (unknown keys, treating warnings as errors) are planned separately (see TODO.md, Design). If a build-time policy is still wanted, it should follow the same shape.
+- A policy like "every definition has a description" can be checked by the application from the descriptor, without the builder knowing about it.
+- Verdict: probably not needed. Revisit if the read options leave a gap.
+
+## Tooling
+
+### A UI for writing configuration values
+
+Given an existing contract, a UI could let someone write configuration values: one field per key, with its description, type, default and rules, and each value checked as it is typed.
+
+Notes:
+- The contract file may be enough to build the form: keys, presence, defaults, forms and descriptions. Checking values needs the primitives, which are code, so live validation needs the contract's assembly.
+- Sensitive values would need a masked field, and a decision on where they are written.
+- The output could be the example configuration (see TODO.md, Documentation) filled in with real values.
+- Verdict: open.
+
+### Breaking differences between contracts
+
+`ContractComparison` reports what differs, not what it means. A difference could be classified as breaking or not: a new required key breaks existing configuration, a new default doesn't.
+
+Notes:
+- It needs a direction: which side is the source of truth. For drift, left is old and right is new. For two programs sharing configuration, neither is.
+- Most aspects have a clear answer in one direction: removing a default, adding a validator or changing the type is breaking, and descriptions never are. Rule changes can't be judged from their descriptions alone, e.g. a changed range may be wider or narrower.
+- It can be added on top of the aspects without changing the comparison.
+- Verdict: open.
+
+### A command-line tool
+
+A `Leander.Configuration.Tool` (a `dotnet tool`) could take a built assembly, find the contract in it, and write the documentation, contract file or example configuration, or compare against a committed contract file, without code in the application.
+
+Notes:
+- Finding the contract needs a convention, e.g. definitions as public static members. That is how the samples declare them, but applications may declare them differently, and the library shouldn't assume it.
+- Loading the assembly with its dependencies runs application code, since static initializers build the definitions.
+- There is no need yet: a few library calls in the application or a test do the same.
+- Verdict: not before 1.0.0. Tooling on top of the library waits until the library itself is stable.

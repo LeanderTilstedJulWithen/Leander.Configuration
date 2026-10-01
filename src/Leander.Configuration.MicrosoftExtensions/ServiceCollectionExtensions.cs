@@ -13,9 +13,16 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddConfigurationContract(
         this IServiceCollection services,
         ConfigurationContract contract,
-        IConfiguration configuration)
+        IConfiguration configuration) =>
+        services.AddConfigurationContract(contract, configuration, ReadOptions.Default);
+
+    public static IServiceCollection AddConfigurationContract(
+        this IServiceCollection services,
+        ConfigurationContract contract,
+        IConfiguration configuration,
+        ReadOptions options)
     {
-        var snapshot = contract.Read(configuration.AsValueSource());
+        var snapshot = contract.Read(configuration.AsValueSource(), options);
 
         services.AddSingleton(contract);
         services.AddSingleton(snapshot);

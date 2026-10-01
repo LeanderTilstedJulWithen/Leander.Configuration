@@ -56,7 +56,6 @@ src/
                                       depends on Leander.Configuration
 later:
   Leander.Configuration.Generators    source generator for options construction code
-  Leander.Configuration.Tool          command-line tool over Leander.Configuration.Tooling
 ```
 
 - **One package per project, with namespaces as separators.** Leander.Primitives has `Leander.Primitives`, `.Parsing`, `.Normalization` and `.Validation`. It can be extracted to its own repository later if needed.
@@ -73,9 +72,33 @@ Parsers, normalizers and validators are all plain operations on values. None of 
 | `IFormatter<in T>`| `T → string`          | contravariant         |
 | `IConverter<T>`   | both                  | invariant             |
 | `INormalizer<T>`  | `T → T`               | invariant             |
-| `IValidator<in T>`| `T → failure message?`| contravariant         |
+| `IValidator<T>`   | `T → failures`        | invariant             |
 
-Normalizers and validators carry a `Description`. Contravariance lets a single validator apply to many types, e.g. `Validators.Collections.NotEmpty` is an `IValidator<IEnumerable>` and works for any list.
+**Rule texts are formatted by the primitive.** A rule doesn't know the converter, so a bound can't be written into its text for good when the rule is created: `LessThanOrEqual(255)` should read `0xFF` on a Hex primitive. A rule's description and failures are `IFormattableText<T>`, with `FormatWith(IFormatter<T>)`, and the primitive formats them with its converter.
+
+```csharp
+public interface IValidator<T>
+{
+    IFormattableText<T> Description { get; }                // what the rule requires, in one line
+    IReadOnlyList<IFormattableText<T>> Validate(T value);   // every failure; empty when valid
+    bool IsValid(T value) => Validate(value).Count == 0;    // override only for speed
+}
+
+public interface INormalizer<T>
+{
+    IFormattableText<T> Description { get; }
+    T Normalize(T value);
+}
+```
+
+- **The primitive is the only consumer of the texts.** It holds the rules and the converter, and turns the texts into strings at its boundary: `TryParse` errors, diagnostics and descriptors are strings. Only rule authors see `IFormattableText<T>`.
+- **One type for descriptions and failures.** A line in the documentation and a failure message are the same kind of text. It also leaves room for localization later, e.g. an `ILocalizableText<T>` that adapts to `Microsoft.Extensions.Localization`.
+- **A validator may report several failures**, e.g. a password policy reporting each unmet requirement. The built-in rules and `Validators.Create` report one, their description: that is the library's habit, not the interface's rule. The interface allows the general case, and conventions live in the helpers.
+- **A list, not a lazy sequence.** A `yield` enumeration would run the rule after `Validate` returned, outside the primitive's `try/catch`. Empty, not null, means valid.
+- **`IsValid` is a default interface member**, so it can't disagree with `Validate` unless a rule overrides it for speed. The primitive uses it when no error list is wanted.
+- **Custom texts** come from `FormattableText.Create<T>("text")` or `FormattableText.Create<T>(formatter => $"must be at most {formatter.Format(max)}")`. Values of `T` go through the formatter, the checked value included: `must be at most 0xFF, but was 0x100`.
+- **Validators are invariant.** A text hands values of `T` to the formatter, so `T` flows out of the rule, which `in T` doesn't allow. A rule for many types is a generic method returning an exactly typed instance, e.g. `Validators.Collections.NotEmpty<Uri>()`. The only cost is the type argument, which C# can't infer from the list it's put in.
+- **`ToString()`** of the library's texts formats invariantly, for debugging. It isn't part of the contract.
 
 ### Primitives
 
@@ -128,7 +151,7 @@ A list is a kind of value too: "a comma-separated list of URIs, at least one" sa
 ```csharp
 public static readonly ListPrimitive<Uri> Origins = new("Origins", Primitive.Uri, delimiter: ',')   // ',' is the default
 {
-    Validators = [Validators.Collections.NotEmpty],    // list rules
+    Validators = [Validators.Collections.NotEmpty<Uri>()],    // list rules
 };
 ```
 
@@ -222,7 +245,7 @@ ConfigurationDefinition.Indexed("Server:AllowedOrigins", AppPrimitives.Origins);
 - **Mismatched form.** A value in the other form (e.g. `Key:0` exists but the definition reads one entry) produces a warning.
 - **Diagnostics.** An indexed entry's errors are reported under its own key, `Key:2`. A delimited list's item errors are reported under `Key`, with the item in the message (see List primitives).
 - **Removed:** `.Indexed()` and `.Delimited()` as builder methods, list-level `Validate`/`Normalize` on definitions, element defaults and their warnings, the `Delimited()` scalar check, and `.Indexed().Indexed()` (nested indexed keys, `Key:0:0`; see IDEAS.md).
-- **Optional items**, where a gap in the indices becomes `null`, are not designed for this model yet.
+- **Optional items**, where a gap in the indices becomes `null`, are not planned (see IDEAS.md).
 - **Dictionaries** (`Key:Name`) are not designed yet.
 
 ### Defaults and presence
@@ -278,6 +301,7 @@ In-memory sources:
 
 - `contract.Read(source)` reads *every* definition and returns a `ConfigurationSnapshot`, or throws one `InvalidConfigurationException` listing every error.
 - `contract.TryRead(source, out snapshot, out diagnostics)` is the non-throwing variant. It gives no snapshot when there is an error.
+- Both take optional `ReadOptions` (see Read options).
 - `snapshot.Get(definition)` cannot fail for a definition in the contract. A definition outside the contract throws `ArgumentException`.
 - `snapshot.Diagnostics` holds the warnings and traces from reading.
 - The name avoids `Configuration`, which would clash with the `Leander.Configuration` namespace. "Snapshot" leaves room for reload: a new read gives a new snapshot.
@@ -294,7 +318,24 @@ Configuration is invalid:
 
 ### Diagnostics
 
-Each diagnostic has a severity (`Error`, `Warning`, `Trace`), a key, a message and the definition it concerns. Only errors prevent a snapshot. Warnings and traces go to a logger or can be inspected in the debugger.
+Each diagnostic has a severity (`Error`, `Warning`, `Trace`), a key, a message and the definition it concerns, or `null` for a key the contract doesn't define. Only errors prevent a snapshot. Warnings and traces go to a logger or can be inspected in the debugger.
+
+### Read options
+
+A read is aligned with the contract beyond presence when asked to be: `contract.Read(source, options)`, `TryRead(source, options, …)` and `AddConfigurationContract(contract, configuration, options)`.
+
+```csharp
+contract.Read(source, new ReadOptions
+{
+    CheckedSections = ["Server", "Admin"],   // Server:Prot  is not in the configuration contract
+    WarningsAsErrors = true,
+});
+```
+
+- **Options are per read, not per contract.** The same contract can be read strictly in CI and loosely in development, and the builder stays about the definitions.
+- **Unknown keys are checked only in the named sections.** An `IConfiguration` holds much more than the application's keys: `Logging`, `AllowedHosts`, every environment variable. Nothing is inferred from the contract, because a section can be shared, e.g. `Logging:Verbosity` next to Microsoft's `Logging:LogLevel`.
+- **An unknown key is a warning**, reported under its own key, with no definition. A misspelled key isn't wrong by itself: the intended key falls back to its default. The walk stops at defined keys, whose readers already report entries in the wrong form.
+- **`WarningsAsErrors`** turns every warning into an error, so it prevents a snapshot and shows in the exception message. There is no option to ignore warnings: they never block, and callers can filter `Diagnostics`.
 
 ### Parse error messages
 
@@ -312,7 +353,7 @@ ConfigurationDefinition.Define("Api:Key", Primitive.String)
 
 - **Sensitive belongs to the definition.** Whether a value is secret depends on what it's used for, not on its type: a plain `string` can be an API key. `IsSensitive` is on `ConfigurationDefinition`. A sensitive primitive (e.g. a connection string that is always secret) may come later.
 - **It carries over** to `.Optional()`, like the description, and covers every item of a list.
-- **Diagnostics never contain a sensitive value.** `'abc' is not a valid Int32` becomes `value is not a valid Int32`. That covers parse errors, delimited list errors, and exception messages from normalizers and validators, which may contain the value too. Validator failure messages are fixed descriptions, so they stay.
+- **Diagnostics never contain a sensitive value.** `'abc' is not a valid Int32` becomes `value is not a valid Int32`. That covers parse errors, delimited list errors, and exception messages from normalizers and validators, which may contain the value too. Rule texts are formatted with a redacting formatter: every value of `T` in them is hidden, e.g. `must be between (hidden) and (hidden)`. That is conservative, because a text can't tell a bound from the checked value.
 - **Primitives know nothing about keys**, so they can't decide on redaction. `Primitive<T>` has internal `TryParse`/`TryAccept` overloads with a `redact` flag, which Leander.Configuration passes. With it, the value and exception messages are left out. The public overloads still echo the input.
 - **The contract definition decides.** Sensitivity is taken from the definition in the contract, and passed down to everything read for it: items, and an optional definition's inner value.
 - **Descriptors and documentation** mark the definition as sensitive and never show its default. Example configuration uses a placeholder.
@@ -342,14 +383,14 @@ A built contract produces a **contract descriptor**: plain data describing every
 ```
 ConfigurationContract ──► ContractDescriptor ──┬──► Markdown documentation
                                                ├──► contract file (JSON)
-                                               └──► example configuration (later)
+                                               └──► example configuration
 ```
 
 - **The descriptor lives in `Leander.Configuration`.** It needs the contract's internals (readers, resolved primitives, default values), and building it inside the core keeps those internals internal. The descriptor itself is public, so anyone can write a renderer.
 - **Renderers live in `Leander.Configuration.Tooling`.** The core stays about reading configuration, and output formats can change without touching it.
 - **Text only.** The descriptor holds strings, not `Type`s or delegates: type names, formatted defaults, rule descriptions. A descriptor built from a running contract and one read back from a contract file are the same kind of object, so they can be compared.
 - **"Descriptor", not "Description".** `Description` is already the string property on definitions and primitives, and `Describe(...)` is the builder method that sets it.
-- **Library calls first.** The application or a test gets the descriptor from the contract and writes the files. A command-line tool that finds the contract in an assembly needs discovery conventions and comes later.
+- **Library calls only.** The application or a test gets the descriptor from the contract and writes the files. A command-line tool would have to find the contract in an assembly, which assumes how applications declare it (see IDEAS.md).
 
 ```csharp
 var descriptor = contract.CreateDescriptor();                       // Leander.Configuration.Descriptors
@@ -375,6 +416,7 @@ ValueDescriptor
   Type               display name without Nullable<>, e.g. "Int32", "IReadOnlyList<String>"
   Presence           Required | Default | Optional
   Default            formatted with the primitive's converter; null when there is none or the definition is sensitive
+  DefaultItems       Indexed only: each item of the default, formatted with the element's converter; null like Default
   Form               Scalar | Indexed
   Primitive          a PrimitiveReference (type, name) to a primitive in ContractDescriptor.Primitives;
                      for Indexed, the list primitive
@@ -393,7 +435,7 @@ PrimitiveDescriptor
 The descriptor types are records, so a renderer or a comparison can use `with` and value equality (except for the lists).
 
 - **Values are flat.** A list is described by its primitive, which refers to its element primitive. There are no element values with their own presence or default.
-- **Defaults are formatted by the converter**, so a `TimeSpan` default reads `00:00:30`, the same text that would be written in the source. A list default is formatted by the list's converter.
+- **Defaults are formatted by the converter**, so a `TimeSpan` default reads `00:00:30`, the same text that would be written in the source. A list default is formatted by the list's converter. An indexed default also has its items, each formatted by the element's converter, because splitting the formatted list again is wrong when an item contains the delimiter.
 - **Primitives are referenced.** A definition refers to its primitive by type and name, and the primitive is described once. Names are unique per type within a contract (see Contract), so the reference is unambiguous.
 - **Primitives are listed in order of first use**, each followed by its bases and elements, and only those some definition uses. That includes ready-made primitives such as `Int32`, so the contract file is complete.
 
@@ -442,11 +484,57 @@ A TCP port.
 
 ### Contract file
 
-The contract file is the descriptor as JSON, with a format version: `ContractFile.Write(descriptor)` and `ContractFile.Read(json)`. Properties and enum values are camelCase, and nulls are left out. `Read` throws `FormatException` for another format version, and `JsonException` for malformed JSON or missing required properties.
+The contract file is the descriptor as JSON, with a format version: `ContractFile.Write(descriptor)` and `ContractFile.Read(json)`. Properties and enum values are camelCase, and nulls are left out, so a missing nullable property reads as null. `Read` checks the format version first and throws `FormatException` for another one, because another version may have another shape. It throws `JsonException` for malformed JSON or a missing non-nullable property.
 
 - **It is descriptive.** It is never imported and run. Normalizers and validators are code, and JSON can't hold them. This follows from "code is the authoring format".
 - **Programs that share configuration share code**, i.e. a library with the primitives and definitions. Each program builds its own contract from the definitions it uses, which may be a subset.
-- **The file is for comparing.** It is committed, so CI can detect drift. Later, two contract files can be checked against each other without loading either program, e.g. "both read `Database:CommandTimeout`, but one says Int32 with default 30 and the other says Int32 (Hex), required".
+- **The file is for comparing.** It is committed, so CI can detect drift. Two contract files can be compared without loading either program, e.g. "both read `Database:CommandTimeout`, but one says Int32 with default 30 and the other says Int32 (Hex), required" (see Comparing contracts).
+
+### Comparing contracts
+
+`ContractComparison.Compare(left, right)` lists what differs between two descriptors, e.g. the committed contract file against the current contract, or two programs that share configuration. Comparing the files as text says *that* something changed. The comparison says *what* changed, per key.
+
+```
+Server:Port: validators of Int32 (Port): [must be between 1 and 65535] → [must be between 1024 and 65535]
+Server:Timeout: presence: default → required
+Server:Timeout: default: 00:00:30 → none
+Admin:Email: removed
+Admin:Contact: added
+```
+
+- **One method for both use cases.** Every difference has a kind: `Added` (only in the right contract), `Removed` (only in the left) or `Changed`. Drift is any difference at all. Two programs sharing configuration care about `Changed`, the keys both read.
+- **A changed key has one difference per aspect**: key spelling, type, presence, default, form, sensitive, description, primitive. The aspect lets a caller filter, e.g. leave out descriptions.
+- **Primitives are compared on every key that uses them**, down through their bases and elements. The same primitive change shows up on each key, so every key answers "do both sides agree on this key?" on its own. When the keys refer to different primitives, only the reference is reported.
+- **Keys match case-insensitively**, like `IConfiguration` reads them. A difference in spelling is its own aspect.
+- **An indexed default is compared by its items.**
+- **What a difference means is not decided here.** Whether it's breaking depends on which side is the source of truth, and on the use case (see IDEAS.md).
+
+### Example configuration
+
+`ExampleConfiguration.Write(descriptor)` renders an `appsettings.json`-style file with every key in the contract, to copy and fill in:
+
+```json
+{
+  "Server": {
+    "Host": "localhost",
+    "Port": "<Port>",
+    "MaxConnections": "<optional MaxConnections>",
+    "AllowedOrigins": [ "<Uri>" ],
+    "Features": ""
+  },
+  "Database": {
+    "Password": "<secret>"
+  }
+}
+```
+
+- **Keys are split on `:`** into nested objects. Sections merge case-insensitively, like `IConfiguration` reads them, and keep the spelling of their first key.
+- **Every value is a string**, the text the converter formats. `IConfiguration` reads strings anyway, so there is no guessing from type names.
+- **A default is written as is.** An indexed list becomes a JSON array of its default items.
+- **Without a default, a placeholder** says what is expected: `<Port>` for a required value, `<optional Port>` for an optional one, named after the primitive. An indexed list gets an array with one placeholder item, named after the element. JSON has no comments, so the placeholder is the only place to say it. The file doesn't read cleanly until it's filled in, which is the point.
+- **Sensitive values are always `<secret>`**, with or without a default, and an indexed one is `[ "<secret>" ]`.
+- **Optional keys are included**, so the example is a complete map of the configuration.
+- **A key can't be both a value and a section**, e.g. `Server` and `Server:Port`. JSON can't hold both, so `Write` throws.
 
 ## Open questions
 
@@ -464,5 +552,5 @@ The contract file is the descriptor as JSON, with a format version: `ContractFil
 1. **Core.** Done: definitions, source abstraction, reader, pipeline, diagnostics, exception with report.
 2. **Primitives.** Done: parsing, normalization, validation, explicit primitives with deriving and ready-made primitives, contract builder. Tests pending.
 3. **Microsoft adapter.** `IConfiguration` source, DI and `IOptions<T>` registration.
-4. **Documentation.** Done: sensitive values, contract descriptor, Markdown documentation, contract file. Later: example configuration, comparing contract files, command-line tool.
+4. **Documentation.** Done: sensitive values, contract descriptor, Markdown documentation, contract file, example configuration, comparing contracts.
 5. **Generator.** Options construction code.

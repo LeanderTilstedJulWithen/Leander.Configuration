@@ -10,6 +10,7 @@ using Microsoft.Extensions.Options;
 //   dotnet run -- Server:Port=99999
 //   dotnet run -- Server:AllowedOrigins:1="not a uri"
 //   dotnet run -- Server:CertificatePath=cert.pfx
+//   dotnet run -- Server:Prot=8080
 var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
 {
     Args = args,
@@ -26,10 +27,14 @@ var contract = new ConfigurationContractBuilder()
     .Build();
 
 // The configuration is read here, before the host is built. An invalid configuration never reaches the services.
+// Server belongs to this application, so a key there that the contract doesn't define is a mistake, e.g. Server:Prot.
+// The rest of the configuration (Logging, environment variables, ...) isn't checked.
+var readOptions = new ReadOptions { CheckedSections = ["Server"], WarningsAsErrors = true };
+
 try
 {
     builder.Services
-        .AddConfigurationContract(contract, builder.Configuration)
+        .AddConfigurationContract(contract, builder.Configuration, readOptions)
         .AddOptionsFrom(ServerOptions.From);
 }
 catch (InvalidConfigurationException exception)

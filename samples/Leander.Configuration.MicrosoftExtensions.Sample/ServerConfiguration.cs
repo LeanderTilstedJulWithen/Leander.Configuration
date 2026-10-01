@@ -22,7 +22,7 @@ public static class ServerConfiguration
 
     public static readonly ListPrimitive<Uri> OriginsPrimitive = new("Origins", Primitive.Uri)
     {
-        Validators = [Validators.Collections.NotEmpty],
+        Validators = [Validators.Collections.NotEmpty<Uri>()],
         Description = "Origins, at least one.",
     };
 

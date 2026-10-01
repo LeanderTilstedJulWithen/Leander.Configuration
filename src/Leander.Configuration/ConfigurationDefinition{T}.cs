@@ -68,12 +68,14 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
     internal override ValueDescriptor CreateValueDescriptor(DescriptorContext context)
     {
         var descriptor = Reader.Describe(context);
+        var showDefault = HasDefault && !context.IsSensitive;
 
         return descriptor with
         {
             Type = TypeNames.Get(Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T)),
             Presence = IsOptional ? ValuePresence.Optional : HasDefault ? ValuePresence.Default : ValuePresence.Required,
-            Default = HasDefault && !context.IsSensitive ? Reader.Format(context, _settings.DefaultValue!) : null,
+            Default = showDefault ? Reader.Format(context, _settings.DefaultValue!) : null,
+            DefaultItems = showDefault ? Reader.FormatItems(context, _settings.DefaultValue!) : null,
         };
     }
 

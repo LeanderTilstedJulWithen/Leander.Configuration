@@ -9,8 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 #### Leander.Primitives
 - `Leander.Primitives.Parsing`: converters, parsers and formatters, copied from Leander.Parsing with only the namespace changed. `IFormatter<T>` is now contravariant (`IFormatter<in T>`).
-- `Leander.Primitives.Validation`: `IValidator<in T>` with `Description` and `Validate`, and `Validators` (`Create`, `NotEmpty`, `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, `LessThanOrEqual`, `InRange`, `Collections.NotEmpty`).
-- `Leander.Primitives.Normalization`: `INormalizer<T>` with `Description` and `Normalize`, and `Normalizers` (`Create`, `Trim`, `FullPath`).
+- `Leander.Primitives.Validation`: `IValidator<T>` with `Description`, `Validate` (every failure, empty when valid) and `IsValid`, and `Validators` (`Create`, `NotEmpty`, `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, `LessThanOrEqual`, `InRange`, `Collections.NotEmpty<T>()`). Validators are invariant, and may report several failures.
+- `Leander.Primitives.Normalization`: `INormalizer<T>` with `Description` and `Normalize`, and `Normalizers` (`Create`, `Trim`, `FullPath`, `UpperBound`, `LowerBound`).
+- `IFormattableText<T>` and `FormattableText.Create`: rule descriptions and failures, formatted by the primitive with its converter in documentation and error messages, e.g. `must be less than or equal to 0xFF` on a Hex primitive. For sensitive values, every value of `T` in them is hidden.
 - `Primitive<T>`: an immutable, always complete kind of value, built with `new(name, converter) { Normalizers = …, Validators = …, Description = … }`. The name is required. Primitives are explicit: there is no registry and no default per type, and sharing one is sharing a field.
 - Deriving with `new(name, base) { … }`: takes the base's converter, and its own rules are added to the base's, which always run first. Rules can't be removed. `Base` refers to the base.
 - Ready-made primitives for the built-in types, named after their type (`Primitive.String`, `Primitive.Int32`, `Primitive.TimeSpan`, …), the variants `Primitive.Int32Hex`, `Primitive.UInt32Hex` ("Hex") and `Primitive.DateTimeLocal` ("Local"), and `Primitive.Enum<T>()`, named after the enum type.
@@ -23,20 +24,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `Sensitive()`: diagnostics for the definition never contain its value, e.g. `value is not a valid Int32` instead of `'abc' is not a valid Int32`, and exception messages from normalizers and validators are left out. `ConfigurationDefinition.IsSensitive` reports it, and it carries over to `Optional()`.
 - Collections through list primitives: `ConfigurationDefinition.Define(key, list)` reads one delimited entry (`"a,b,c"`), and `ConfigurationDefinition.Indexed(key, list)` reads `Key:0`, `Key:1`, …
 - `ConfigurationContractBuilder` / `ConfigurationContract`: registers configuration definitions, and rejects duplicate keys and two different primitives of the same type with the same name. `Build()` lists every failure at once.
-- `ConfigurationContract.CreateDescriptor()`: a text-only description of the contract (`Leander.Configuration.Descriptors`): every definition with its type, presence, formatted default, form (scalar or indexed) and rules, and the primitives it uses with their bases, each with its own rules, and for a list its element and delimiter. Defaults of sensitive definitions are left out.
+- `ConfigurationContract.CreateDescriptor()`: a text-only description of the contract (`Leander.Configuration.Descriptors`): every definition with its type, presence, formatted default, form (scalar or indexed), the items of an indexed default, and rules, and the primitives it uses with their bases, each with its own rules, and for a list its element and delimiter. Defaults of sensitive definitions are left out.
 - `ConfigurationSnapshot`: the validated values of a contract, from `contract.Read(source)` (throws a single `InvalidConfigurationException`) or `contract.TryRead(...)`. A definition without a default is required.
 - `ConfigurationDiagnostic` with `DiagnosticSeverity` (`Error`, `Warning`, `Trace`).
+- `ReadOptions` for `Read` / `TryRead`: `CheckedSections` reports keys under the named sections that the contract doesn't define, as warnings, and `WarningsAsErrors` makes every warning an error.
 - `IValueSource`, `ValueSource.FromPairs` (case-insensitive, last key wins) and `ValueSource.FromDictionary` (uses the dictionary as-is).
 - `docs/DESIGN.md`: design overview.
 
 #### Leander.Configuration.MicrosoftExtensions
 - `IConfiguration.AsValueSource()`: reads an `IConfiguration` (root or section) as an `IValueSource`, live and without copying.
-- `IServiceCollection.AddConfigurationContract(contract, configuration)`: reads the configuration immediately (throwing `InvalidConfigurationException` on failure) and registers the contract and snapshot as singletons. The snapshot is read once and not reloaded.
+- `IServiceCollection.AddConfigurationContract(contract, configuration[, options])`: reads the configuration immediately (throwing `InvalidConfigurationException` on failure) and registers the contract and snapshot as singletons. The snapshot is read once and not reloaded.
 - `IServiceCollection.AddOptionsFrom<T>(Func<ConfigurationSnapshot, T>)`: exposes `T` as `IOptions<T>`, `IOptionsSnapshot<T>` and `IOptionsMonitor<T>` through a factory, so options can be immutable records.
 
 #### Leander.Configuration.Tooling
 - `MarkdownDocumentation.Write(descriptor, title)`: documentation grouped by the first key segment, with a summary table per group, a section per key, and the primitives described once and linked, with the primitive they derive from. Primitives with nothing to say, such as `String`, are left out.
 - `ContractFile.Write(descriptor)` / `ContractFile.Read(json)`: the descriptor as versioned JSON. The file is descriptive: it can be committed and compared, but not run.
+- `ExampleConfiguration.Write(descriptor)`: an `appsettings.json`-style example with every key, to copy and fill in. Values are strings as the converter formats them, indexed lists are JSON arrays, keys without a default get a placeholder (`"<Port>"`, `"<optional Email>"`), and sensitive values are always `"<secret>"`.
+- `ContractComparison.Compare(left, right)`: what differs between two contract descriptors, per key, as `ContractDifference`s: `Added`, `Removed`, or `Changed` with the aspect (type, presence, default, form, sensitive, description, primitive and its rules, bases and elements) and both values. Keys match case-insensitively.
 
 ### Notes
 - Leander.Configuration no longer references the sibling Leander.Parsing repository. It depends on Leander.Primitives instead.

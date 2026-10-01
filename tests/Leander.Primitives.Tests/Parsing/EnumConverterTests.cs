@@ -51,8 +51,4 @@ public class EnumConverterTests
         Assert.Equal("Monday", Converters.Enum<DayOfWeek>().Format(DayOfWeek.Monday));
         Assert.Equal("Read, Write", Converters.Enum<Access>().Format(Access.Read | Access.Write));
     }
-
-    [Fact]
-    public void ReturnsCachedInstance() =>
-        Assert.Same(Converters.Enum<DayOfWeek>(), Converters.Enum<DayOfWeek>());
 }

@@ -38,9 +38,12 @@ public class Primitive<T> : Primitive
     // Its own validators; a base's validators run before these.
     public IReadOnlyList<IValidator<T>> Validators { get; init; } = [];
 
-    internal override IReadOnlyList<string> NormalizerDescriptions => [.. Normalizers.Select(normalizer => normalizer.Description)];
+    // Bounds are formatted with the converter, e.g. "must be less than or equal to 0xFF" for a Hex primitive.
+    internal override IReadOnlyList<string> NormalizerDescriptions =>
+        [.. Normalizers.Select(normalizer => normalizer.Description.FormatWith(Converter))];
 
-    internal override IReadOnlyList<string> ValidatorDescriptions => [.. Validators.Select(validator => validator.Description)];
+    internal override IReadOnlyList<string> ValidatorDescriptions =>
+        [.. Validators.Select(validator => validator.Description.FormatWith(Converter))];
 
     // The base's rules followed by its own. Computed on first use, because init properties are set after the constructor.
     private IReadOnlyList<INormalizer<T>> AllNormalizers =>
@@ -103,7 +106,7 @@ public class Primitive<T> : Primitive
 
     // Only this primitive's rules (the base's, then its own), not its items'. For a list whose items were accepted one by one.
     internal bool TryApplyRules(T value, out T result, List<string>? errors, bool redact) =>
-        Rules.TryApply(AllNormalizers, AllValidators, value, out result, errors, redact);
+        Rules.TryApply(AllNormalizers, AllValidators, Converter, value, out result, errors, redact);
 
     // Turns the input into a T, before this primitive's rules run.
     private protected virtual bool TryConvert(string input, out T value, List<string>? errors, bool redact)

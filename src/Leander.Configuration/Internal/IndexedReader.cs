@@ -19,6 +19,10 @@ internal sealed class IndexedReader<T>(ListPrimitive<T> list) : ValueReader<IRea
     // Like any list default: formatted by the list's converter.
     public override string Format(DescriptorContext context, IReadOnlyList<T> value) => _list.Converter.Format(value);
 
+    // One entry per item, as they would be written in the source.
+    public override IReadOnlyList<string> FormatItems(DescriptorContext context, IReadOnlyList<T> value) =>
+        value.Select(_list.Element.Converter.Format).ToList();
+
     public override ReadStatus Read(ReadContext context, ConfigurationDefinition definition, string key, out IReadOnlyList<T> value)
     {
         value = [];

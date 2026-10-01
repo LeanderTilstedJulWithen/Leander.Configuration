@@ -5,7 +5,7 @@
 - **Leander.Primitives** describes kinds of values: how they are parsed, normalized and validated.
 - **Leander.Configuration** describes configuration keys and reads them into a validated snapshot.
 - **Leander.Configuration.MicrosoftExtensions** reads an `IConfiguration` as a source and exposes options as `IOptions<T>`.
-- **Leander.Configuration.Tooling** renders a contract as Markdown documentation and as a JSON contract file.
+- **Leander.Configuration.Tooling** renders a contract as Markdown documentation, a JSON contract file and an example configuration, and compares contracts.
 
 ## Why
 
@@ -50,7 +50,7 @@ A list is a primitive too. Each item goes through the element primitive with all
 ```csharp
 public static readonly ListPrimitive<Uri> Origins = new("Origins", Primitive.Uri) // delimiter ',' by default
 {
-    Validators = [Validators.Collections.NotEmpty],
+    Validators = [Validators.Collections.NotEmpty<Uri>()],
 };
 
 Origins.TryParse("https://a.example, not a uri", out var origins, out var errors);
@@ -107,20 +107,31 @@ builder.Services
     .AddOptionsFrom(ServerOptions.From);                       // IOptions<ServerOptions>
 ```
 
+A misspelled key isn't wrong by itself: `Server:Prot` is ignored and `Server:Port` falls back to its default. `ReadOptions` checks the sections the application owns for keys the contract doesn't define, and can treat warnings as errors:
+
+```csharp
+var options = new ReadOptions { CheckedSections = ["Server", "Admin"], WarningsAsErrors = true };
+contract.Read(source, options);                                         // Server:Prot  is not in the configuration contract
+builder.Services.AddConfigurationContract(contract, builder.Configuration, options);
+```
+
 A secret is marked with `Sensitive()`: its value never appears in diagnostics (`value is not a valid Int32`), and documentation never shows its default.
 
 ## Documentation and contract files
 
-The contract describes itself. Documentation and a contract file are rendered from the same descriptor:
+The contract describes itself. Documentation, a contract file and an example configuration are rendered from the same descriptor:
 
 ```csharp
 var descriptor = contract.CreateDescriptor();
 File.WriteAllText("configuration.md", MarkdownDocumentation.Write(descriptor, "Server configuration"));
 File.WriteAllText("configuration.contract.json", ContractFile.Write(descriptor));
+File.WriteAllText("appsettings.example.json", ExampleConfiguration.Write(descriptor));
 ```
 
 The documentation lists every key with its type, presence, default, form and rules, grouped by the first key segment. Named primitives are described once and linked from the keys that use them.
 
-The contract file is JSON and descriptive: validators are code, so it can't be run. Commit it, and a change to the configuration contract shows up in review. Programs that share configuration share the C# definitions, not the file.
+The contract file is JSON and descriptive: validators are code, so it can't be run. Commit it, and a change to the configuration contract shows up in review. `ContractComparison.Compare(committed, current)` says what changed, per key, e.g. `Server:Port: validators of Int32 (Port): [must be between 1 and 65535] → [must be between 1024 and 65535]`. It also compares two programs that share configuration. Programs that share configuration share the C# definitions, not the file.
+
+The example configuration is an `appsettings.json` with every key, to copy and fill in. Defaults are written as they are, and keys without one get a placeholder such as `"<Port>"` or `"<optional Email>"`. Sensitive values are always `"<secret>"`.
 
 See [samples/Leander.Configuration.Sample](samples/Leander.Configuration.Sample) for a complete example, and [samples/Leander.Configuration.MicrosoftExtensions.Sample](samples/Leander.Configuration.MicrosoftExtensions.Sample) for a host with `IOptions<T>`.

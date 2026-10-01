@@ -31,7 +31,7 @@ public static class SamplePrimitives
     // A list is a primitive too: its rules are on the list, the item rules on the element.
     public static readonly ListPrimitive<Uri> Origins = new("Origins", Primitive.Uri)
     {
-        Validators = [Validators.Collections.NotEmpty],
+        Validators = [Validators.Collections.NotEmpty<Uri>()],
         Description = "Origins, at least one.",
     };
 

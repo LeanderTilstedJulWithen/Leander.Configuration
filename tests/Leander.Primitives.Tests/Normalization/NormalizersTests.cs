@@ -1,4 +1,5 @@
 using Leander.Primitives.Normalization;
+using Leander.Primitives.Parsing;
 
 namespace Leander.Primitives.Tests.Normalization;
 
@@ -9,8 +10,17 @@ public class NormalizersTests
     {
         var normalizer = Normalizers.Create<int>("absolute value", Math.Abs);
 
-        Assert.Equal("absolute value", normalizer.Description);
+        Assert.Equal("absolute value", normalizer.Description.ToString());
         Assert.Equal(5, normalizer.Normalize(-5));
+    }
+
+    [Fact]
+    public void Bounds_AreFormattedWithTheGivenFormatter()
+    {
+        var normalizer = Normalizers.UpperBound(TimeSpan.FromMinutes(5));
+
+        Assert.Equal("upper bound 00:05:00", normalizer.Description.FormatWith(Converters.TimeSpan));
+        Assert.Equal(TimeSpan.FromMinutes(5), normalizer.Normalize(TimeSpan.FromHours(1)));
     }
 
     [Theory]
@@ -20,7 +30,7 @@ public class NormalizersTests
     [InlineData("   ", "")]
     public void Trim_RemovesSurroundingWhitespace(string input, string expected)
     {
-        Assert.Equal("trim whitespace", Normalizers.Trim.Description);
+        Assert.Equal("trim whitespace", Normalizers.Trim.Description.ToString());
         Assert.Equal(expected, Normalizers.Trim.Normalize(input));
     }
 
@@ -29,7 +39,7 @@ public class NormalizersTests
     {
         var expected = Path.Combine(Directory.GetCurrentDirectory(), "b");
 
-        Assert.Equal("full path", Normalizers.FullPath.Description);
+        Assert.Equal("full path", Normalizers.FullPath.Description.ToString());
         Assert.Equal(expected, Normalizers.FullPath.Normalize(Path.Combine("a", "..", "b")));
     }
 

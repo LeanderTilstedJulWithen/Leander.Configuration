@@ -1,11 +1,10 @@
 namespace Leander.Primitives.Normalization.Internal;
 
-internal sealed class DelegateNormalizer<T>(string description, Func<T, T> normalize) : INormalizer<T>
+internal sealed class DelegateNormalizer<T>(IFormattableText<T> description, Func<T, T> normalize) : INormalizer<T>
 {
-    private readonly string _description = description;
     private readonly Func<T, T> _normalize = normalize;
 
-    public string Description => _description;
+    public IFormattableText<T> Description { get; } = description;
 
     public T Normalize(T value) => _normalize(value);
 }
