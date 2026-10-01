@@ -8,7 +8,7 @@ Decided and set in motion. Pick up here, in this order.
 - [x] Configuration collections (see DESIGN.md, Collections): `ConfigurationDefinition.Indexed(key, list)`; `Define(key, list)` reads one delimited entry. Remove `.Indexed()`, `.Delimited()`, `DelimitedReader`, `ConfigurationDefinitionExtensions` (list-level `Validate`/`Normalize`), element-default warnings, the `Delimited()` scalar check, and `.Indexed().Indexed()`.
 - [x] Descriptor and Markdown for list primitives: `PrimitiveDescriptor.Element` / `Delimiter`, `ValueForm` down to Scalar | Indexed, `ValueDescriptor` without `Delimiter`, `Element` and list rules; escape `<` and `>` in Markdown text. Then remove the "Status" notes in DESIGN.md.
 - [x] Samples, README and CHANGELOG for list primitives.
-- [ ] Tests for Leander.Configuration.MicrosoftExtensions: `AsValueSource` (values, child names, sections), `AddConfigurationContract` (with and without `ReadOptions`, the exception on invalid configuration), and `AddOptionsFrom` (`IOptions<T>`, `IOptionsSnapshot<T>`, `IOptionsMonitor<T>`).
+- [x] Tests for Leander.Configuration.MicrosoftExtensions: `AsValueSource` (values, child names, sections), `AddConfigurationContract` (with and without `ReadOptions`, the exception on invalid configuration), and `AddOptionsFrom` (`IOptions<T>`, `IOptionsSnapshot<T>`, `IOptionsMonitor<T>`).
 - [ ] Decide on XML documentation comments (`///`) for the public API instead of `//` comments, so users get them in IntelliSense. If yes, write them before 1.0.0.
 - [ ] Run both samples and check their output. Fix documentation drift, e.g. DESIGN.md (Sources) still says "`Leander.Configuration.Microsoft` will implement `IValueSource`", which is done as Leander.Configuration.MicrosoftExtensions.
 
