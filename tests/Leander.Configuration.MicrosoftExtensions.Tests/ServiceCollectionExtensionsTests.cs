@@ -23,11 +23,24 @@ public class ServiceCollectionExtensionsTests
             .AddInMemoryCollection(values.Select(pair => KeyValuePair.Create(pair.Key, pair.Value)))
             .Build();
 
-    private static ServiceProvider Provider(IConfiguration configuration) =>
-        new ServiceCollection()
+    private sealed class FixedOptions(ServerOptions value) : IOptionsSnapshot<ServerOptions>
+    {
+        private readonly ServerOptions _value = value;
+
+        public ServerOptions Value => _value;
+
+        public ServerOptions Get(string? name) => _value;
+    }
+
+    private static ServiceProvider Provider(IConfiguration configuration, Action<IServiceCollection>? then = null)
+    {
+        var services = new ServiceCollection()
             .AddConfigurationContract(Contract, configuration)
-            .AddOptionsFrom(snapshot => new ServerOptions { Port = snapshot.Get(Port) })
-            .BuildServiceProvider();
+            .AddOptionsFrom(snapshot => new ServerOptions { Port = snapshot.Get(Port) });
+
+        then?.Invoke(services);
+        return services.BuildServiceProvider();
+    }
 
     [Fact]
     public void AddConfigurationContract_RegistersContractAndSnapshot()
@@ -108,23 +121,22 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddOptionsFrom_IOptionsSnapshot_IsBuiltFromSnapshot()
+    public void AddOptionsFrom_IOptions_IsBuiltOnce()
     {
-        using var provider = Provider(Configuration(("Server:Port", "8080")));
-        using var scope = provider.CreateScope();
+        var created = 0;
+        using var provider = new ServiceCollection()
+            .AddConfigurationContract(Contract, Configuration(("Server:Port", "8080")))
+            .AddOptionsFrom(snapshot =>
+            {
+                created++;
+                return new ServerOptions { Port = snapshot.Get(Port) };
+            })
+            .BuildServiceProvider();
 
-        Assert.Equal(8080, scope.ServiceProvider.GetRequiredService<IOptionsSnapshot<ServerOptions>>().Value.Port);
-    }
-
-    [Fact]
-    public void AddOptionsFrom_IOptionsMonitor_IsBuiltFromSnapshot()
-    {
-        using var provider = Provider(Configuration(("Server:Port", "8080")));
-
-        var monitor = provider.GetRequiredService<IOptionsMonitor<ServerOptions>>();
-
-        Assert.Equal(8080, monitor.CurrentValue.Port);
-        Assert.Equal(8080, monitor.Get("Named").Port);
+        Assert.Same(
+            provider.GetRequiredService<IOptions<ServerOptions>>().Value,
+            provider.GetRequiredService<IOptions<ServerOptions>>().Value);
+        Assert.Equal(1, created);
     }
 
     [Fact]
@@ -136,9 +148,58 @@ public class ServiceCollectionExtensionsTests
         configuration["Server:Port"] = "9090";
         configuration.Reload();
 
-        Assert.Equal(8080, provider.GetRequiredService<IOptionsMonitor<ServerOptions>>().CurrentValue.Port);
+        Assert.Equal(8080, provider.GetRequiredService<IOptions<ServerOptions>>().Value.Port);
+    }
+
+    // AddOptions() registers the open generic IOptionsSnapshot<> and IOptionsMonitor<>, as a host does.
+    [Fact]
+    public void AddOptionsFrom_IOptionsSnapshot_Throws()
+    {
+        using var provider = Provider(Configuration(("Server:Port", "8080")), services => services.AddOptions());
         using var scope = provider.CreateScope();
-        Assert.Equal(8080, scope.ServiceProvider.GetRequiredService<IOptionsSnapshot<ServerOptions>>().Value.Port);
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            scope.ServiceProvider.GetRequiredService<IOptionsSnapshot<ServerOptions>>());
+
+        Assert.StartsWith("IOptionsSnapshot<ServerOptions> is not supported", exception.Message);
+        Assert.EndsWith("Use IOptions<ServerOptions>.", exception.Message);
+    }
+
+    [Fact]
+    public void AddOptionsFrom_IOptionsMonitor_Throws()
+    {
+        using var provider = Provider(Configuration(("Server:Port", "8080")), services => services.AddOptions());
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            provider.GetRequiredService<IOptionsMonitor<ServerOptions>>());
+
+        Assert.StartsWith("IOptionsMonitor<ServerOptions> is not supported", exception.Message);
+    }
+
+    [Fact]
+    public void AddOptionsFrom_OwnRegistrationBefore_IsKept()
+    {
+        var own = new FixedOptions(new ServerOptions { Port = 1 });
+        using var provider = new ServiceCollection()
+            .AddScoped<IOptionsSnapshot<ServerOptions>>(_ => own)
+            .AddConfigurationContract(Contract, Configuration(("Server:Port", "8080")))
+            .AddOptionsFrom(snapshot => new ServerOptions { Port = snapshot.Get(Port) })
+            .BuildServiceProvider();
+        using var scope = provider.CreateScope();
+
+        Assert.Same(own, scope.ServiceProvider.GetRequiredService<IOptionsSnapshot<ServerOptions>>());
+    }
+
+    [Fact]
+    public void AddOptionsFrom_OwnRegistrationAfter_IsUsed()
+    {
+        var own = new FixedOptions(new ServerOptions { Port = 1 });
+        using var provider = Provider(
+            Configuration(("Server:Port", "8080")),
+            services => services.AddScoped<IOptionsSnapshot<ServerOptions>>(_ => own));
+        using var scope = provider.CreateScope();
+
+        Assert.Same(own, scope.ServiceProvider.GetRequiredService<IOptionsSnapshot<ServerOptions>>());
     }
 
     [Fact]

@@ -39,7 +39,7 @@ We **replace `.Bind()`**. The binder decides how strings are converted to object
 | DI container, hosting               | Diagnostics and the fail-fast report               |
 |                                     | Construction of options objects                    |
 
-Options objects can still be exposed as `IOptions<T>`, `IOptionsSnapshot<T>` and `IOptionsMonitor<T>`: `AddOptionsFrom` registers a factory that builds them from the snapshot. Consumers will not notice the difference. Because reading and validating happen together, `ValidateOnStart()` is unnecessary.
+Options objects can still be exposed as `IOptions<T>`: `AddOptionsFrom` builds them once from the snapshot. Consumers will not notice the difference. The snapshot never reloads, so `IOptionsSnapshot<T>` and `IOptionsMonitor<T>` of that `T` throw on resolve instead of quietly returning values that never change. They are registered with `TryAdd`, so an application that provides them itself keeps its own. Because reading and validating happen together, `ValidateOnStart()` is unnecessary.
 
 ## Project layout
 
@@ -544,13 +544,12 @@ Admin:Contact: added
 - **Type names in contract files** are short (`Int32`, `Verbosity`). Two application types with the same name in different namespaces can't be told apart.
 - **Defaults.** Typed vs string defaults.
 - **Collections.** Dictionaries.
-- **Reload.** `IOptionsMonitor` support. v1 reads once at startup.
-- **Tests.** There are none yet, for either project.
+- **Reload.** `IOptionsSnapshot<T>` and `IOptionsMonitor<T>` support. 1.0 reads once at startup. Open: what an invalid reload does (keep the last valid snapshot, and how anyone finds out without a logging dependency), whether the `ConfigurationSnapshot` singleton stays the startup snapshot or gets a holder of its own, and that options types built from one snapshot come from the same read.
 
 ## Milestones
 
 1. **Core.** Done: definitions, source abstraction, reader, pipeline, diagnostics, exception with report.
-2. **Primitives.** Done: parsing, normalization, validation, explicit primitives with deriving and ready-made primitives, contract builder. Tests pending.
-3. **Microsoft adapter.** `IConfiguration` source, DI and `IOptions<T>` registration.
+2. **Primitives.** Done: parsing, normalization, validation, explicit primitives with deriving and ready-made primitives, contract builder.
+3. **Microsoft adapter.** Done: `IConfiguration` source, DI and `IOptions<T>` registration.
 4. **Documentation.** Done: sensitive values, contract descriptor, Markdown documentation, contract file, example configuration, comparing contracts.
 5. **Generator.** Options construction code.

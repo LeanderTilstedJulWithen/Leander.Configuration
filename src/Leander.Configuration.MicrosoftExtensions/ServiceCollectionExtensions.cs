@@ -1,6 +1,6 @@
-using Leander.Configuration.MicrosoftExtensions.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
 namespace Leander.Configuration.MicrosoftExtensions;
@@ -46,21 +46,35 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Exposes <typeparamref name="T"/> as <see cref="IOptions{TOptions}"/>, <see cref="IOptionsSnapshot{TOptions}"/>
-    /// and <see cref="IOptionsMonitor{TOptions}"/>, built from the snapshot by <paramref name="create"/>.
+    /// Exposes <typeparamref name="T"/> as <see cref="IOptions{TOptions}"/>, built once from the snapshot by <paramref name="create"/>.
     /// </summary>
     /// <remarks>
-    /// Requires <c>AddConfigurationContract</c>. The snapshot is already validated, so <c>ValidateOnStart()</c> is unnecessary.
-    /// Every options name gets an instance built from the one snapshot.
+    /// <para>
+    /// Requires a <see cref="ConfigurationSnapshot"/> in the container, e.g. from <c>AddConfigurationContract</c>.
+    /// The snapshot is already validated, so <c>ValidateOnStart()</c> is unnecessary.
+    /// </para>
+    /// <para>
+    /// The snapshot never reloads, so resolving <see cref="IOptionsSnapshot{TOptions}"/> or
+    /// <see cref="IOptionsMonitor{TOptions}"/> of <typeparamref name="T"/> throws <see cref="InvalidOperationException"/>,
+    /// instead of quietly returning values that never change. Your own registrations of them take precedence.
+    /// </para>
     /// </remarks>
     public static IServiceCollection AddOptionsFrom<T>(
         this IServiceCollection services,
         Func<ConfigurationSnapshot, T> create)
         where T : class
     {
-        services.AddOptions();
-        services.AddSingleton<IOptionsFactory<T>>(provider =>
-            new SnapshotOptionsFactory<T>(provider.GetRequiredService<ConfigurationSnapshot>(), create));
+        services.AddSingleton<IOptions<T>>(provider =>
+            Options.Create(create(provider.GetRequiredService<ConfigurationSnapshot>())));
+
+        // Without these, the host's open generic registrations would create T with its default factory: unbound, or failing.
+        // TryAdd, so an application that provides them itself, e.g. from a snapshot it reloads, keeps its own.
+        services.TryAddScoped<IOptionsSnapshot<T>>(_ => throw NotReloading<T>("IOptionsSnapshot"));
+        services.TryAddSingleton<IOptionsMonitor<T>>(_ => throw NotReloading<T>("IOptionsMonitor"));
         return services;
     }
+
+    private static InvalidOperationException NotReloading<T>(string service) =>
+        new($"{service}<{typeof(T).Name}> is not supported: {typeof(T).Name} is built once from a configuration snapshot " +
+            $"that never reloads. Use IOptions<{typeof(T).Name}>.");
 }

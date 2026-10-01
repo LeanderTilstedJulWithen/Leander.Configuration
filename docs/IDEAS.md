@@ -231,6 +231,17 @@ Notes:
 - A policy like "every definition has a description" can be checked by the application from the descriptor, without the builder knowing about it.
 - Verdict: probably not needed. Revisit if the read options leave a gap.
 
+### Reading a section of the contract
+
+`IConfiguration.GetSection("Server")` gives a view of one part of the configuration. The contract could have the same: read only the definitions under a section, e.g. `contract.Read(source, section: "Server")`, or a sub-contract from `contract.GetSection("Server")`.
+
+Notes:
+- It may become relevant with reloading: a change under `Logging` shouldn't rebuild options built from `Server`, and an invalid value under `Admin` shouldn't block a reload of `Server`.
+- Open: whether keys stay absolute (`Server:Port`) or become relative to the section, like `IConfiguration`. Definitions are identified by their absolute key, so relative keys would be a view, not new definitions.
+- Open: what a section's snapshot is. A smaller `ConfigurationSnapshot` whose `Get` throws for definitions outside the section, or the same snapshot type with a filtered contract.
+- `ReadOptions.CheckedSections` already names sections, for unknown keys. The two should use the same notion of a section.
+- Verdict: undecided. Revisit with reloading.
+
 ## Tooling
 
 ### A UI for writing configuration values

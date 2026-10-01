@@ -34,7 +34,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 #### Leander.Configuration.MicrosoftExtensions
 - `IConfiguration.AsValueSource()`: reads an `IConfiguration` (root or section) as an `IValueSource`, live and without copying.
 - `IServiceCollection.AddConfigurationContract(contract, configuration[, options])`: reads the configuration immediately (throwing `InvalidConfigurationException` on failure) and registers the contract and snapshot as singletons. The snapshot is read once and not reloaded.
-- `IServiceCollection.AddOptionsFrom<T>(Func<ConfigurationSnapshot, T>)`: exposes `T` as `IOptions<T>`, `IOptionsSnapshot<T>` and `IOptionsMonitor<T>` through a factory, so options can be immutable records.
+- `IServiceCollection.AddOptionsFrom<T>(Func<ConfigurationSnapshot, T>)`: exposes `T` as `IOptions<T>`, built once from the snapshot, so options can be immutable records. The snapshot never reloads, so `IOptionsSnapshot<T>` and `IOptionsMonitor<T>` of that `T` throw on resolve, unless the application registers its own.
 
 #### Leander.Configuration.Tooling
 - `MarkdownDocumentation.Write(descriptor, title)`: documentation grouped by the first key segment, with a summary table per group, a section per key, and the primitives described once and linked, with the primitive they derive from. Primitives with nothing to say, such as `String`, are left out.
