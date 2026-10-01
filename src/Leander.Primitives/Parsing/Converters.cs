@@ -90,7 +90,7 @@ public static class Converters
     public static IConverter<Guid> Guid { get; } = new GuidConverter();
 
     /// <summary>
-    /// An absolute <see cref="System.Uri"/>.
+    /// An absolute <see cref="System.Uri"/>, formatted as it was written (<see cref="System.Uri.OriginalString"/>).
     /// </summary>
     public static IConverter<Uri> Uri { get; } = new UriConverter();
 

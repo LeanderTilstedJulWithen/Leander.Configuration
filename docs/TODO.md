@@ -42,4 +42,4 @@ Planned after 1.0.0, not before.
 
 ## Later
 - [x] `IConfiguration` adapter: implement `IValueSource` directly (`GetSection(key).Value`, `GetChildren()`).
-- [ ] `Uri` formatting: trailing `/` from `AbsoluteUri`, if it matters.
+- [x] `Uri` formatting: `OriginalString` instead of `AbsoluteUri`, so `https://example.com` formats without a trailing `/`.

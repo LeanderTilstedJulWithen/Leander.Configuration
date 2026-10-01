@@ -221,9 +221,12 @@ public class ScalarConverterTests
     public void Uri_RejectsNonAbsoluteUris(string input) =>
         ConverterAssert.Rejects(Converters.Uri, input);
 
-    [Fact]
-    public void Uri_FormatsAsAbsoluteUri() =>
-        Assert.Equal("https://example.com/", Converters.Uri.Format(new Uri("https://example.com")));
+    [Theory]
+    [InlineData("https://example.com")]
+    [InlineData("https://example.com/")]
+    [InlineData("https://example.com/a b?q=1")]
+    public void Uri_FormatsAsWritten(string text) =>
+        Assert.Equal(text, Converters.Uri.Format(new Uri(text)));
 
     [Theory]
     [InlineData("00:00:30", 0, 0, 0, 30)]

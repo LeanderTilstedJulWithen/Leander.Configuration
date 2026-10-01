@@ -9,5 +9,6 @@ internal sealed class UriConverter : IConverter<Uri>
         return success;
     }
 
-    public string Format(Uri value) => value.AbsoluteUri;
+    // As written, so a default documents as it was declared: AbsoluteUri would add a trailing / to "https://example.com".
+    public string Format(Uri value) => value.OriginalString;
 }
