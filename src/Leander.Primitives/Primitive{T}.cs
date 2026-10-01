@@ -5,20 +5,33 @@ using Leander.Primitives.Validation;
 
 namespace Leander.Primitives;
 
-// A complete primitive: the name and converter are always present. Immutable, and the constructors never throw.
-// A derived primitive takes its base's converter, and its rules are added to the base's: the base's rules run first.
+/// <summary>
+/// A named kind of value of <typeparamref name="T"/>: a converter, then normalizers, then validators.
+/// </summary>
+/// <remarks>
+/// <para>The name and converter are always present. Immutable, and the constructors never throw.</para>
+/// <para>
+/// A derived primitive takes its base's converter, and its rules are added to the base's: the base's rules run first.
+/// </para>
+/// </remarks>
 // Not sealed, for ListPrimitive<T>. The hooks are private protected, so a subclass outside the library can't change how values are read.
 public class Primitive<T> : Primitive
 {
     private IReadOnlyList<INormalizer<T>>? _allNormalizers;
     private IReadOnlyList<IValidator<T>>? _allValidators;
 
+    /// <summary>
+    /// Creates a primitive that reads values with <paramref name="converter"/>.
+    /// </summary>
     public Primitive(string name, IConverter<T> converter)
         : base(name)
     {
         Converter = converter;
     }
 
+    /// <summary>
+    /// Derives a primitive from <paramref name="base"/>: it keeps the base's converter and rules, and adds its own.
+    /// </summary>
     public Primitive(string name, Primitive<T> @base)
         : base(name)
     {
@@ -26,16 +39,25 @@ public class Primitive<T> : Primitive
         Base = @base;
     }
 
+    /// <inheritdoc/>
     public override Type ValueType => typeof(T);
 
+    /// <inheritdoc/>
     public override Primitive<T>? Base { get; }
 
+    /// <summary>
+    /// Reads values from strings, and formats them, e.g. bounds in rule descriptions.
+    /// </summary>
     public IConverter<T> Converter { get; }
 
-    // Its own normalizers; a base's normalizers run before these.
+    /// <summary>
+    /// Its own normalizers. A base's normalizers run before these.
+    /// </summary>
     public IReadOnlyList<INormalizer<T>> Normalizers { get; init; } = [];
 
-    // Its own validators; a base's validators run before these.
+    /// <summary>
+    /// Its own validators. A base's validators run before these.
+    /// </summary>
     public IReadOnlyList<IValidator<T>> Validators { get; init; } = [];
 
     // Bounds are formatted with the converter, e.g. "must be less than or equal to 0xFF" for a Hex primitive.
@@ -52,9 +74,16 @@ public class Primitive<T> : Primitive
     private IReadOnlyList<IValidator<T>> AllValidators =>
         _allValidators ??= Base is null ? Validators : [.. Base.AllValidators, .. Validators];
 
-    // Parses, then accepts the parsed value (see TryAccept). On failure, value is default.
+    /// <summary>
+    /// Parses <paramref name="input"/> with the converter, then normalizes and validates the value.
+    /// On failure, <paramref name="value"/> is <see langword="default"/>.
+    /// </summary>
     public bool TryParse(string input, out T value) => TryParse(input, out value, null, redact: false);
 
+    /// <summary>
+    /// Parses <paramref name="input"/> with the converter, then normalizes and validates the value.
+    /// On failure, <paramref name="value"/> is <see langword="default"/> and <paramref name="errors"/> lists every failure.
+    /// </summary>
     public bool TryParse(string input, out T value, out IReadOnlyList<string> errors) =>
         TryParse(input, redact: false, out value, out errors);
 
@@ -67,9 +96,16 @@ public class Primitive<T> : Primitive
         return success;
     }
 
-    // Normalizes, then validates a value that is already a T, e.g. a default. On failure, result is default.
+    /// <summary>
+    /// Normalizes, then validates a value that is already a <typeparamref name="T"/>, e.g. a default.
+    /// On failure, <paramref name="result"/> is <see langword="default"/>.
+    /// </summary>
     public bool TryAccept(T value, out T result) => TryAccept(value, out result, null, redact: false);
 
+    /// <summary>
+    /// Normalizes, then validates a value that is already a <typeparamref name="T"/>, e.g. a default.
+    /// On failure, <paramref name="result"/> is <see langword="default"/> and <paramref name="errors"/> lists every failure.
+    /// </summary>
     public bool TryAccept(T value, out T result, out IReadOnlyList<string> errors) =>
         TryAccept(value, redact: false, out result, out errors);
 

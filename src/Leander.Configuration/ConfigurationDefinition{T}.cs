@@ -4,9 +4,20 @@ using Leander.Primitives.Internal;
 
 namespace Leander.Configuration;
 
-// Definitions are immutable: every builder method returns a new definition.
-// Builder methods never throw; problems are reported when the contract is built or the definition is read.
-// Rules live on the primitive, list rules on the list primitive. A definition only says where the value lives and its presence.
+/// <summary>
+/// A configuration value of <typeparamref name="T"/>. Create one with <see cref="ConfigurationDefinition.Define{T}"/>
+/// or <see cref="ConfigurationDefinition.Indexed{T}"/>.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Definitions are immutable: every builder method returns a new definition. Builder methods never throw;
+/// problems are reported when the contract is built or the definition is read.
+/// </para>
+/// <para>
+/// Rules live on the primitive, list rules on the list primitive.
+/// A definition only says where the value lives and whether it must be present.
+/// </para>
+/// </remarks>
 public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
 {
     private readonly Settings _settings;
@@ -16,29 +27,48 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
         _settings = settings;
     }
 
+    /// <inheritdoc/>
     public override string Key => _settings.Key;
 
+    /// <inheritdoc/>
     public override Type ValueType => typeof(T);
 
+    /// <inheritdoc/>
     public override string? Description => _settings.Description;
 
+    /// <inheritdoc/>
     public override bool HasDefault => _settings.HasDefault;
 
+    /// <inheritdoc/>
     public override bool IsOptional => _settings.IsOptional;
 
+    /// <inheritdoc/>
     public override bool IsSensitive => _settings.IsSensitive;
 
     internal ValueReader<T> Reader => _settings.Reader;
 
     internal static ConfigurationDefinition<T> Create(string key, ValueReader<T> reader) => new(new Settings(key, reader));
 
+    /// <summary>
+    /// Returns a copy with a description, for documentation.
+    /// </summary>
     public ConfigurationDefinition<T> Describe(string description) =>
         new(_settings with { Description = description });
 
+    /// <summary>
+    /// Returns a copy whose value is left out of diagnostics and documentation, e.g. a password.
+    /// </summary>
     public ConfigurationDefinition<T> Sensitive() =>
         new(_settings with { IsSensitive = true });
 
-    // Without a default, the value is required.
+    /// <summary>
+    /// Returns a copy that uses <paramref name="value"/> when the value is missing.
+    /// Without a default, the value is required.
+    /// </summary>
+    /// <remarks>
+    /// The default goes through the primitive's rules, like a value from the source.
+    /// It must not be <see langword="null"/>, and can't be combined with <c>Optional()</c>.
+    /// </remarks>
     public ConfigurationDefinition<T> Default(T value) =>
         new(_settings with { HasDefault = true, DefaultValue = value });
 

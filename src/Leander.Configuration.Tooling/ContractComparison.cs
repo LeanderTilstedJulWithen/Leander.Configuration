@@ -2,14 +2,24 @@ using Leander.Configuration.Descriptors;
 
 namespace Leander.Configuration.Tooling;
 
-// Compares two contract descriptors, e.g. the committed contract file against the current contract,
-// or two programs that share configuration. Differences are per key: a changed primitive is reported
-// on every key that uses it, so each key answers "do both sides agree on this key?" on its own.
-// Keys match case-insensitively, like IConfiguration reads them.
+/// <summary>
+/// Compares two contract descriptors, e.g. the committed contract file against the current contract,
+/// or two programs that share configuration.
+/// </summary>
+/// <remarks>
+/// Differences are per key: a changed primitive is reported on every key that uses it,
+/// so each key answers "do both sides agree on this key?" on its own.
+/// Keys match case-insensitively, like <c>IConfiguration</c> reads them.
+/// </remarks>
 public static class ContractComparison
 {
-    // Keys in the left contract's order, then the keys only the right contract has.
-    // Two programs sharing configuration care about Changed: the keys both read.
+    /// <summary>
+    /// Returns every difference between <paramref name="left"/> and <paramref name="right"/>:
+    /// keys in the left contract's order, then the keys only the right contract has.
+    /// </summary>
+    /// <remarks>
+    /// Two programs sharing configuration care about <see cref="DifferenceKind.Changed"/>: the keys both read.
+    /// </remarks>
     public static IReadOnlyList<ContractDifference> Compare(ContractDescriptor left, ContractDescriptor right)
     {
         var comparer = new Comparer(left, right);

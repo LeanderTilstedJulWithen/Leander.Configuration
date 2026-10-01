@@ -2,19 +2,30 @@ using Leander.Configuration.Internal;
 
 namespace Leander.Configuration;
 
+/// <summary>
+/// Collects configuration definitions and checks them into a <see cref="ConfigurationContract"/>.
+/// </summary>
 public sealed class ConfigurationContractBuilder
 {
     private readonly List<ConfigurationDefinition> _definitions = [];
 
+    /// <summary>
+    /// Adds a definition to the contract.
+    /// </summary>
     public ConfigurationContractBuilder Register(ConfigurationDefinition definition)
     {
         _definitions.Add(definition);
         return this;
     }
 
-    // Checks the definitions; primitives are complete, so nothing is resolved.
-    // Throws one exception listing every failure: duplicate keys, primitive name clashes,
-    // and invalid presence (a null default, or a default with Optional()).
+    /// <summary>
+    /// Checks the definitions and builds the contract.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// The definitions are invalid; lists every failure: duplicate keys, primitive name clashes,
+    /// and invalid presence (a null default, or a default with <c>Optional()</c>).
+    /// </exception>
+    // Primitives are complete, so nothing is resolved.
     public ConfigurationContract Build()
     {
         var checker = new ContractChecker();

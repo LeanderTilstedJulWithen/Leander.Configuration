@@ -4,10 +4,18 @@ using Leander.Primitives.Parsing.Internal;
 
 namespace Leander.Primitives;
 
-// A list read from one delimited string. Each item goes through the element primitive with all its rules,
-// then the list's own rules run on the list. Item errors name the item, counted from 0: "item 2: ...".
+/// <summary>
+/// A list read from one delimited string.
+/// </summary>
+/// <remarks>
+/// Each item goes through the element primitive with all its rules, then the list's own rules run on the list.
+/// Item errors name the item, counted from 0: "item 2: ...".
+/// </remarks>
 public sealed class ListPrimitive<T> : Primitive<IReadOnlyList<T>>, IListPrimitive
 {
+    /// <summary>
+    /// Creates a list primitive whose items are read by <paramref name="element"/>, split at <paramref name="delimiter"/>.
+    /// </summary>
     // The converter applies the element's rules too, so a plain primitive derived from this list still checks its items.
     public ListPrimitive(string name, Primitive<T> element, char delimiter = ',')
         : base(name, Converters.List(new PrimitiveConverter<T>(element), delimiter))
@@ -16,7 +24,9 @@ public sealed class ListPrimitive<T> : Primitive<IReadOnlyList<T>>, IListPrimiti
         Delimiter = delimiter;
     }
 
-    // Keeps the base's element and delimiter, and adds list rules.
+    /// <summary>
+    /// Derives a list primitive from <paramref name="base"/>, keeping its element and delimiter, to add list rules.
+    /// </summary>
     public ListPrimitive(string name, ListPrimitive<T> @base)
         : base(name, @base)
     {
@@ -24,8 +34,14 @@ public sealed class ListPrimitive<T> : Primitive<IReadOnlyList<T>>, IListPrimiti
         Delimiter = @base.Delimiter;
     }
 
+    /// <summary>
+    /// The primitive each item goes through.
+    /// </summary>
     public Primitive<T> Element { get; }
 
+    /// <summary>
+    /// The character the input is split at.
+    /// </summary>
     public char Delimiter { get; }
 
     Primitive IListPrimitive.Element => Element;

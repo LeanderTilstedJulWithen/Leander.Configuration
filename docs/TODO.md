@@ -9,7 +9,7 @@ Decided and set in motion. Pick up here, in this order.
 - [x] Descriptor and Markdown for list primitives: `PrimitiveDescriptor.Element` / `Delimiter`, `ValueForm` down to Scalar | Indexed, `ValueDescriptor` without `Delimiter`, `Element` and list rules; escape `<` and `>` in Markdown text. Then remove the "Status" notes in DESIGN.md.
 - [x] Samples, README and CHANGELOG for list primitives.
 - [x] Tests for Leander.Configuration.MicrosoftExtensions: `AsValueSource` (values, child names, sections), `AddConfigurationContract` (with and without `ReadOptions`, the exception on invalid configuration), and `AddOptionsFrom` (`IOptions<T>`, `IOptionsSnapshot<T>`, `IOptionsMonitor<T>`).
-- [ ] Decide on XML documentation comments (`///`) for the public API instead of `//` comments, so users get them in IntelliSense. If yes, write them before 1.0.0.
+- [x] XML documentation comments (`///`) for the public API instead of `//` comments, so users get them in IntelliSense. `GenerateDocumentationFile` in every src project, so a missing comment is a CS1591 warning.
 - [ ] Run both samples and check their output. Fix documentation drift, e.g. DESIGN.md (Sources) still says "`Leander.Configuration.Microsoft` will implement `IValueSource`", which is done as Leander.Configuration.MicrosoftExtensions.
 
 ## Tests

@@ -3,11 +3,19 @@ using Leander.Configuration.Descriptors;
 
 namespace Leander.Configuration.Tooling;
 
-// Renders a contract descriptor as Markdown. Definitions are grouped by their first key segment, and each group has
-// a summary table followed by a section per key. Primitives are described once, at the end, and linked from the keys
-// that use them. Primitives with nothing to say (no description, rules, base, element or values) are left out.
+/// <summary>
+/// Renders a contract descriptor as Markdown.
+/// </summary>
+/// <remarks>
+/// Definitions are grouped by their first key segment, and each group has a summary table followed by a section per key.
+/// Primitives are described once, at the end, and linked from the keys that use them.
+/// Primitives with nothing to say (no description, rules, base, element or values) are left out.
+/// </remarks>
 public static class MarkdownDocumentation
 {
+    /// <summary>
+    /// Writes the documentation for <paramref name="contract"/>, under a level-1 heading <paramref name="title"/>.
+    /// </summary>
     public static string Write(ContractDescriptor contract, string title = "Configuration")
     {
         var writer = new Writer(contract);

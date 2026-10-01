@@ -2,15 +2,23 @@ using System.Text;
 
 namespace Leander.Configuration;
 
+/// <summary>
+/// Thrown when a source doesn't satisfy a contract. The message lists every error.
+/// </summary>
 public sealed class InvalidConfigurationException : Exception
 {
+    /// <summary>
+    /// Creates the exception, with a message listing the errors in <paramref name="diagnostics"/>.
+    /// </summary>
     public InvalidConfigurationException(IReadOnlyList<ConfigurationDiagnostic> diagnostics)
         : base(FormatMessage(diagnostics))
     {
         Diagnostics = diagnostics;
     }
 
-    // All diagnostics, including warnings and traces. The message lists errors only.
+    /// <summary>
+    /// All diagnostics, including warnings and traces. The message lists errors only.
+    /// </summary>
     public IReadOnlyList<ConfigurationDiagnostic> Diagnostics { get; }
 
     private static string FormatMessage(IReadOnlyList<ConfigurationDiagnostic> diagnostics)

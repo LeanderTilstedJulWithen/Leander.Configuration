@@ -4,7 +4,10 @@ using Leander.Configuration.Internal;
 
 namespace Leander.Configuration;
 
-// The complete, checked set of configuration definitions of an application.
+/// <summary>
+/// The complete, checked set of configuration definitions of an application.
+/// Build one with <see cref="ConfigurationContractBuilder"/>.
+/// </summary>
 public sealed class ConfigurationContract
 {
     private readonly HashSet<ConfigurationDefinition> _definitionSet;
@@ -15,25 +18,52 @@ public sealed class ConfigurationContract
         _definitionSet = [.. definitions];
     }
 
+    /// <summary>
+    /// The definitions, in the order they were registered.
+    /// </summary>
     public IReadOnlyList<ConfigurationDefinition> Definitions { get; }
 
+    /// <summary>
+    /// Whether <paramref name="definition"/> is part of the contract.
+    /// </summary>
     public bool Contains(ConfigurationDefinition definition) => _definitionSet.Contains(definition);
 
-    // Reads every definition from the source. Throws one exception listing every error.
+    /// <summary>
+    /// Reads every definition from <paramref name="source"/>.
+    /// </summary>
+    /// <exception cref="InvalidConfigurationException">The source doesn't satisfy the contract; lists every error.</exception>
     public ConfigurationSnapshot Read(IValueSource source) => Read(source, ReadOptions.Default);
 
+    /// <summary>
+    /// Reads every definition from <paramref name="source"/>, with <paramref name="options"/>.
+    /// </summary>
+    /// <exception cref="InvalidConfigurationException">The source doesn't satisfy the contract; lists every error.</exception>
     public ConfigurationSnapshot Read(IValueSource source, ReadOptions options) =>
         TryRead(source, options, out var snapshot, out var diagnostics)
             ? snapshot
             : throw new InvalidConfigurationException(diagnostics);
 
-    // Reads every definition from the source. Returns false, and no snapshot, if there is any error.
+    /// <summary>
+    /// Reads every definition from <paramref name="source"/>.
+    /// Returns <see langword="false"/>, and no snapshot, if there is any error.
+    /// </summary>
+    /// <param name="source">The values to read.</param>
+    /// <param name="snapshot">The values, when the read succeeds.</param>
+    /// <param name="diagnostics">Every diagnostic, whether the read succeeds or not.</param>
     public bool TryRead(
         IValueSource source,
         [NotNullWhen(true)] out ConfigurationSnapshot? snapshot,
         out IReadOnlyList<ConfigurationDiagnostic> diagnostics) =>
         TryRead(source, ReadOptions.Default, out snapshot, out diagnostics);
 
+    /// <summary>
+    /// Reads every definition from <paramref name="source"/>, with <paramref name="options"/>.
+    /// Returns <see langword="false"/>, and no snapshot, if there is any error.
+    /// </summary>
+    /// <param name="source">The values to read.</param>
+    /// <param name="options">How to read.</param>
+    /// <param name="snapshot">The values, when the read succeeds.</param>
+    /// <param name="diagnostics">Every diagnostic, whether the read succeeds or not.</param>
     public bool TryRead(
         IValueSource source,
         ReadOptions options,
@@ -103,8 +133,11 @@ public sealed class ConfigurationContract
         }
     }
 
-    // A text-only description of every definition and the primitives they use,
-    // for documentation and contract files. Defaults of sensitive definitions are left out.
+    /// <summary>
+    /// Creates a text-only description of every definition and the primitives they use,
+    /// for documentation and contract files.
+    /// </summary>
+    /// <remarks>Defaults of sensitive definitions are left out.</remarks>
     public ContractDescriptor CreateDescriptor()
     {
         var context = new DescriptorContext();
