@@ -108,7 +108,7 @@ public class ContractDescriptorTests
         Assert.Equal(ValueForm.Indexed, value.Form);
         Assert.Equal("IReadOnlyList<Int32>", value.Type);
         Assert.Equal(new PrimitiveReference("IReadOnlyList<Int32>", "Ports"), value.Primitive);
-        Assert.Equal("80;443", value.Default);
+        Assert.Null(value.Default);
         Assert.Equal(["80", "443"], value.DefaultItems);
     }
 

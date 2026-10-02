@@ -184,13 +184,19 @@ public static class MarkdownDocumentation
 
         private static string PresenceDetail(ValueDescriptor value) => value.Presence switch
         {
-            ValuePresence.Default => value.Default is { } text ? $"default {Code(text)}" : "default (hidden)",
+            ValuePresence.Default => DefaultText(value) is { } text ? $"default {text}" : "default (hidden)",
             ValuePresence.Optional => "optional, missing is null",
             _ => "required",
         };
 
         private static string DefaultCell(ValueDescriptor value) =>
-            value.Default is { } text ? Code(text) : value.Presence == ValuePresence.Default ? "*hidden*" : "";
+            DefaultText(value) ?? (value.Presence == ValuePresence.Default ? "*hidden*" : "");
+
+        // An indexed default shows its items, one entry each in the source.
+        private static string? DefaultText(ValueDescriptor value) =>
+            value.DefaultItems is { } items ? items.Count == 0 ? "*empty*" : string.Join(", ", items.Select(Code))
+            : value.Default is { } text ? Code(text)
+            : null;
 
         private static string Code(string text) => text.Length switch
         {

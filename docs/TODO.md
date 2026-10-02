@@ -17,7 +17,7 @@ From REVIEW.md. In this order.
 
 ### Tooling
 - [x] Contract JSON owned by Tooling: an internal DTO is the only place that defines the format, with plain serializer options. Flat shape: `key`, `description`, `type`, `primitive` (name only; nullability shows in `presence`), `presence`, `default`, `form` (always), `sensitive` (only when true). `FormatVersion` stays 1 while pre-release.
-- [ ] Indexed defaults in `default` as a JSON array instead of a separate `defaultItems`.
+- [x] Indexed defaults in `default` as a JSON array instead of a separate `defaultItems`.
 - [ ] Public API by output, formats internal: `Documentation.WriteMarkdown`, `ConfigurationGenerator` (from `ExampleConfiguration`), a new name for `ContractFile` (it doesn't touch files) with `WriteJson` / `ReadJson`, and `ContractComparison` → `ContractDiff`.
 
 ### Leander.Configuration.MicrosoftExtensions

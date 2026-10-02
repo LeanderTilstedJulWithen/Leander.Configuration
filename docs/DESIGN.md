@@ -415,7 +415,7 @@ DefinitionDescriptor
 ValueDescriptor
   Type               display name without Nullable<>, e.g. "Int32", "IReadOnlyList<String>"
   Presence           Required | Default | Optional
-  Default            formatted with the primitive's converter; null when there is none or the definition is sensitive
+  Default            Scalar only: formatted with the primitive's converter; null when there is none or the definition is sensitive
   DefaultItems       Indexed only: each item of the default, formatted with the element's converter; null like Default
   Form               Scalar | Indexed
   Primitive          a PrimitiveReference (type, name) to a primitive in ContractDescriptor.Primitives;
@@ -484,7 +484,7 @@ A TCP port.
 
 ### Contract file
 
-The contract file is the descriptor as JSON, with a format version: `ContractFile.Write(descriptor)` and `ContractFile.Read(json)`. The format is owned by Tooling: private JSON types in `ContractFile` define it, so renaming or restructuring a descriptor never changes the file by accident. Definitions are flat (`key`, `description`, `type`, `primitive`, `presence`, `default`, `defaultItems`, `form`, `sensitive`). A primitive is named without its type where the type is implied: a value's primitive and a primitive's base. Defaults are left out: nulls, `sensitive` unless true, and empty rule lists. `Read` checks the format version first and throws `FormatException` for another one, because another version may have another shape. It throws `JsonException` for malformed JSON, a missing required property, or an unknown `presence` or `form`.
+The contract file is the descriptor as JSON, with a format version: `ContractFile.Write(descriptor)` and `ContractFile.Read(json)`. The format is owned by Tooling: private JSON types in `ContractFile` define it, so renaming or restructuring a descriptor never changes the file by accident. Definitions are flat (`key`, `description`, `type`, `primitive`, `presence`, `default`, `form`, `sensitive`). `default` is a string, or for an indexed value an array of its items. A primitive is named without its type where the type is implied: a value's primitive and a primitive's base. Defaults are left out: nulls, `sensitive` unless true, and empty rule lists. `Read` checks the format version first and throws `FormatException` for another one, because another version may have another shape. It throws `JsonException` for malformed JSON, a missing required property, or an unknown `presence` or `form`.
 
 - **It is descriptive.** It is never imported and run. Normalizers and validators are code, and JSON can't hold them. This follows from "code is the authoring format".
 - **Programs that share configuration share code**, i.e. a library with the primitives and definitions. Each program builds its own contract from the definitions it uses, which may be a subset.

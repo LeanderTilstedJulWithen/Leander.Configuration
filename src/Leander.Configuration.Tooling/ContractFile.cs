@@ -1,5 +1,6 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Leander.Configuration.Descriptors;
 
@@ -104,8 +105,8 @@ public static class ContractFile
             definition.Sensitive ?? false,
             new ValueDescriptor(definition.Type, ParsePresence(definition.Presence), ParseForm(definition.Form))
             {
-                Default = definition.Default,
-                DefaultItems = definition.DefaultItems,
+                Default = definition.Default is JsonValue value ? ToText(value) : null,
+                DefaultItems = definition.Default is JsonArray items ? [.. items.Select(ToText)] : null,
                 Primitive = definition.Primitive is { } name ? new PrimitiveReference(definition.Type, name) : null,
             });
 
@@ -129,8 +130,9 @@ public static class ContractFile
             Type = definition.Value.Type,
             Primitive = definition.Value.Primitive?.Name,
             Presence = FormatPresence(definition.Value.Presence),
-            Default = definition.Value.Default,
-            DefaultItems = definition.Value.DefaultItems,
+            Default = definition.Value.DefaultItems is { } items ? new JsonArray([.. items.Select(item => JsonValue.Create(item))])
+                : definition.Value.Default is { } text ? JsonValue.Create(text)
+                : null,
             Form = FormatForm(definition.Value.Form),
             Sensitive = definition.IsSensitive ? true : null,
         };
@@ -148,6 +150,11 @@ public static class ContractFile
             Validators = NullIfEmpty(primitive.Validators),
             Values = primitive.Values,
         };
+
+    private static string ToText(JsonNode? node) =>
+        node is JsonValue value && value.TryGetValue(out string? text)
+            ? text
+            : throw new JsonException($"A default must be a string or an array of strings, not '{node?.ToJsonString() ?? "null"}'.");
 
     // Properties are written in declaration order.
     private sealed class DefinitionJson
@@ -167,11 +174,9 @@ public static class ContractFile
         [JsonPropertyName("presence")]
         public required string Presence { get; init; }
 
+        // A string, or for an indexed value an array with an item per entry.
         [JsonPropertyName("default")]
-        public string? Default { get; init; }
-
-        [JsonPropertyName("defaultItems")]
-        public IReadOnlyList<string>? DefaultItems { get; init; }
+        public JsonNode? Default { get; init; }
 
         [JsonPropertyName("form")]
         public required string Form { get; init; }

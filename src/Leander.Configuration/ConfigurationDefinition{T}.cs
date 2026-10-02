@@ -99,13 +99,15 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
     {
         var descriptor = Reader.Describe(context);
         var showDefault = HasDefault && !context.IsSensitive;
+        var defaultItems = showDefault ? Reader.FormatItems(context, _settings.DefaultValue!) : null;
 
+        // An indexed default has items only: the source has no single entry to show.
         return descriptor with
         {
             Type = TypeNames.Get(Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T)),
             Presence = IsOptional ? ValuePresence.Optional : HasDefault ? ValuePresence.Default : ValuePresence.Required,
-            Default = showDefault ? Reader.Format(context, _settings.DefaultValue!) : null,
-            DefaultItems = showDefault ? Reader.FormatItems(context, _settings.DefaultValue!) : null,
+            Default = showDefault && defaultItems is null ? Reader.Format(context, _settings.DefaultValue!) : null,
+            DefaultItems = defaultItems,
         };
     }
 

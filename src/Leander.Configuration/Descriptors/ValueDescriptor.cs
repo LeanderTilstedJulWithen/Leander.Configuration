@@ -12,7 +12,8 @@ namespace Leander.Configuration.Descriptors;
 public sealed record ValueDescriptor(string Type, ValuePresence Presence, ValueForm Form)
 {
     /// <summary>
-    /// The default, formatted with the primitive's converter, as it would be written in the source.
+    /// For <see cref="ValueForm.Scalar"/> only: the default, formatted with the primitive's converter,
+    /// as it would be written in the source.
     /// <see langword="null"/> without a default, and when the definition is sensitive.
     /// </summary>
     public string? Default { get; init; }
