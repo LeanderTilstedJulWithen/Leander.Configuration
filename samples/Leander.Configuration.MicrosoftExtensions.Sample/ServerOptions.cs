@@ -9,7 +9,7 @@ public sealed record ServerOptions(
     string? CertificatePath)
 {
     // The snapshot is already validated, so reading values cannot fail.
-    public static ServerOptions From(ConfigurationSnapshot configuration) => new(
+    public static ServerOptions FromSnapshot(ConfigurationSnapshot configuration) => new(
         configuration.Get(ServerConfiguration.Host),
         configuration.Get(ServerConfiguration.Port),
         configuration.Get(ServerConfiguration.AllowedOrigins),

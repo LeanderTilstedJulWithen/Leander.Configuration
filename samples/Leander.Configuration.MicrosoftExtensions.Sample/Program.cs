@@ -35,7 +35,7 @@ try
 {
     builder.Services
         .AddConfigurationContract(contract, builder.Configuration, readOptions)
-        .AddOptionsFrom(ServerOptions.From);
+        .AddOptionsFrom(ServerOptions.FromSnapshot);
 }
 catch (InvalidConfigurationException exception)
 {
