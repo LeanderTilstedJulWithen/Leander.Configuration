@@ -78,7 +78,7 @@ where the explicit "scalar" tells that this is read as a scalar even though the 
 ### The JSON problem
 Formatting using json implies, that changing the name or structure of any descriptor silently breaks the formatting. This needs to either be explictly tested (like have a full contract-file (as string) to compare the export to). 
 
-Alternatively (recommended): The tooling owns the format. One way to do this: The tooling can have its own class ContractJsonExport (or similar name, JSON dto or whatever). Then the only way to change the format is to explicitly change this class. This also means we don't need explicit CamelCasing rules on JSONoptions, we can have a single file controlling the format.
+Alternatively (recommended): The tooling owns the format. One way to do this: The tooling can have its own class ContractJsonExport (or similar name, JSON dto or whatever). Then the only way to change the format is to explicitly change this class. This also means we don't need explicit CamelCasing rules on JSONoptions, we can have a single file controlling the format. The simpler the JSON parser options the simpler it is to reason about.
 
 ### Naming
 I believe ContractFile.Write should be ContractFile.WriteJson or ContractFile.Write(contract, options), so that we are explicit about the format, and we are open towards adding other formats later.
@@ -118,4 +118,37 @@ Nested Classes
 
 In addition we favor alphabetic order.
 
+## Leander.Configuration.MicrosoftExtensions
+
+### Rethink API
+The current extension methods forces: Immediate throw if contract is not satisfied. This goes against the typical way DI is setup. No errors should be thrown before build is called. I believe we need an options parameter: To customize setup. The options parameter can then be extended later to allow IOptionsMonitor support.
+
+Also we need to be careful about convention vs. rules. We decided upon SingleTon registration, but this might not suit every need.
+
+## README.md
+
+### Tightness
+The README file used to be tight and well-formulated, but it has changed a bit a long with added feature. Some formulations are a bit "clunky", like: "A primitive is always explicit and complete, with a name and a converter: sharing one is sharing a field." What does that even mean? 
+
+### Why
+Having a section justifiing the Library is great. Should it explicitely be named "Why" though? Is there a better name? Overall this section is good, but it could add a bit more information about the added features, but without a full walkthrough.
+
+### Leander.Primitives
+The intro is still spot on: "An `int` is not a port, and a `string` is not an e-mail address. A primitive gives the same underlying type its own rules, without a wrapper type:". This is great! I still don't like the formulation: "A primitive is always explicit and complete, with a name and a converter: sharing one is sharing a field.". The first example is simple and great. The list example is good. I think we could show the functionality in more depth. Perhaps we should have a new project under \samples which demonstrates the standalone functionality of Primitives.
+
+### Leander.Configuration
+This section is fine, but it should really mention Microsoft.Extensions, since we have a seperate project which handles that. Anything related to IConfiguraiont and Dependency injection could move to its own section.
+
+### Documentation and ContractFiles
+The section name should probably reflect the project name as the other sections do. This section currently mixes a lot of responsibility. It should just name what the project does.
+
+### Samples
+We should create a new section samples, which links to all samples. Including output samples from like documentation.md
+
+### Planned
+A small section for planned additions. Note: this should NOT be the same as TODO.md nor DESIGN.md (those are for internal use). These are things we have explicively planned, such as eventual coverage of IOptionsMonitor.
+
+## Samples
+### More samples
+I think we need more samples: I believe one sample pr. project + a sample of each generated output(configuration.contract.json, configuration.documentaion.md, and appsettings.json) + a sample which covers everything.
 

@@ -19,8 +19,7 @@ public static class ExampleConfiguration
     private static readonly JsonSerializerOptions Options = new()
     {
         WriteIndented = true,
-        // Placeholders stay readable: "<Port>", not "<Port>".
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,  // This allows placeholders like <Port> to be readable and not escaped.
         NewLine = "\n",
     };
 
