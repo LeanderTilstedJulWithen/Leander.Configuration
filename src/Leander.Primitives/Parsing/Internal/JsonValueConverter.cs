@@ -1,10 +1,13 @@
 using System.Text.Json;
+using Leander.Primitives.Internal;
 
 namespace Leander.Primitives.Parsing.Internal;
 
 internal sealed class JsonValueConverter<T>(JsonSerializerOptions? options) : IConverter<T>
 {
     private readonly JsonSerializerOptions? _options = options;
+
+    public string Description => $"{TypeNames.Get(typeof(T))} as JSON.";
 
     public bool TryParse(string input, out T result)
     {

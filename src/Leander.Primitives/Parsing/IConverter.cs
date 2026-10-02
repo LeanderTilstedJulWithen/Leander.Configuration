@@ -5,4 +5,9 @@ namespace Leander.Primitives.Parsing;
 /// </summary>
 public interface IConverter<T> : IParser<T>, IFormatter<T>
 {
+    /// <summary>
+    /// What text the converter reads and writes, in one sentence for the documentation, e.g. "A 32-bit integer.";
+    /// <see langword="null"/> when the type says enough.
+    /// </summary>
+    public string? Description => null;
 }

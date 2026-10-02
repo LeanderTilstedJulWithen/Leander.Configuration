@@ -4,6 +4,10 @@ internal sealed class EnumConverter<TEnum>(bool isFlags) : IConverter<TEnum> whe
 {
     private readonly bool _isFlags = isFlags;
 
+    public string Description => _isFlags
+        ? "One or more of the names, separated by commas, or a number, ignoring case."
+        : "One of the names, or its number, ignoring case.";
+
     public bool TryParse(string input, out TEnum result)
     {
         // Enum.TryParse ORs comma-separated names together, which only makes sense for flags.

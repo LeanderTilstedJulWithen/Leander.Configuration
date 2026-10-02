@@ -11,6 +11,25 @@ internal sealed class DictionaryConverter<TKey, TValue>(
     private readonly char _entryDelimiter = entryDelimiter;
     private readonly char _keyValueDelimiter = keyValueDelimiter;
 
+    public string Description
+    {
+        get
+        {
+            var description = $"Entries separated by '{_entryDelimiter}', each a key and a value separated by '{_keyValueDelimiter}'.";
+            if (_keyConverter.Description is { } key)
+            {
+                description += $" Each key: {key}";
+            }
+
+            if (_valueConverter.Description is { } value)
+            {
+                description += $" Each value: {value}";
+            }
+
+            return description;
+        }
+    }
+
     public bool TryParse(string input, out IReadOnlyDictionary<TKey, TValue> result)
     {
         var dictionary = new Dictionary<TKey, TValue>();

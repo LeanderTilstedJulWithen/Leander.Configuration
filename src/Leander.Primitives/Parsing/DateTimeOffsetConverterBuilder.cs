@@ -9,6 +9,7 @@ namespace Leander.Primitives.Parsing;
 public sealed class DateTimeOffsetConverterBuilder
 {
     private readonly List<string> _formats = [];
+    private string? _description;
     private DateTimeStyles _styles = DateTimeStyles.None;
 
     /// <summary>
@@ -17,6 +18,15 @@ public sealed class DateTimeOffsetConverterBuilder
     public DateTimeOffsetConverterBuilder AddFormat(string format)
     {
         _formats.Add(format);
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the converter's description, instead of the one generated from the formats and styles.
+    /// </summary>
+    public DateTimeOffsetConverterBuilder WithDescription(string description)
+    {
+        _description = description;
         return this;
     }
 
@@ -32,5 +42,12 @@ public sealed class DateTimeOffsetConverterBuilder
     /// <summary>
     /// Builds the converter. Add at least one format first.
     /// </summary>
-    public IConverter<DateTimeOffset> Build() => new DateTimeOffsetFormatConverter(_formats.ToArray(), _styles);
+    public IConverter<DateTimeOffset> Build()
+    {
+        var formats = _formats.ToArray();
+        return new DateTimeOffsetFormatConverter(
+            formats,
+            _styles,
+            _description ?? FormatDescriptions.DateTime(formats, _styles));
+    }
 }

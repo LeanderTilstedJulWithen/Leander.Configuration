@@ -4,6 +4,8 @@ namespace Leander.Primitives.Parsing.Internal;
 
 internal sealed class HexInt32Converter : IConverter<int>
 {
+    public string Description => "A 32-bit integer in hexadecimal, with or without 0x.";
+
     public bool TryParse(string input, out int result)
     {
         var digits = input.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? input[2..] : input;

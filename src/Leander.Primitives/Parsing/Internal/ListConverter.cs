@@ -5,6 +5,10 @@ internal sealed class ListConverter<T>(IConverter<T> elementConverter, char deli
     private readonly IConverter<T> _elementConverter = elementConverter;
     private readonly char _delimiter = delimiter;
 
+    public string Description => _elementConverter.Description is { } element
+        ? $"A list separated by '{_delimiter}'. Each item: {element}"
+        : $"A list separated by '{_delimiter}'.";
+
     public bool TryParse(string input, out IReadOnlyList<T> result)
     {
         var list = new List<T>();

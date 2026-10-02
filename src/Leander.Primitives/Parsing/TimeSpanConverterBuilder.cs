@@ -9,6 +9,7 @@ namespace Leander.Primitives.Parsing;
 public sealed class TimeSpanConverterBuilder
 {
     private readonly List<string> _formats = [];
+    private string? _description;
     private TimeSpanStyles _styles = TimeSpanStyles.None;
 
     /// <summary>
@@ -17,6 +18,15 @@ public sealed class TimeSpanConverterBuilder
     public TimeSpanConverterBuilder AddFormat(string format)
     {
         _formats.Add(format);
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the converter's description, instead of the one generated from the formats and styles.
+    /// </summary>
+    public TimeSpanConverterBuilder WithDescription(string description)
+    {
+        _description = description;
         return this;
     }
 
@@ -32,5 +42,9 @@ public sealed class TimeSpanConverterBuilder
     /// <summary>
     /// Builds the converter. Add at least one format first.
     /// </summary>
-    public IConverter<TimeSpan> Build() => new TimeSpanFormatConverter(_formats.ToArray(), _styles);
+    public IConverter<TimeSpan> Build()
+    {
+        var formats = _formats.ToArray();
+        return new TimeSpanFormatConverter(formats, _styles, _description ?? FormatDescriptions.TimeSpan(formats, _styles));
+    }
 }

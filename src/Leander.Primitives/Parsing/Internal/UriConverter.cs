@@ -2,6 +2,8 @@ namespace Leander.Primitives.Parsing.Internal;
 
 internal sealed class UriConverter : IConverter<Uri>
 {
+    public string Description => "An absolute URI, e.g. https://example.com.";
+
     public bool TryParse(string input, out Uri result)
     {
         var success = Uri.TryCreate(input, UriKind.Absolute, out var uri);

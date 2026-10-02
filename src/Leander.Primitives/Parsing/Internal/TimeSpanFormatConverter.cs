@@ -2,10 +2,13 @@ using System.Globalization;
 
 namespace Leander.Primitives.Parsing.Internal;
 
-internal sealed class TimeSpanFormatConverter(string[] formats, TimeSpanStyles styles) : IConverter<TimeSpan>
+internal sealed class TimeSpanFormatConverter(string[] formats, TimeSpanStyles styles, string description) : IConverter<TimeSpan>
 {
+    private readonly string _description = description;
     private readonly string[] _formats = formats;
     private readonly TimeSpanStyles _styles = styles;
+
+    public string Description => _description;
 
     public bool TryParse(string input, out TimeSpan result) =>
         TimeSpan.TryParseExact(input, _formats, CultureInfo.InvariantCulture, _styles, out result);

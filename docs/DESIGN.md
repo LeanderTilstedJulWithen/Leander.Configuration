@@ -146,6 +146,27 @@ The library supplies converters in `Converters`, and primitives for the same typ
 - **Enums are explicit.** `Primitive.Enum<T>()` and `Converters.Enum<T>()` are constrained to `where T : struct, Enum`, so no reflection is needed. `Primitive.Enum<T>()` is named after the enum type and gives the same instance on every call (a static field per `T`), so two keys using it don't clash.
 - **`Primitives` is not a type name.** A type `Primitives` inside the namespace `Leander.Primitives` would break name lookup for consumers, like `Configuration` would (see Configuration definitions). Hence `Primitive.Int32`.
 
+### Converter descriptions
+
+A converter says in one sentence what text it reads, for the documentation. Rules say what a value must be; the converter says how it is written:
+
+```csharp
+public interface IConverter<T> : IParser<T>, IFormatter<T>
+{
+    string? Description => null;    // e.g. "A hexadecimal integer, with or without 0x; written with 0x."
+}
+```
+
+- **On `IConverter<T>`**, because that is what a primitive holds, and the sentence covers both directions: what is accepted and how it is written.
+- **Optional.** Sometimes the type says enough, e.g. a custom converter for an application type. A default interface member keeps custom converters short. Unlike rules, where a missing description would hide a requirement.
+- **A plain string**, not `IFormattableText<T>`. A converter knows its own format; rule texts need formatting only because a rule doesn't know the converter.
+- **Written for the reader of the configuration**, who knows a little about types but not .NET: "A 32-bit integer.", not "parsed with the invariant culture". Where the culture matters, say what it means: "A decimal number, with . as the decimal separator."
+- **Plain text**, like rule descriptions: no Markdown, because it's also read in IntelliSense and other renderers.
+- **Ready-made converters have one**, short: `Int32` "A 32-bit integer.", `Int32Hex` "A 32-bit integer in hexadecimal, with or without 0x; written with 0x.", `Guid` "A GUID, e.g. 0f8fad5b-d9cb-469f-a165-70867728950e."
+- **Builders generate it from their formats and styles**, e.g. "A date and time as yyyy-MM-ddTHH:mm:ssK or yyyy-MM-dd; without an offset, UTC." Standard formats, a single letter, are shown as their pattern: `TimeSpan` reads "A duration as [-][d.]hh:mm:ss[.fffffff], e.g. 00:00:30." Durations get an example, formatted from 30 seconds; dates don't, because a local date's offset depends on the machine. `WithDescription(...)` replaces the generated text.
+- **Composite converters compose.** `Converters.List` reads "A list separated by ','. Each item: {element}", and `Converters.Dictionary` adds "Each key: …" and "Each value: …"; without an element description, only the separator part. Inside a list primitive the element converter is the element primitive, whose description is its display name: "A list separated by ','. Each item: Uri." The element's own format is on the element, which the documentation links to. An enum reads "One of the names, or its number, ignoring case." (the names are in `Values`), and `Json<T>` reads "{Type} as JSON."
+- **A derived primitive takes the base's converter**, so its description is on the base, like the base's rules.
+
 ### List primitives
 
 A list is a kind of value too: "a comma-separated list of URIs, at least one" says what a value is, not where it lives. List rules and the delimited format belong to the primitive:
@@ -429,6 +450,7 @@ PrimitiveDescriptor
   Element            a PrimitiveReference for a list primitive; null otherwise
   Delimiter          list primitives only
   Description
+  Converter          the converter's description; null when there is none or for a derived primitive (it's on the base)
   Normalizers        descriptions of its own rules; the base's rules are on the base
   Validators
   Values             the names of an enum type; null for other types
@@ -471,6 +493,7 @@ Where operational alerts are sent.
 
 - **Type:** [String (Email)](#string-email): An e-mail address.
 - **Presence:** required
+- **Format:** Any text.
 - **Normalized:** trim whitespace
 - **Validated:** must contain @
 
@@ -480,17 +503,18 @@ Where operational alerts are sent.
 
 An e-mail address.
 
+- **Format:** Any text.
 - **Normalized:** trim whitespace
 - **Validated:** must contain @
 - **Used by:** [`Admin:Email`](#adminemail), [`Admin:BackupEmail`](#adminbackupemail)
 ```
 
 - **Headings and type names use the display name**, `Int32 (Port)`, like diagnostics do.
-- **A key shows every rule that applies**, so it reads on its own: the primitive's description on the type line (`Int32 (Port): A TCP port.`), the delimiter (for a scalar list), the items with the element's rules nested, the values of an enum, and the normalizers and validators of the primitive and its bases, the bases' first. Some of this repeats the primitive's section, which the type still links to.
+- **A key shows every rule that applies**, so it reads on its own: the primitive's description on the type line (`Int32 (Port): A TCP port.`), the converter's description as **Format**, taken from the base for a derived primitive, the delimiter (for a scalar list), the items with the element's rules nested, the values of an enum, and the normalizers and validators of the primitive and its bases, the bases' first. Some of this repeats the primitive's section, which the type still links to.
 - **Folding:** a primitive used once, by one key or as the base or element of one primitive, has no section: everything about it is already shown where it's used. A primitive used two or more times has a section, which also shows every rule that applies.
 - **Used by** links the keys and listed primitives that use a listed primitive, looking through folded primitives to their users. **Derived primitives** links the listed primitives derived from it, and a derived primitive's section links back with **Derived from**. A folded base isn't named: its rules are already in the section.
 - **Angle brackets are escaped** in text (`IReadOnlyList\<Uri\>`), or GitHub reads `<Uri>` as an HTML tag. The example above leaves that out for readability.
-- **Primitives with nothing to say** (no description, rules, base, element or values), such as `Primitive.String`, are never listed or linked. The key shows only the type.
+- **Primitives with nothing to say** (no description, converter description, rules, base, element or values) are never listed or linked. The key shows only the type. Ready-made primitives always have a converter description, so a ready-made primitive used by several keys is listed like any other.
 - **Sensitive definitions** get a **Sensitive** line, and a default shows as *hidden*.
 - Lines end in `\n` on every platform, so the committed file doesn't change with the machine that wrote it.
 
@@ -515,7 +539,7 @@ Admin:Contact: added
 ```
 
 - **One method for both use cases.** Every difference has a kind: `Added` (only in the right contract), `Removed` (only in the left) or `Changed`. Drift is any difference at all. Two programs sharing configuration care about `Changed`, the keys both read.
-- **A changed key has one difference per aspect**: key spelling, type, presence, default, form, sensitive, description, primitive. The aspect lets a caller filter, e.g. leave out descriptions.
+- **A changed key has one difference per aspect**: key spelling, type, presence, default, form, sensitive, description, primitive. A primitive's converter description is an aspect too: a changed format changes what operators may write. The aspect lets a caller filter, e.g. leave out descriptions.
 - **Primitives are compared on every key that uses them**, down through their bases and elements. The same primitive change shows up on each key, so every key answers "do both sides agree on this key?" on its own. When the keys refer to different primitives, only the reference is reported.
 - **Keys match case-insensitively**, like `IConfiguration` reads them. A difference in spelling is its own aspect.
 - **An indexed default is compared by its items.**
@@ -552,7 +576,6 @@ Admin:Contact: added
 
 - **Replacing the converter** in a derived primitive, e.g. Email with a different parser. Not allowed for now.
 - **Validators organisation.** One `Validators` class, or one class per type (`StringValidation`, …).
-- **Converter descriptions.** Validators and normalizers have a `Description`, but converters don't. Documentation needs one for named converters like "Hex" and custom date formats. `PrimitiveDescriptor` gets a `Converter` property once they do.
 - **Type names in contract files** are short (`Int32`, `Verbosity`). Two application types with the same name in different namespaces can't be told apart.
 - **Defaults.** Typed vs string defaults.
 - **Collections.** Dictionaries.
