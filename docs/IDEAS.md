@@ -183,6 +183,130 @@ public interface IFormattableText<out T>
 - `ToString()` can't be required by an interface. The library's own texts override it with an invariant formatter, for debugging only.
 - Verdict: accepted and implemented, see DESIGN.md (Primitives). Still open: telling bounds from the checked value for redaction, the list item index as structure instead of the `item 2:` prefix, and localization.
 
+### Parameterized primitives
+
+Status: out of scope for now (2026-10-02). Interesting, but it breaks too much: see Scope at the end. Kept for later, with the points that were leaning one way marked **Leaning**.
+
+#### The problem
+
+The documentation shows it best. Every list needs its own named primitive (`IReadOnlyList<Uri> (Origins)`, `IReadOnlyList<String> (Features)`), although they are the same thing with a different item. Every bound needs its own named primitive too (`Int32 (Port)`, `Int32 (ConnectionLimit)`), although they are the same rule with different numbers. A name is required because identity is the instance, and two instances with the same name clash in a contract. That is also why DESIGN.md (List primitives) forbids a shortcut like `Primitive.List(Primitive.String)`.
+
+What is missing:
+
+- **Generic primitives**: `List<T>`, where `T` is any primitive. `NonEmptyList<T>` is derived from `List<T>` and adds a rule.
+- **Parameterized primitives**: `Range<T>(min, max)` instead of a named primitive per pair of bounds.
+
+#### One concept: a primitive family
+
+Both are the same thing: **a primitive with parameters**. A parameter is either a primitive (the `T` of `List<T>`) or a value (`min`, `max`, the delimiter). `ListPrimitive<T>` is already halfway there: it takes an element primitive and a delimiter. What it lacks is that the parameters are part of its identity.
+
+- **A family** has a name, a description, and a factory from arguments to a primitive. `List`, `NonEmptyList` and `Range` are families. A primitive made by one is an **instance**.
+- **Identity is family + arguments.** An instance is named after them: `List<Uri>`, `Range<Int32>(1, 65535)`. The same arguments give the same primitive, so two keys can both write `Primitive.List(Primitive.Uri)` and nothing clashes. Instances are cached per arguments, or compared by them.
+- **Value arguments are formatted with the primitive they belong to**, like rule bounds: `Range<Int32 (Hex)>(0x1, 0xFF)`. A delimiter is formatted as itself. A default argument is left out of the name: `List<Uri>`, but `List<Uri>(';')`.
+- **Named primitives stay.** A family says what is valid; a name says what the value *is*. "A TCP port" means more than "an integer from 1 to 65535", so they compose:
+
+```csharp
+public static readonly Primitive<int> Port = new("Port", Primitive.Range(Primitive.Int32, 1, 65535))
+{
+    Description = "A TCP port.",
+};
+```
+
+  A key without a domain meaning uses the instance directly, e.g. `MaxConnections` with `Primitive.AtLeast(Primitive.Int32, 1)`. Most single-use named primitives would go away, and those that remain mean something.
+
+**Leaning:**
+
+- **The family is a non-generic object.** C# has no generic fields, so a family over a primitive parameter is a generic method, e.g. `Primitive.List<T>(Primitive<T> item, char delimiter = ',')`. For `List<Uri>` and `List<String>` to be recognised as the same family, the family itself must be one non-generic object that the method's instances refer to.
+- **Family texts are written by the family's author**, with the parameter names: "A value from min to max." The rules of an instance stay concrete ("must be between 1 and 65535"), so error messages don't change. The alternative is rules built from parameter objects that format as their name in documentation and as their value when checking. It's more automatic, but it puts a second mode into every rule.
+- **The delimiter is an argument of `List`**, defaulting to `,`. Reading a list as indexed keys (`Key:0`, `Key:1`) is the key's choice, a convention of `Indexed`, not part of the primitive. An indexed key ignores the delimiter, as today.
+
+#### Documentation
+
+Families are documented once, and instances need no section of their own: the type name is the arguments, and each part links to its section.
+
+```markdown
+| Key | Type | Presence | Default |
+|-----|------|----------|---------|
+| `Server:Port` | [Int32 (Port)](#int32-port) | default | `8080` |
+| `Server:MaxConnections` | [AtLeast](#atleastt-min)<[Int32](#int32)>(1) | optional |  |
+| `Server:AllowedOrigins` | [NonEmptyList](#nonemptylistt)<[Uri](#uri)> | required |  |
+
+### Int32 (Port)
+
+A TCP port.
+
+- **Derived from:** [Range](#ranget-min-max)<[Int32](#int32)>(1, 65535)
+
+### NonEmptyList<T>
+
+A list with at least one item.
+
+- **Derived from:** [List<T>](#listt-delimiter)
+- **Used by:** `Server:AllowedOrigins` (Uri)
+
+### Range<T>(min, max)
+
+A value from min to max.
+
+- **Used by:** [Int32 (Port)](#int32-port) (Int32, 1, 65535)
+```
+
+Contract comparison gets better too: `Range<Int32>(1, 65535)` becoming `Range<Int32>(1, 1024)` is an argument change, not "validators changed".
+
+#### Open questions
+
+- **Families deriving from families.** `NonEmptyList<T>` derives from `List<T>` at the family level, so the documentation can say so. The instance `NonEmptyList<Uri>` derives from `List<Uri>`. Does the family declare its base family, or is it inferred from what the factory returns?
+- **Argument equality.** Primitives compare by identity (or family + arguments, recursively). Values could compare by `Equals`, or by their formatted text, which is what the contract file sees anyway. Formatted text is simpler and matches the documentation, but two values that format alike would be the same instance.
+- **Which families the library supplies.** `List`, `NonEmptyList`, `Range`, `AtLeast`, `AtMost`, `MaxLength`, … are candidates. This overlaps with `Validators`: is `Primitive.Range(...)` just `Validators.InRange` with an identity?
+- **User-defined families.** Do applications define their own families, or only use the library's? Defining one needs a factory, parameter names and a description, which is more API than a primitive.
+- **Descriptor and contract file.** `ContractDescriptor` gets families, and a `PrimitiveReference` becomes family + arguments, recursively. The JSON format changes (still `FormatVersion` 1 while pre-release).
+- **`ListPrimitive<T>`.** Does it become the `List` family's instance type, and does `new ListPrimitive<T>(name, …)` stay as a way to name a list?
+
+#### For and against
+
+For:
+- Rules become reusable with different values, without inventing a name for each.
+- Lists of any item come for free, and `Primitive.List(...)` stops being a clash.
+- The documentation shows the structure: what is a list, what is bounded, by what.
+- Comparing contracts reports arguments, not rule texts.
+
+Against:
+- It changes identity, the core of the primitive model: "sharing is a C# field" no longer holds for instances.
+- It adds a concept (family, instance, arguments) that every reader of the documentation and every author of a family has to learn.
+- The strongest gain is in the documentation. At runtime, a named primitive with `Validators.InRange(1, 65535)` already does the job.
+- It's a breaking change, so it has to happen before 1.0.0 or wait for 2.0.
+
+A smaller first step would be identity by arguments for `ListPrimitive<T>` only (`List<Uri>`, no name needed), without user-defined families. It tests the idea where the pain is largest.
+
+#### Scope: a type system of our own
+
+This is where the idea stops. A primitive is a refinement type (see Framing): a base type plus a predicate. Deriving fits that: a derived primitive is a subset of its base and adds no behaviour. Families go further:
+
+- **Type constructors**: `List<T>` takes a primitive and returns one.
+- **Values in types**: `Range(1, 65535)` puts numbers into an identity.
+- **Structural identity**: same family and arguments, same primitive.
+
+The next questions are already waiting: is `NonEmptyList<Port>` a `List<Int32>`? Is `Range(1, 10)` a subset of `Range(1, 100)`? Can families take families? Those are type-system questions. Answering them builds a small type system next to C#'s, and C#'s will always be the better one. It's the same reason "A primitive is a class" stopped short of being a feature.
+
+#### Alternative: families are C# methods
+
+C# already has parameters, reuse and generics: methods. A family is a helper that returns a primitive:
+
+```csharp
+public static Primitive<int> Range(Primitive<int> @base, int min, int max) =>
+    new($"Range({min}, {max})", @base) { Validators = [Validators.InRange(min, max)] };
+```
+
+No new concept, and it follows "conventions are not rules": habits live in helpers. Only one thing gets in the way: two calls with the same arguments give two instances with the same name, which the contract builder rejects (and why DESIGN.md forbids `Primitive.List(...)`).
+
+The minimal change is to **relax the name clash**: two primitives with the same type and name are the same primitive if their descriptions are equal (base, element, delimiter, format, rules, values). Only primitives that really differ clash. Then:
+
+- `Range`, `NonEmptyList` and `Primitive.List(item)` are plain methods, in the library or the application.
+- The documentation shows instances, e.g. `Int32 (Range(1, 65535))`, derived from Int32 with its rule. There is no family section with symbolic texts: that part was only for documentation anyway.
+- Identity stays the instance, except that equal descriptions are allowed to share a name.
+
+Open: whether comparing descriptions is the right equality (two different validators with the same text would merge), and whether the descriptor should then list such a primitive once.
+
 ## Configuration
 
 ### Constructors for configuration definitions
