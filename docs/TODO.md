@@ -25,7 +25,7 @@ From REVIEW.md. In this order.
 
 ### Markdown documentation
 - [x] Rules shown on the key that uses them, including element and list rules.
-- [ ] Folding: a primitive used by one entity is folded into it; one used by several gets its own entry, with "Used by" links to keys and derived primitives.
+- [x] Folding: a primitive used by one entity is folded into it; one used by several gets its own entry, with "Used by" links to keys and derived primitives.
 - [ ] Converters describe how they parse, in a simple sentence (e.g. "An integer between -2,147,483,648 and 2,147,483,647, parsed with the invariant culture."). Design first: this is in Leander.Primitives.
 
 ### Samples

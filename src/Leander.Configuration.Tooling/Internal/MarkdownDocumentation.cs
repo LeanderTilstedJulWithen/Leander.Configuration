@@ -4,8 +4,9 @@ using Leander.Configuration.Descriptors;
 namespace Leander.Configuration.Tooling.Internal;
 
 // Documentation as Markdown. Definitions are grouped by their first key segment, and each group has a summary table
-// followed by a section per key. Primitives are described once, at the end, and linked from the keys that use them.
-// Primitives with nothing to say (no description, rules, base, element or values) are left out.
+// followed by a section per key, with every rule that applies. A primitive used by two or more keys or primitives
+// gets its own section at the end, linked from its users. One used once is folded into its user. Primitives with
+// nothing to say (no description, rules, base, element or values) are never listed.
 internal static class MarkdownDocumentation
 {
     public static string Write(ContractDescriptor contract, string title)
@@ -18,8 +19,9 @@ internal static class MarkdownDocumentation
     private sealed class Writer(ContractDescriptor contract)
     {
         private readonly ContractDescriptor _contract = contract;
-        private readonly List<PrimitiveDescriptor> _listed = [.. contract.Primitives.Where(IsWorthListing)];
+        private readonly HashSet<PrimitiveReference> _listed = Listed(contract);
         private readonly Dictionary<PrimitiveReference, PrimitiveDescriptor> _primitives = Index(contract);
+        private readonly Dictionary<PrimitiveReference, Usage> _usages = Usages(contract);
         private readonly StringBuilder _text = new();
 
         public override string ToString() => _text.ToString();
@@ -55,7 +57,7 @@ internal static class MarkdownDocumentation
                 Line("## Primitives");
                 Line();
 
-                foreach (var primitive in _listed)
+                foreach (var primitive in _contract.Primitives.Where(IsListed))
                 {
                     WritePrimitive(primitive);
                 }
@@ -109,41 +111,63 @@ internal static class MarkdownDocumentation
                 Line();
             }
 
-            if (primitive.Base is { } @base)
+            // A folded base has its rules here already, so only a listed one is named.
+            if (primitive.Base is { } @base && IsListed(@base))
             {
                 Line($"- **Derived from:** {PrimitiveText(@base)}");
             }
 
-            if (primitive.Element is { } element)
+            WriteRules(primitive, "", showDelimiter: true);
+
+            var reference = Reference(primitive);
+            var usage = _usages.GetValueOrDefault(reference) ?? new Usage([], []);
+            var derived = usage.Primitives.Where(user => user.Base == reference && IsListed(user)).ToList();
+            var usedBy = UsedBy(primitive).Distinct().ToList();
+
+            if (usedBy.Count > 0)
             {
-                Line($"- **Element:** {PrimitiveText(element)}");
+                Line($"- **Used by:** {string.Join(", ", usedBy)}");
             }
 
-            if (primitive.Delimiter is { } delimiter)
+            if (derived.Count > 0)
             {
-                Line($"- **Delimiter:** {Code(delimiter.ToString())}");
+                Line($"- **Derived primitives:** {string.Join(", ", derived.Select(PrimitiveLink))}");
             }
 
-            if (primitive.Values is { } values)
+            Line();
+        }
+
+        // The keys and listed primitives that use a primitive, looking through folded primitives to their users.
+        // Listed derived primitives are left out: they have their own line.
+        private IEnumerable<string> UsedBy(PrimitiveDescriptor primitive)
+        {
+            var reference = Reference(primitive);
+            var usage = _usages.GetValueOrDefault(reference) ?? new Usage([], []);
+
+            foreach (var definition in usage.Keys)
             {
-                Line($"- **Values:** {string.Join(", ", values.Select(Code))}");
+                yield return $"[{Code(definition.Key)}](#{Anchor(definition.Key)})";
             }
 
-            if (primitive.Normalizers.Count > 0)
+            foreach (var user in usage.Primitives)
             {
-                Line($"- **Normalized:** {string.Join("; ", primitive.Normalizers)}");
-            }
-
-            if (primitive.Validators.Count > 0)
-            {
-                Line($"- **Validated:** {string.Join("; ", primitive.Validators)}");
-            }
-
-            if (HasDetails(primitive))
-            {
-                Line();
+                if (!IsListed(user))
+                {
+                    foreach (var link in UsedBy(user))
+                    {
+                        yield return link;
+                    }
+                }
+                else if (user.Base != reference)
+                {
+                    yield return PrimitiveLink(user);
+                }
             }
         }
+
+        private bool IsListed(PrimitiveDescriptor primitive) => _listed.Contains(Reference(primitive));
+
+        private bool IsListed(PrimitiveReference reference) => _listed.Contains(reference);
 
         // A list's delimiter and items, with the item's rules nested, then the rules of the primitive and its bases,
         // the bases' first, in the order they run.
@@ -206,10 +230,10 @@ internal static class MarkdownDocumentation
         private string PrimitiveText(PrimitiveReference reference)
         {
             var heading = Heading(reference.Type, reference.Name);
-            return _listed.Any(primitive => primitive.Type == reference.Type && primitive.Name == reference.Name)
-                ? $"[{Text(heading)}](#{Anchor(heading)})"
-                : Text(heading);
+            return IsListed(reference) ? $"[{Text(heading)}](#{Anchor(heading)})" : Text(heading);
         }
+
+        private string PrimitiveLink(PrimitiveDescriptor primitive) => PrimitiveText(Reference(primitive));
 
         private void Line(string text = "") => _text.Append(text).Append('\n');
 
@@ -223,6 +247,63 @@ internal static class MarkdownDocumentation
             }
 
             return primitives;
+        }
+
+        // Worth its own section: something to say, and two or more users to say it to.
+        private static HashSet<PrimitiveReference> Listed(ContractDescriptor contract)
+        {
+            var usages = Usages(contract);
+            return
+            [
+                .. contract.Primitives
+                    .Where(primitive => IsWorthListing(primitive))
+                    .Select(Reference)
+                    .Where(reference => usages.TryGetValue(reference, out var usage) && usage.Count >= 2),
+            ];
+        }
+
+        private static PrimitiveReference Reference(PrimitiveDescriptor primitive) => new(primitive.Type, primitive.Name);
+
+        // Who uses each primitive: keys directly, and primitives as their base or element.
+        private static Dictionary<PrimitiveReference, Usage> Usages(ContractDescriptor contract)
+        {
+            var usages = new Dictionary<PrimitiveReference, Usage>();
+
+            void Add(PrimitiveReference? reference, DefinitionDescriptor? key, PrimitiveDescriptor? primitive)
+            {
+                if (reference is null)
+                {
+                    return;
+                }
+
+                if (!usages.TryGetValue(reference, out var usage))
+                {
+                    usages[reference] = usage = new Usage([], []);
+                }
+
+                if (key is not null)
+                {
+                    usage.Keys.Add(key);
+                }
+
+                if (primitive is not null)
+                {
+                    usage.Primitives.Add(primitive);
+                }
+            }
+
+            foreach (var definition in contract.Definitions)
+            {
+                Add(definition.Value.Primitive, definition, null);
+            }
+
+            foreach (var primitive in contract.Primitives)
+            {
+                Add(primitive.Base, null, primitive);
+                Add(primitive.Element, null, primitive);
+            }
+
+            return usages;
         }
 
         private static bool IsWorthListing(PrimitiveDescriptor primitive) =>
@@ -239,6 +320,12 @@ internal static class MarkdownDocumentation
         private static string GroupName(string key) => key.Split(':')[0];
 
         private static string Heading(PrimitiveDescriptor primitive) => Heading(primitive.Type, primitive.Name);
+
+        // The keys and primitives that use one primitive.
+        private sealed record Usage(List<DefinitionDescriptor> Keys, List<PrimitiveDescriptor> Primitives)
+        {
+            public int Count => Keys.Count + Primitives.Count;
+        }
 
         // Like Primitive.DisplayName: "Int32 (Port)", or just "Int32" when the name is the type name.
         private static string Heading(string type, string name) => name == type ? type : $"{type} ({name})";

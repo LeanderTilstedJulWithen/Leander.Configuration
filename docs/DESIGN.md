@@ -443,45 +443,54 @@ The descriptor types are records, so a renderer or a comparison can use `with` a
 
 ### Documentation
 
-`Documentation.WriteMarkdown(descriptor, title)` renders Markdown, because it renders on GitHub and diffs well when committed. Definitions are grouped by their first key segment, in order of first appearance. Each group has a summary table, followed by a section per key. Named primitives are described once, at the end, and linked from the keys that use them:
+`Documentation.WriteMarkdown(descriptor, title)` renders Markdown, because it renders on GitHub and diffs well when committed. Definitions are grouped by their first key segment, in order of first appearance. Each group has a summary table, followed by a section per key. A primitive used more than once is described once, at the end, and linked from its users:
 
 ```markdown
 ## Server
 
 | Key | Type | Presence | Default |
 |-----|------|----------|---------|
-| [`Server:Port`](#serverport) | [Int32 (Port)](#int32-port) | default | `8080` |
-| [`Server:AllowedOrigins`](#serverallowedorigins) | [IReadOnlyList<Uri> (Origins)](#ireadonlylisturi-origins) | required |  |
+| [`Server:Port`](#serverport) | Int32 (Port) | default | `8080` |
+| [`Server:AllowedOrigins`](#serverallowedorigins) | IReadOnlyList<Uri> (Origins) | required |  |
 
 ### `Server:AllowedOrigins`
 
 Origins allowed to call the server.
 
-- **Type:** [IReadOnlyList<Uri> (Origins)](#ireadonlylisturi-origins)
+- **Type:** IReadOnlyList<Uri> (Origins): Origins, at least one.
 - **Presence:** required
 - **Form:** indexed: `Server:AllowedOrigins:0`, `Server:AllowedOrigins:1`, …
+- **Items:** Uri
+- **Validated:** must not be empty
+
+## Admin
+
+### `Admin:Email`
+
+Where operational alerts are sent.
+
+- **Type:** [String (Email)](#string-email): An e-mail address.
+- **Presence:** required
+- **Normalized:** trim whitespace
+- **Validated:** must contain @
 
 ## Primitives
 
-### Int32 (Port)
+### String (Email)
 
-A TCP port.
+An e-mail address.
 
-- **Validated:** must be between 1 and 65535
-
-### IReadOnlyList<Uri> (Origins)
-
-- **Element:** Uri
-- **Delimiter:** `,`
-- **Validated:** must not be empty
+- **Normalized:** trim whitespace
+- **Validated:** must contain @
+- **Used by:** [`Admin:Email`](#adminemail), [`Admin:BackupEmail`](#adminbackupemail)
 ```
 
 - **Headings and type names use the display name**, `Int32 (Port)`, like diagnostics do.
 - **A key shows every rule that applies**, so it reads on its own: the primitive's description on the type line (`Int32 (Port): A TCP port.`), the delimiter (for a scalar list), the items with the element's rules nested, the values of an enum, and the normalizers and validators of the primitive and its bases, the bases' first. Some of this repeats the primitive's section, which the type still links to.
-- **List primitives** show their element (linked when it's listed) and delimiter, then their own rules. They always have something to say, so they are always listed.
+- **Folding:** a primitive used once, by one key or as the base or element of one primitive, has no section: everything about it is already shown where it's used. A primitive used two or more times has a section, which also shows every rule that applies.
+- **Used by** links the keys and listed primitives that use a listed primitive, looking through folded primitives to their users. **Derived primitives** links the listed primitives derived from it, and a derived primitive's section links back with **Derived from**. A folded base isn't named: its rules are already in the section.
 - **Angle brackets are escaped** in text (`IReadOnlyList\<Uri\>`), or GitHub reads `<Uri>` as an HTML tag. The example above leaves that out for readability.
-- **Primitives with nothing to say** (no description, rules, base or values), such as `Primitive.String`, are not listed or linked. The key shows only the type.
-- **Derived primitives** say so in their section: "**Derived from:** [String (Email)](…)", followed by their own rules. The base's rules are in the base's section. A base with nothing to say, as in `new("Port", Primitive.Int32)`, is named without a link: "**Derived from:** Int32".
+- **Primitives with nothing to say** (no description, rules, base, element or values), such as `Primitive.String`, are never listed or linked. The key shows only the type.
 - **Sensitive definitions** get a **Sensitive** line, and a default shows as *hidden*.
 - Lines end in `\n` on every platform, so the committed file doesn't change with the machine that wrote it.
 
