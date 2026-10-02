@@ -32,10 +32,15 @@ public class ServiceCollectionExtensionsTests
         public ServerOptions Get(string? name) => _value;
     }
 
+    // The configuration is in the container, as in a host.
+    private static IServiceCollection Services(IConfiguration configuration, ConfigurationContractOptions? options = null) =>
+        new ServiceCollection()
+            .AddSingleton(configuration)
+            .AddConfigurationContract(Contract, options);
+
     private static ServiceProvider Provider(IConfiguration configuration, Action<IServiceCollection>? then = null)
     {
-        var services = new ServiceCollection()
-            .AddConfigurationContract(Contract, configuration)
+        var services = Services(configuration)
             .AddOptionsFrom(snapshot => new ServerOptions { Port = snapshot.Get(Port) });
 
         then?.Invoke(services);
@@ -45,9 +50,7 @@ public class ServiceCollectionExtensionsTests
     [Fact]
     public void AddConfigurationContract_RegistersContractAndSnapshot()
     {
-        using var provider = new ServiceCollection()
-            .AddConfigurationContract(Contract, Configuration(("Server:Port", "8080")))
-            .BuildServiceProvider();
+        using var provider = Services(Configuration(("Server:Port", "8080"))).BuildServiceProvider();
 
         Assert.Same(Contract, provider.GetRequiredService<ConfigurationContract>());
         var snapshot = provider.GetRequiredService<ConfigurationSnapshot>();
@@ -56,26 +59,55 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddConfigurationContract_InvalidConfiguration_ThrowsBeforeTheProviderIsBuilt()
+    public void AddConfigurationContract_InvalidConfiguration_ThrowsOnResolve()
     {
-        var services = new ServiceCollection();
+        using var provider = Services(Configuration(("Server:Port", "abc"))).BuildServiceProvider();
 
         var exception = Assert.Throws<InvalidConfigurationException>(() =>
-            services.AddConfigurationContract(Contract, Configuration(("Server:Port", "abc"))));
+            provider.GetRequiredService<ConfigurationSnapshot>());
 
         var error = Assert.Single(exception.Diagnostics);
         Assert.Equal("Server:Port", error.Key);
-        Assert.Empty(services);
+    }
+
+    [Fact]
+    public void AddConfigurationContract_InvalidConfiguration_FailsStartupValidation()
+    {
+        using var provider = Services(Configuration(("Server:Port", "abc"))).BuildServiceProvider();
+
+        Assert.Throws<InvalidConfigurationException>(() => provider.GetRequiredService<IStartupValidator>().Validate());
+    }
+
+    [Fact]
+    public void AddConfigurationContract_KeepsOtherStartupValidation()
+    {
+        using var provider = Services(Configuration(("Server:Port", "8080")))
+            .AddOptions<ServerOptions>()
+            .Validate(_ => false, "other")
+            .ValidateOnStart()
+            .Services
+            .BuildServiceProvider();
+
+        var exception = Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IStartupValidator>().Validate());
+        Assert.Equal("other", Assert.Single(exception.Failures));
+    }
+
+    [Fact]
+    public void AddConfigurationContract_WithoutValidateOnStart_HasNoStartupValidation()
+    {
+        using var provider = Services(Configuration(("Server:Port", "abc")), new ConfigurationContractOptions { ValidateOnStart = false })
+            .BuildServiceProvider();
+
+        Assert.Null(provider.GetService<IStartupValidator>());
     }
 
     [Fact]
     public void AddConfigurationContract_ReadsOnce()
     {
         var configuration = Configuration(("Server:Port", "8080"));
-        using var provider = new ServiceCollection()
-            .AddConfigurationContract(Contract, configuration)
-            .BuildServiceProvider();
+        using var provider = Services(configuration).BuildServiceProvider();
 
+        Assert.Equal(8080, provider.GetRequiredService<ConfigurationSnapshot>().Get(Port));
         configuration["Server:Port"] = "9090";
 
         Assert.Equal(8080, provider.GetRequiredService<ConfigurationSnapshot>().Get(Port));
@@ -84,32 +116,31 @@ public class ServiceCollectionExtensionsTests
     [Fact]
     public void AddConfigurationContract_WithoutOptions_ChecksNothing()
     {
-        using var provider = new ServiceCollection()
-            .AddConfigurationContract(Contract, Configuration(("Server:Prot", "8080")))
-            .BuildServiceProvider();
+        using var provider = Services(Configuration(("Server:Prot", "8080"))).BuildServiceProvider();
 
         Assert.Empty(provider.GetRequiredService<ConfigurationSnapshot>().Diagnostics);
     }
 
     [Fact]
-    public void AddConfigurationContract_WithOptions_PassesThemToRead()
+    public void AddConfigurationContract_WithReadOptions_PassesThemToRead()
     {
-        var options = new ReadOptions { CheckedSections = ["Server"] };
-        using var provider = new ServiceCollection()
-            .AddConfigurationContract(Contract, Configuration(("Server:Prot", "8080")), options)
-            .BuildServiceProvider();
+        var options = new ConfigurationContractOptions { ReadOptions = new ReadOptions { CheckedSections = ["Server"] } };
+        using var provider = Services(Configuration(("Server:Prot", "8080")), options).BuildServiceProvider();
 
         var warning = Assert.Single(provider.GetRequiredService<ConfigurationSnapshot>().Diagnostics);
         Assert.Equal("Server:Prot", warning.Key);
     }
 
     [Fact]
-    public void AddConfigurationContract_WarningsAsErrors_Throws()
+    public void AddConfigurationContract_WarningsAsErrors_ThrowsOnResolve()
     {
-        var options = new ReadOptions { CheckedSections = ["Server"], WarningsAsErrors = true };
+        var options = new ConfigurationContractOptions
+        {
+            ReadOptions = new ReadOptions { CheckedSections = ["Server"], WarningsAsErrors = true },
+        };
+        using var provider = Services(Configuration(("Server:Prot", "8080")), options).BuildServiceProvider();
 
-        Assert.Throws<InvalidConfigurationException>(() =>
-            new ServiceCollection().AddConfigurationContract(Contract, Configuration(("Server:Prot", "8080")), options));
+        Assert.Throws<InvalidConfigurationException>(() => provider.GetRequiredService<ConfigurationSnapshot>());
     }
 
     [Fact]
@@ -124,8 +155,7 @@ public class ServiceCollectionExtensionsTests
     public void AddOptionsFrom_IOptions_IsBuiltOnce()
     {
         var created = 0;
-        using var provider = new ServiceCollection()
-            .AddConfigurationContract(Contract, Configuration(("Server:Port", "8080")))
+        using var provider = Services(Configuration(("Server:Port", "8080")))
             .AddOptionsFrom(snapshot =>
             {
                 created++;
@@ -145,6 +175,7 @@ public class ServiceCollectionExtensionsTests
         var configuration = Configuration(("Server:Port", "8080"));
         using var provider = Provider(configuration);
 
+        Assert.Equal(8080, provider.GetRequiredService<IOptions<ServerOptions>>().Value.Port);
         configuration["Server:Port"] = "9090";
         configuration.Reload();
 
@@ -182,7 +213,8 @@ public class ServiceCollectionExtensionsTests
         var own = new FixedOptions(new ServerOptions { Port = 1 });
         using var provider = new ServiceCollection()
             .AddScoped<IOptionsSnapshot<ServerOptions>>(_ => own)
-            .AddConfigurationContract(Contract, Configuration(("Server:Port", "8080")))
+            .AddSingleton<IConfiguration>(Configuration(("Server:Port", "8080")))
+            .AddConfigurationContract(Contract)
             .AddOptionsFrom(snapshot => new ServerOptions { Port = snapshot.Get(Port) })
             .BuildServiceProvider();
         using var scope = provider.CreateScope();

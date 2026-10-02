@@ -39,6 +39,8 @@ We **replace `.Bind()`**. The binder decides how strings are converted to object
 | DI container, hosting               | Diagnostics and the fail-fast report               |
 |                                     | Construction of options objects                    |
 
+`AddConfigurationContract(contract, options)` follows DI conventions: registration never reads or throws. The snapshot is a singleton, read from the container's `IConfiguration` on first resolve. `ConfigurationContractOptions` holds the `ReadOptions` and `ValidateOnStart` (on by default), which makes the host resolve the snapshot in `StartAsync`, so an invalid configuration stops the host before anything runs. It goes through `ValidateOnStart()` on an internal options type, not an own `IStartupValidator`: the host resolves only one, so ours would replace everyone else's or be replaced. `ValidateOnStart` can be turned off, e.g. for a host built only to write documentation. Singleton is our default, not a rule: a lifetime setting belongs in `ConfigurationContractOptions` once reloading is designed.
+
 Options objects can still be exposed as `IOptions<T>`: `AddOptionsFrom` builds them once from the snapshot. Consumers will not notice the difference. The snapshot never reloads, so `IOptionsSnapshot<T>` and `IOptionsMonitor<T>` of that `T` throw on resolve instead of quietly returning values that never change. They are registered with `TryAdd`, so an application that provides them itself keeps its own. Because reading and validating happen together, `ValidateOnStart()` is unnecessary.
 
 ## Project layout
@@ -322,7 +324,7 @@ Each diagnostic has a severity (`Error`, `Warning`, `Trace`), a key, a message a
 
 ### Read options
 
-A read is aligned with the contract beyond presence when asked to be: `contract.Read(source, options)`, `TryRead(source, options, …)` and `AddConfigurationContract(contract, configuration, options)`.
+A read is aligned with the contract beyond presence when asked to be: `contract.Read(source, options)`, `TryRead(source, options, …)` and `AddConfigurationContract(contract, new() { ReadOptions = options })`.
 
 ```csharp
 contract.Read(source, new ReadOptions

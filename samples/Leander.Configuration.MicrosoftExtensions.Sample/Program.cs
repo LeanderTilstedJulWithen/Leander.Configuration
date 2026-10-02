@@ -26,16 +26,24 @@ var contract = new ConfigurationContractBuilder()
     .Register(ServerConfiguration.CertificatePath)
     .Build();
 
-// The configuration is read here, before the host is built. An invalid configuration never reaches the services.
+// The configuration is read from the host's IConfiguration when the host starts.
 // Server belongs to this application, so a key there that the contract doesn't define is a mistake, e.g. Server:Prot.
 // The rest of the configuration (Logging, environment variables, ...) isn't checked.
-var readOptions = new ReadOptions { CheckedSections = ["Server"], WarningsAsErrors = true };
+var options = new ConfigurationContractOptions
+{
+    ReadOptions = new ReadOptions { CheckedSections = ["Server"], WarningsAsErrors = true },
+};
 
+builder.Services
+    .AddConfigurationContract(contract, options)
+    .AddOptionsFrom(ServerOptions.FromSnapshot);
+
+using var host = builder.Build();
+
+// An invalid configuration fails here, before anything runs.
 try
 {
-    builder.Services
-        .AddConfigurationContract(contract, builder.Configuration, readOptions)
-        .AddOptionsFrom(ServerOptions.FromSnapshot);
+    await host.StartAsync();
 }
 catch (InvalidConfigurationException exception)
 {
@@ -43,15 +51,14 @@ catch (InvalidConfigurationException exception)
     return 1;
 }
 
-using var host = builder.Build();
-
 // Consumers see ordinary IOptions<T>.
-var options = host.Services.GetRequiredService<IOptions<ServerOptions>>().Value;
+var server = host.Services.GetRequiredService<IOptions<ServerOptions>>().Value;
 
-Console.WriteLine($"Host            {options.Host}");
-Console.WriteLine($"Port            {options.Port}");
-Console.WriteLine($"AllowedOrigins  {string.Join(", ", options.AllowedOrigins)}");
-Console.WriteLine($"Features        {string.Join(", ", options.Features)}");
-Console.WriteLine($"Certificate     {options.CertificatePath ?? "(none, plain HTTP)"}");
+Console.WriteLine($"Host            {server.Host}");
+Console.WriteLine($"Port            {server.Port}");
+Console.WriteLine($"AllowedOrigins  {string.Join(", ", server.AllowedOrigins)}");
+Console.WriteLine($"Features        {string.Join(", ", server.Features)}");
+Console.WriteLine($"Certificate     {server.CertificatePath ?? "(none, plain HTTP)"}");
 
+await host.StopAsync();
 return 0;

@@ -11,37 +11,40 @@ namespace Leander.Configuration.MicrosoftExtensions;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Reads <paramref name="configuration"/> with <paramref name="contract"/> immediately, and registers the contract
-    /// and the snapshot as singletons.
+    /// Registers <paramref name="contract"/> and its snapshot as singletons. The snapshot is read from the container's
+    /// <see cref="IConfiguration"/> with <see cref="ConfigurationContractOptions.ReadOptions"/>.
     /// </summary>
     /// <remarks>
-    /// An invalid configuration fails before the host is built. The snapshot is read once and never reloaded.
+    /// <para>
+    /// Nothing is read here. With <see cref="ConfigurationContractOptions.ValidateOnStart"/>, the snapshot is read when
+    /// the host starts, and an invalid configuration fails <c>StartAsync</c> with <see cref="InvalidConfigurationException"/>,
+    /// which lists every error. Otherwise, or without a host, it is read on the first resolve.
+    /// </para>
+    /// <para>
+    /// The snapshot is read once and never reloaded.
+    /// </para>
     /// </remarks>
-    /// <exception cref="InvalidConfigurationException">The configuration doesn't satisfy the contract; lists every error.</exception>
     public static IServiceCollection AddConfigurationContract(
         this IServiceCollection services,
         ConfigurationContract contract,
-        IConfiguration configuration) =>
-        services.AddConfigurationContract(contract, configuration, ReadOptions.Default);
-
-    /// <summary>
-    /// Reads <paramref name="configuration"/> with <paramref name="contract"/> and <paramref name="options"/> immediately,
-    /// and registers the contract and the snapshot as singletons.
-    /// </summary>
-    /// <remarks>
-    /// An invalid configuration fails before the host is built. The snapshot is read once and never reloaded.
-    /// </remarks>
-    /// <exception cref="InvalidConfigurationException">The configuration doesn't satisfy the contract; lists every error.</exception>
-    public static IServiceCollection AddConfigurationContract(
-        this IServiceCollection services,
-        ConfigurationContract contract,
-        IConfiguration configuration,
-        ReadOptions options)
+        ConfigurationContractOptions? options = null)
     {
-        var snapshot = contract.Read(configuration.AsValueSource(), options);
+        options ??= ConfigurationContractOptions.Default;
+        var readOptions = options.ReadOptions;
 
         services.AddSingleton(contract);
-        services.AddSingleton(snapshot);
+        services.AddSingleton(provider =>
+            contract.Read(provider.GetRequiredService<IConfiguration>().AsValueSource(), readOptions));
+
+        // Configuring StartupRead resolves the snapshot, which reads it. Through ValidateOnStart rather than our own
+        // IStartupValidator: the host resolves only one, so ours would replace or be replaced by everyone else's.
+        if (options.ValidateOnStart)
+        {
+            services.AddOptions<StartupRead>()
+                .Configure<ConfigurationSnapshot>((_, _) => { })
+                .ValidateOnStart();
+        }
+
         return services;
     }
 
@@ -77,4 +80,7 @@ public static class ServiceCollectionExtensions
     private static InvalidOperationException NotReloading<T>(string service) =>
         new($"{service}<{typeof(T).Name}> is not supported: {typeof(T).Name} is built once from a configuration snapshot " +
             $"that never reloads. Use IOptions<{typeof(T).Name}>.");
+
+    // Options with nothing in them: only there to resolve the snapshot at start.
+    private sealed class StartupRead;
 }

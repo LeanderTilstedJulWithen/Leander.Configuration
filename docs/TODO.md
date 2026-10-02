@@ -21,7 +21,7 @@ From REVIEW.md. In this order.
 - [x] Public API by output, formats internal: `Documentation.WriteMarkdown`, `ConfigurationGenerator` (from `ExampleConfiguration`), a new name for `ContractFile` (it doesn't touch files) with `WriteJson` / `ReadJson`, and `ContractComparison` → `ContractDiff`.
 
 ### Leander.Configuration.MicrosoftExtensions
-- [ ] Nothing throws at registration: the snapshot is read from `IConfiguration` resolved from the container, and an explicitly registered startup validator fails the host at start. An options parameter for setup, no builder. Singleton is our default, not a rule. Record in DESIGN.md.
+- [x] Nothing throws at registration: the snapshot is read from `IConfiguration` resolved from the container, and an explicitly registered startup validator fails the host at start. An options parameter for setup, no builder. Singleton is our default, not a rule. Record in DESIGN.md.
 
 ### Markdown documentation
 - [ ] Rules shown on the key that uses them, including element and list rules.

@@ -99,12 +99,12 @@ string? backupEmail = snapshot.Get(ServerConfiguration.BackupEmail);
 
 Leander.Configuration replaces only the binding step. Sources, providers, dependency injection and hosting stay with Microsoft.Extensions. A source is anything implementing `IValueSource`. Leander.Configuration.MicrosoftExtensions reads an `IConfiguration` with `AsValueSource()`, and `ValueSource.FromPairs` and `ValueSource.FromDictionary` cover plain key/value data.
 
-With a host, the configuration is read before the host is built, and options are constructed by your own code:
+With a host, the configuration is read from the host's `IConfiguration` when the host starts, and options are constructed by your own code:
 
 ```csharp
 builder.Services
-    .AddConfigurationContract(contract, builder.Configuration) // throws InvalidConfigurationException listing every problem
-    .AddOptionsFrom(ServerOptions.From);                       // IOptions<ServerOptions>
+    .AddConfigurationContract(contract)  // StartAsync throws InvalidConfigurationException listing every problem
+    .AddOptionsFrom(ServerOptions.From); // IOptions<ServerOptions>
 ```
 
 A misspelled key isn't wrong by itself: `Server:Prot` is ignored and `Server:Port` falls back to its default. `ReadOptions` checks the sections the application owns for keys the contract doesn't define, and can treat warnings as errors:
@@ -112,7 +112,7 @@ A misspelled key isn't wrong by itself: `Server:Prot` is ignored and `Server:Por
 ```csharp
 var options = new ReadOptions { CheckedSections = ["Server", "Admin"], WarningsAsErrors = true };
 contract.Read(source, options);                                         // Server:Prot  is not in the configuration contract
-builder.Services.AddConfigurationContract(contract, builder.Configuration, options);
+builder.Services.AddConfigurationContract(contract, new() { ReadOptions = options });
 ```
 
 A secret is marked with `Sensitive()`: its value never appears in diagnostics (`value is not a valid Int32`), and documentation never shows its default.

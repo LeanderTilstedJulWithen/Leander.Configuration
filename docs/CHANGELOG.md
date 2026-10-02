@@ -33,7 +33,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 #### Leander.Configuration.MicrosoftExtensions
 - `IConfiguration.AsValueSource()`: reads an `IConfiguration` (root or section) as an `IValueSource`, live and without copying.
-- `IServiceCollection.AddConfigurationContract(contract, configuration[, options])`: reads the configuration immediately (throwing `InvalidConfigurationException` on failure) and registers the contract and snapshot as singletons. The snapshot is read once and not reloaded.
+- `IServiceCollection.AddConfigurationContract(contract[, options])`: registers the contract and snapshot as singletons, without reading anything. The snapshot is read from the container's `IConfiguration` once and not reloaded. `ConfigurationContractOptions` holds the `ReadOptions` and `ValidateOnStart` (on by default), which reads the snapshot when the host starts, so an invalid configuration fails `StartAsync` with `InvalidConfigurationException`.
 - `IServiceCollection.AddOptionsFrom<T>(Func<ConfigurationSnapshot, T>)`: exposes `T` as `IOptions<T>`, built once from the snapshot, so options can be immutable records. The snapshot never reloads, so `IOptionsSnapshot<T>` and `IOptionsMonitor<T>` of that `T` throw on resolve, unless the application registers its own.
 
 #### Leander.Configuration.Tooling
