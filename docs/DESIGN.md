@@ -465,56 +465,77 @@ The descriptor types are records, so a renderer or a comparison can use `with` a
 
 ### Documentation
 
-`Documentation.WriteMarkdown(descriptor, title)` renders Markdown, because it renders on GitHub and diffs well when committed. Definitions are grouped by their first key segment, in order of first appearance. Each group has a summary table, followed by a section per key. A primitive used more than once is described once, at the end, and linked from its users:
+`Documentation.WriteMarkdown(descriptor, title)` renders Markdown, because it renders on GitHub and diffs well when committed. Definitions are grouped by their first key segment, in order of first appearance. Each group has a summary table, followed by a section per key. Then every primitive is described once, under Primitives, and linked from wherever it's used:
 
 ```markdown
 ## Server
 
 | Key | Type | Presence | Default |
 |-----|------|----------|---------|
-| [`Server:Port`](#serverport) | Int32 (Port) | default | `8080` |
-| [`Server:AllowedOrigins`](#serverallowedorigins) | IReadOnlyList<Uri> (Origins) | required |  |
+| [`Server:Port`](#serverport) | [Int32 (Port)](#int32-port) | default | `8080` |
+| [`Server:AllowedOrigins`](#serverallowedorigins) | [IReadOnlyList<Uri> (Origins)](#ireadonlylisturi-origins) | required |  |
+| [`Server:Features`](#serverfeatures) | [IReadOnlyList<String> (Features)](#ireadonlyliststring-features) | required |  |
+
+### `Server:Port`
+
+The port to listen on.
+
+- **Type:** [Int32 (Port)](#int32-port): A TCP port.
+- **Presence:** default `8080`
 
 ### `Server:AllowedOrigins`
 
 Origins allowed to call the server.
 
-- **Type:** IReadOnlyList<Uri> (Origins): Origins, at least one.
+- **Type:** [IReadOnlyList<Uri> (Origins)](#ireadonlylisturi-origins): Origins, at least one.
 - **Presence:** required
 - **Form:** indexed: `Server:AllowedOrigins:0`, `Server:AllowedOrigins:1`, …
-- **Items:** Uri
-- **Validated:** must not be empty
 
-## Admin
+### `Server:Features`
 
-### `Admin:Email`
-
-Where operational alerts are sent.
-
-- **Type:** [String (Email)](#string-email): An e-mail address.
+- **Type:** [IReadOnlyList<String> (Features)](#ireadonlyliststring-features): Feature names.
 - **Presence:** required
-- **Format:** Any text.
-- **Normalized:** trim whitespace
-- **Validated:** must contain @
+- **Form:** one entry, items separated by `,`
 
 ## Primitives
 
-### String (Email)
+### Int32
 
-An e-mail address.
+- **Format:** A 32-bit integer.
+- **Derived primitives:** [Int32 (Port)](#int32-port), [Int32 (ConnectionLimit)](#int32-connectionlimit)
 
-- **Format:** Any text.
-- **Normalized:** trim whitespace
-- **Validated:** must contain @
-- **Used by:** [`Admin:Email`](#adminemail), [`Admin:BackupEmail`](#adminbackupemail)
+### Int32 (Port)
+
+A TCP port.
+
+- **Derived from:** [Int32](#int32)
+- **Validated:** must be between 1 and 65535
+- **Used by:** [`Server:Port`](#serverport)
+
+### IReadOnlyList<Uri> (Origins)
+
+Origins, at least one.
+
+- **Items:** [Uri](#uri)
+- **Delimiter:** `,`
+- **Validated:** must not be empty
+- **Used by:** [`Server:AllowedOrigins`](#serverallowedorigins)
+
+### Uri
+
+- **Format:** An absolute URI, e.g. https://example.com.
+- **Used by:** [IReadOnlyList<Uri> (Origins)](#ireadonlylisturi-origins)
 ```
 
+- **Rules live on primitives, not on keys.** A primitive is the unit of reuse, so it is documented once, where it's defined. A key says what belongs to the key: its description, its type (linked, with the primitive's description), presence, form and whether it's sensitive. Repeating every rule on every key hid which keys share a primitive, and how primitives derive from each other.
+- **Every primitive with something to say has a section**, however often it's used, ready-made primitives included. "Something to say" is a description, a format, own rules, a base, an element or values. A primitive without any, e.g. one with a custom converter that has no description, isn't listed or linked. Its name is all there is to show.
+- **A section shows only the primitive's own parts**: description, format, items (linked), delimiter, values, normalizers and validators. A derived primitive links its base with **Derived from**, and the base links back with **Derived primitives**. The base's rules and format are in the base's section, one click away. This is how primitives work, and the documentation shows it.
+- **Format** is the converter's description. Only a primitive that isn't derived has one, because a derived primitive takes its base's converter. A list primitive shows **Items** and **Delimiter** instead, which say the same thing.
+- **The key's Form says how the key is written.** An indexed list is `Key:0`, `Key:1`, …, and the delimiter doesn't apply. A list in one entry repeats the delimiter: "one entry, items separated by `,`". A scalar that isn't a list has no Form line.
+- **Used by** links the keys that use a primitive and the list primitives that have it as their element. Derived primitives have their own line.
+- **Primitives are sorted by type, then name**, the one named after its type first: Int32, Int32 (ConnectionLimit), Int32 (Port), … A ready-made primitive is followed by those derived from it, and the list is easy to scan. Order of first use scattered a family across the section.
 - **Headings and type names use the display name**, `Int32 (Port)`, like diagnostics do.
-- **A key shows every rule that applies**, so it reads on its own: the primitive's description on the type line (`Int32 (Port): A TCP port.`), the converter's description as **Format**, taken from the base for a derived primitive (and left out for an indexed list, which the list's converter doesn't read), the delimiter (for a scalar list), the items with the element's rules nested, the values of an enum, and the normalizers and validators of the primitive and its bases, the bases' first. Some of this repeats the primitive's section, which the type still links to.
-- **Folding:** a primitive used once, by one key or as the base or element of one primitive, has no section: everything about it is already shown where it's used. A primitive used two or more times has a section, which also shows every rule that applies.
-- **Used by** links the keys and listed primitives that use a listed primitive, looking through folded primitives to their users. **Derived primitives** links the listed primitives derived from it, and a derived primitive's section links back with **Derived from**. A folded base isn't named: its rules are already in the section.
 - **Angle brackets are escaped** in text (`IReadOnlyList\<Uri\>`), or GitHub reads `<Uri>` as an HTML tag. The example above leaves that out for readability.
-- **Primitives with nothing to say** (no description, converter description, rules, base, element or values) are never listed or linked. The key shows only the type. Ready-made primitives always have a converter description, so a ready-made primitive used by several keys is listed like any other.
 - **Sensitive definitions** get a **Sensitive** line, and a default shows as *hidden*.
 - Lines end in `\n` on every platform, so the committed file doesn't change with the machine that wrote it.
 

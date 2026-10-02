@@ -40,7 +40,7 @@ public static class ServerConfiguration
     // One entry holding a delimited list, read like any other value.
     public static readonly ConfigurationDefinition<IReadOnlyList<string>> Features =
         ConfigurationDefinition.Define("Server:Features", SamplePrimitives.Features)
-            .Describe("Comma-separated list of enabled features.");
+            .Describe("Enabled features.");
 
     public static readonly ConfigurationDefinition<string> AdminEmail =
         ConfigurationDefinition.Define("Admin:Email", SamplePrimitives.Email)
