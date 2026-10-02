@@ -3,16 +3,11 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Leander.Configuration.Descriptors;
 
-namespace Leander.Configuration.Tooling;
+namespace Leander.Configuration.Tooling.Internal;
 
-/// <summary>
-/// Renders a contract descriptor as an <c>appsettings.json</c>-style example with every key, to copy and fill in.
-/// </summary>
-/// <remarks>
-/// Every value is a string, the text the converter formats. Without a default, a placeholder says what is expected,
-/// e.g. <c>"&lt;Port&gt;"</c>, because JSON has no comments. Sensitive values are always <c>"&lt;secret&gt;"</c>.
-/// </remarks>
-public static class ExampleConfiguration
+// Configuration as appsettings.json-style JSON. Every value is a string, the text the converter formats.
+// Without a default, a placeholder says what is expected, e.g. "<Port>", because JSON has no comments.
+internal static class JsonConfiguration
 {
     private const string Secret = "<secret>";
 
@@ -23,12 +18,6 @@ public static class ExampleConfiguration
         NewLine = "\n",
     };
 
-    /// <summary>
-    /// Writes the example for <paramref name="contract"/> as indented JSON.
-    /// </summary>
-    /// <exception cref="ArgumentException">
-    /// A key is both a value and a section, e.g. <c>Server</c> and <c>Server:Port</c>.
-    /// </exception>
     public static string Write(ContractDescriptor contract)
     {
         // Sections merge case-insensitively, like IConfiguration reads them, and keep the spelling of their first key.

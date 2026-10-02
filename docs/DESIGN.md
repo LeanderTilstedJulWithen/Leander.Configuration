@@ -394,9 +394,9 @@ ConfigurationContract ──► ContractDescriptor ──┬──► Markdown d
 
 ```csharp
 var descriptor = contract.CreateDescriptor();                       // Leander.Configuration.Descriptors
-File.WriteAllText("configuration.md", MarkdownDocumentation.Write(descriptor, "Server configuration"));
-File.WriteAllText("configuration.contract.json", ContractFile.Write(descriptor));
-ContractDescriptor committed = ContractFile.Read(File.ReadAllText("configuration.contract.json"));
+File.WriteAllText("configuration.md", Documentation.WriteMarkdown(descriptor, "Server configuration"));
+File.WriteAllText("configuration.contract.json", ContractSerializer.WriteJson(descriptor));
+ContractDescriptor committed = ContractSerializer.ReadJson(File.ReadAllText("configuration.contract.json"));
 ```
 
 ### The descriptor
@@ -441,7 +441,7 @@ The descriptor types are records, so a renderer or a comparison can use `with` a
 
 ### Documentation
 
-`MarkdownDocumentation.Write(descriptor, title)` renders Markdown, because it renders on GitHub and diffs well when committed. Definitions are grouped by their first key segment, in order of first appearance. Each group has a summary table, followed by a section per key. Named primitives are described once, at the end, and linked from the keys that use them:
+`Documentation.WriteMarkdown(descriptor, title)` renders Markdown, because it renders on GitHub and diffs well when committed. Definitions are grouped by their first key segment, in order of first appearance. Each group has a summary table, followed by a section per key. Named primitives are described once, at the end, and linked from the keys that use them:
 
 ```markdown
 ## Server
@@ -484,7 +484,7 @@ A TCP port.
 
 ### Contract file
 
-The contract file is the descriptor as JSON, with a format version: `ContractFile.Write(descriptor)` and `ContractFile.Read(json)`. The format is owned by Tooling: private JSON types in `ContractFile` define it, so renaming or restructuring a descriptor never changes the file by accident. Definitions are flat (`key`, `description`, `type`, `primitive`, `presence`, `default`, `form`, `sensitive`). `default` is a string, or for an indexed value an array of its items. A primitive is named without its type where the type is implied: a value's primitive and a primitive's base. Defaults are left out: nulls, `sensitive` unless true, and empty rule lists. `Read` checks the format version first and throws `FormatException` for another one, because another version may have another shape. It throws `JsonException` for malformed JSON, a missing required property, or an unknown `presence` or `form`.
+The contract file is the descriptor as JSON, with a format version: `ContractSerializer.WriteJson(descriptor)` and `ContractSerializer.ReadJson(json)`. The format is owned by Tooling: private JSON types in the internal `JsonContract` define it, so renaming or restructuring a descriptor never changes the file by accident. Definitions are flat (`key`, `description`, `type`, `primitive`, `presence`, `default`, `form`, `sensitive`). `default` is a string, or for an indexed value an array of its items. A primitive is named without its type where the type is implied: a value's primitive and a primitive's base. Defaults are left out: nulls, `sensitive` unless true, and empty rule lists. `Read` checks the format version first and throws `FormatException` for another one, because another version may have another shape. It throws `JsonException` for malformed JSON, a missing required property, or an unknown `presence` or `form`.
 
 - **It is descriptive.** It is never imported and run. Normalizers and validators are code, and JSON can't hold them. This follows from "code is the authoring format".
 - **Programs that share configuration share code**, i.e. a library with the primitives and definitions. Each program builds its own contract from the definitions it uses, which may be a subset.
@@ -492,7 +492,7 @@ The contract file is the descriptor as JSON, with a format version: `ContractFil
 
 ### Comparing contracts
 
-`ContractComparison.Compare(left, right)` lists what differs between two descriptors, e.g. the committed contract file against the current contract, or two programs that share configuration. Comparing the files as text says *that* something changed. The comparison says *what* changed, per key.
+`ContractDiff.Compare(left, right)` lists what differs between two descriptors, e.g. the committed contract file against the current contract, or two programs that share configuration. Comparing the files as text says *that* something changed. The comparison says *what* changed, per key.
 
 ```
 Server:Port: validators of Int32 (Port): [must be between 1 and 65535] → [must be between 1024 and 65535]
@@ -511,7 +511,7 @@ Admin:Contact: added
 
 ### Example configuration
 
-`ExampleConfiguration.Write(descriptor)` renders an `appsettings.json`-style file with every key in the contract, to copy and fill in:
+`ConfigurationGenerator.WriteJson(descriptor)` renders an `appsettings.json`-style file with every key in the contract, to copy and fill in:
 
 ```json
 {

@@ -37,10 +37,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `IServiceCollection.AddOptionsFrom<T>(Func<ConfigurationSnapshot, T>)`: exposes `T` as `IOptions<T>`, built once from the snapshot, so options can be immutable records. The snapshot never reloads, so `IOptionsSnapshot<T>` and `IOptionsMonitor<T>` of that `T` throw on resolve, unless the application registers its own.
 
 #### Leander.Configuration.Tooling
-- `MarkdownDocumentation.Write(descriptor, title)`: documentation grouped by the first key segment, with a summary table per group, a section per key, and the primitives described once and linked, with the primitive they derive from. Primitives with nothing to say, such as `String`, are left out.
-- `ContractFile.Write(descriptor)` / `ContractFile.Read(json)`: the descriptor as versioned JSON. The file is descriptive: it can be committed and compared, but not run.
-- `ExampleConfiguration.Write(descriptor)`: an `appsettings.json`-style example with every key, to copy and fill in. Values are strings as the converter formats them, indexed lists are JSON arrays, keys without a default get a placeholder (`"<Port>"`, `"<optional Email>"`), and sensitive values are always `"<secret>"`.
-- `ContractComparison.Compare(left, right)`: what differs between two contract descriptors, per key, as `ContractDifference`s: `Added`, `Removed`, or `Changed` with the aspect (type, presence, default, form, sensitive, description, primitive and its rules, bases and elements) and both values. Keys match case-insensitively.
+- `Documentation.WriteMarkdown(descriptor, title)`: documentation grouped by the first key segment, with a summary table per group, a section per key, and the primitives described once and linked, with the primitive they derive from. Primitives with nothing to say, such as `String`, are left out.
+- `ContractSerializer.WriteJson(descriptor)` / `ContractSerializer.ReadJson(json)`: the descriptor as versioned JSON. The file is descriptive: it can be committed and compared, but not run.
+- `ConfigurationGenerator.WriteJson(descriptor)`: an `appsettings.json`-style example with every key, to copy and fill in. Values are strings as the converter formats them, indexed lists are JSON arrays, keys without a default get a placeholder (`"<Port>"`, `"<optional Email>"`), and sensitive values are always `"<secret>"`.
+- `ContractDiff.Compare(left, right)`: what differs between two contract descriptors, per key, as `ContractDifference`s: `Added`, `Removed`, or `Changed` with the aspect (type, presence, default, form, sensitive, description, primitive and its rules, bases and elements) and both values. Keys match case-insensitively.
 
 ### Notes
 - Leander.Configuration no longer references the sibling Leander.Parsing repository. It depends on Leander.Primitives instead.

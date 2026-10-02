@@ -90,9 +90,9 @@ var descriptor = contract.CreateDescriptor();
 var documentationPath = Path.Combine(AppContext.BaseDirectory, "configuration.md");
 var contractPath = Path.Combine(AppContext.BaseDirectory, "configuration.contract.json");
 var examplePath = Path.Combine(AppContext.BaseDirectory, "appsettings.example.json");
-File.WriteAllText(documentationPath, MarkdownDocumentation.Write(descriptor, "Server configuration"));
-File.WriteAllText(contractPath, ContractFile.Write(descriptor));
-File.WriteAllText(examplePath, ExampleConfiguration.Write(descriptor));
+File.WriteAllText(documentationPath, Documentation.WriteMarkdown(descriptor, "Server configuration"));
+File.WriteAllText(contractPath, ContractSerializer.WriteJson(descriptor));
+File.WriteAllText(examplePath, ConfigurationGenerator.WriteJson(descriptor));
 
 Console.WriteLine();
 Console.WriteLine("Documentation:");

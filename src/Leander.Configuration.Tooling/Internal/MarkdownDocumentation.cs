@@ -1,22 +1,14 @@
 using System.Text;
 using Leander.Configuration.Descriptors;
 
-namespace Leander.Configuration.Tooling;
+namespace Leander.Configuration.Tooling.Internal;
 
-/// <summary>
-/// Renders a contract descriptor as Markdown.
-/// </summary>
-/// <remarks>
-/// Definitions are grouped by their first key segment, and each group has a summary table followed by a section per key.
-/// Primitives are described once, at the end, and linked from the keys that use them.
-/// Primitives with nothing to say (no description, rules, base, element or values) are left out.
-/// </remarks>
-public static class MarkdownDocumentation
+// Documentation as Markdown. Definitions are grouped by their first key segment, and each group has a summary table
+// followed by a section per key. Primitives are described once, at the end, and linked from the keys that use them.
+// Primitives with nothing to say (no description, rules, base, element or values) are left out.
+internal static class MarkdownDocumentation
 {
-    /// <summary>
-    /// Writes the documentation for <paramref name="contract"/>, under a level-1 heading <paramref name="title"/>.
-    /// </summary>
-    public static string Write(ContractDescriptor contract, string title = "Configuration")
+    public static string Write(ContractDescriptor contract, string title)
     {
         var writer = new Writer(contract);
         writer.WriteContract(title);

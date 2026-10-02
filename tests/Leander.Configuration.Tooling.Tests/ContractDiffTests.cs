@@ -4,10 +4,10 @@ using Leander.Primitives.Validation;
 
 namespace Leander.Configuration.Tooling.Tests;
 
-public class ContractComparisonTests
+public class ContractDiffTests
 {
     private static IReadOnlyList<ContractDifference> Compare(ConfigurationDefinition left, ConfigurationDefinition right) =>
-        ContractComparison.Compare(Contracts.Describe(left), Contracts.Describe(right));
+        ContractDiff.Compare(Contracts.Describe(left), Contracts.Describe(right));
 
     private static ContractDifference Changed(IReadOnlyList<ContractDifference> differences, DifferenceAspect aspect) =>
         Assert.Single(differences, difference => difference.Aspect == aspect);
@@ -15,7 +15,7 @@ public class ContractComparisonTests
     [Fact]
     public void SameContract_HasNoDifferences()
     {
-        Assert.Empty(ContractComparison.Compare(Contracts.Server(), Contracts.Server()));
+        Assert.Empty(ContractDiff.Compare(Contracts.Server(), Contracts.Server()));
     }
 
     [Fact]
@@ -28,7 +28,7 @@ public class ContractComparisonTests
             ConfigurationDefinition.Define("B", Primitive.Int32),
             ConfigurationDefinition.Define("C", Primitive.Int32));
 
-        var differences = ContractComparison.Compare(left, right);
+        var differences = ContractDiff.Compare(left, right);
 
         Assert.Equal(
             [new ContractDifference("A", DifferenceKind.Removed), new ContractDifference("C", DifferenceKind.Added)],
@@ -110,7 +110,7 @@ public class ContractComparisonTests
             ConfigurationDefinition.Define("Server:Port", newPort),
             ConfigurationDefinition.Define("Admin:Port", newPort));
 
-        var differences = ContractComparison.Compare(left, right);
+        var differences = ContractDiff.Compare(left, right);
 
         Assert.Equal(["Server:Port", "Admin:Port"], differences.Select(difference => difference.Key));
         Assert.All(differences, difference =>

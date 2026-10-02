@@ -4,21 +4,13 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Leander.Configuration.Descriptors;
 
-namespace Leander.Configuration.Tooling;
+namespace Leander.Configuration.Tooling.Internal;
 
-/// <summary>
-/// Writes a contract descriptor as JSON and reads it back.
-/// </summary>
-/// <remarks>
-/// The file is descriptive: it can be committed and compared, but never run, because normalizers and validators are code.
-/// </remarks>
-// The nested Json types define the format, and nothing else does: renaming a descriptor property doesn't change the file.
-public static class ContractFile
+// The contract as JSON. The nested Json types define the format, and nothing else does:
+// renaming a descriptor property doesn't change the file.
+internal static class JsonContract
 {
-    /// <summary>
-    /// The version of the file format this library writes and reads.
-    /// </summary>
-    public const int FormatVersion = 1;
+    private const int FormatVersion = ContractSerializer.FormatVersion;
 
     private static readonly JsonSerializerOptions Options = new()
     {
@@ -29,11 +21,6 @@ public static class ContractFile
         RespectNullableAnnotations = true,
     };
 
-    /// <summary>
-    /// Reads a contract descriptor from JSON written by <see cref="Write"/>.
-    /// </summary>
-    /// <exception cref="JsonException">The JSON is malformed, misses a required property, or has an unknown value.</exception>
-    /// <exception cref="FormatException">The file is empty, or its format version isn't <see cref="FormatVersion"/>.</exception>
     // The version is read first, because another version may have another shape.
     public static ContractDescriptor Read(string json)
     {
@@ -51,9 +38,6 @@ public static class ContractFile
             [.. document.Primitives.Select(ToDescriptor)]);
     }
 
-    /// <summary>
-    /// Writes <paramref name="contract"/> as indented JSON, with the format version.
-    /// </summary>
     public static string Write(ContractDescriptor contract) =>
         JsonSerializer.Serialize(
             new DocumentJson

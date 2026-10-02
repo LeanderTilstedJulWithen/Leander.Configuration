@@ -3,15 +3,15 @@ using Leander.Primitives;
 
 namespace Leander.Configuration.Tooling.Tests;
 
-public class ExampleConfigurationTests
+public class ConfigurationGeneratorTests
 {
     private static JsonNode Example(params ConfigurationDefinition[] definitions) =>
-        JsonNode.Parse(ExampleConfiguration.Write(Contracts.Describe(definitions)))!;
+        JsonNode.Parse(ConfigurationGenerator.WriteJson(Contracts.Describe(definitions)))!;
 
     [Fact]
     public void Server_RendersEveryKey()
     {
-        var json = ExampleConfiguration.Write(Contracts.Server());
+        var json = ConfigurationGenerator.WriteJson(Contracts.Server());
 
         Assert.Equal(
             """
@@ -81,7 +81,7 @@ public class ExampleConfigurationTests
     [Fact]
     public void Sections_MergeCaseInsensitively_KeepingFirstSpelling()
     {
-        var json = ExampleConfiguration.Write(Contracts.Describe(
+        var json = ConfigurationGenerator.WriteJson(Contracts.Describe(
             ConfigurationDefinition.Define("Server:Host", Primitive.String).Default("a"),
             ConfigurationDefinition.Define("server:Port", Primitive.String).Default("b")));
 
@@ -100,7 +100,7 @@ public class ExampleConfigurationTests
             ConfigurationDefinition.Define("Server:Port", Primitive.String),
             ConfigurationDefinition.Define("Server", Primitive.String));
 
-        Assert.Throws<ArgumentException>(() => ExampleConfiguration.Write(contract));
-        Assert.Throws<ArgumentException>(() => ExampleConfiguration.Write(reversed));
+        Assert.Throws<ArgumentException>(() => ConfigurationGenerator.WriteJson(contract));
+        Assert.Throws<ArgumentException>(() => ConfigurationGenerator.WriteJson(reversed));
     }
 }

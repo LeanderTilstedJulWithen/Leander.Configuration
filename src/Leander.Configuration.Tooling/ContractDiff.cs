@@ -11,7 +11,7 @@ namespace Leander.Configuration.Tooling;
 /// so each key answers "do both sides agree on this key?" on its own.
 /// Keys match case-insensitively, like <c>IConfiguration</c> reads them.
 /// </remarks>
-public static class ContractComparison
+public static class ContractDiff
 {
     /// <summary>
     /// Returns every difference between <paramref name="left"/> and <paramref name="right"/>:

@@ -2,9 +2,9 @@ using Leander.Primitives;
 
 namespace Leander.Configuration.Tooling.Tests;
 
-public class MarkdownDocumentationTests
+public class DocumentationTests
 {
-    private static readonly string Markdown = MarkdownDocumentation.Write(Contracts.Server(), "Server configuration");
+    private static readonly string Markdown = Documentation.WriteMarkdown(Contracts.Server(), "Server configuration");
 
     [Fact]
     public void StartsWithTitle()
@@ -77,7 +77,7 @@ public class MarkdownDocumentationTests
     [Fact]
     public void Derived_NamesItsBase()
     {
-        var markdown = MarkdownDocumentation.Write(Contracts.Describe(
+        var markdown = Documentation.WriteMarkdown(Contracts.Describe(
             ConfigurationDefinition.Define("Admin:Port", new Primitive<int>("AdminPort", Contracts.Port)),
             ConfigurationDefinition.Define("Count", new Primitive<int>("Count", Primitive.Int32))));
 
@@ -88,7 +88,7 @@ public class MarkdownDocumentationTests
     [Fact]
     public void Enum_ShowsValues()
     {
-        var markdown = MarkdownDocumentation.Write(Contracts.Describe(
+        var markdown = Documentation.WriteMarkdown(Contracts.Describe(
             ConfigurationDefinition.Define("Day", Primitive.Enum<DayOfWeek>())));
 
         Assert.Contains("- **Values:** `Sunday`, `Monday`", markdown);
