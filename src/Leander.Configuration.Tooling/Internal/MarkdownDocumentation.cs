@@ -19,6 +19,7 @@ internal static class MarkdownDocumentation
     {
         private readonly ContractDescriptor _contract = contract;
         private readonly List<PrimitiveDescriptor> _listed = [.. contract.Primitives.Where(IsWorthListing)];
+        private readonly Dictionary<PrimitiveReference, PrimitiveDescriptor> _primitives = Index(contract);
         private readonly StringBuilder _text = new();
 
         public override string ToString() => _text.ToString();
@@ -72,12 +73,21 @@ internal static class MarkdownDocumentation
                 Line();
             }
 
-            Line($"- **Type:** {TypeText(definition.Value)}");
+            var primitive = Find(definition.Value.Primitive);
+            var type = TypeText(definition.Value);
+            Line(primitive?.Description is { } primitiveDescription ? $"- **Type:** {type}: {primitiveDescription}" : $"- **Type:** {type}");
             Line($"- **Presence:** {PresenceDetail(definition.Value)}");
 
-            if (definition.Value.Form == ValueForm.Indexed)
+            var indexed = definition.Value.Form == ValueForm.Indexed;
+            if (indexed)
             {
                 Line($"- **Form:** indexed: {Code($"{definition.Key}:0")}, {Code($"{definition.Key}:1")}, …");
+            }
+
+            // Every rule that applies, so a key reads on its own. An indexed list has no delimiter in the source.
+            if (primitive is not null)
+            {
+                WriteRules(primitive, "", showDelimiter: !indexed);
             }
 
             if (definition.IsSensitive)
@@ -135,6 +145,60 @@ internal static class MarkdownDocumentation
             }
         }
 
+        // A list's delimiter and items, with the item's rules nested, then the rules of the primitive and its bases,
+        // the bases' first, in the order they run.
+        private void WriteRules(PrimitiveDescriptor primitive, string indent, bool showDelimiter)
+        {
+            if (showDelimiter && primitive.Delimiter is { } delimiter)
+            {
+                Line($"{indent}- **Delimiter:** {Code(delimiter.ToString())}");
+            }
+
+            if (primitive.Element is { } element)
+            {
+                Line($"{indent}- **Items:** {PrimitiveText(element)}");
+
+                if (Find(element) is { } elementPrimitive)
+                {
+                    WriteRules(elementPrimitive, indent + "  ", showDelimiter: true);
+                }
+            }
+
+            if (primitive.Values is { } values)
+            {
+                Line($"{indent}- **Values:** {string.Join(", ", values.Select(Code))}");
+            }
+
+            var chain = Chain(primitive);
+            var normalizers = chain.SelectMany(link => link.Normalizers).ToList();
+            var validators = chain.SelectMany(link => link.Validators).ToList();
+
+            if (normalizers.Count > 0)
+            {
+                Line($"{indent}- **Normalized:** {string.Join("; ", normalizers)}");
+            }
+
+            if (validators.Count > 0)
+            {
+                Line($"{indent}- **Validated:** {string.Join("; ", validators)}");
+            }
+        }
+
+        // The primitive and its bases, the furthest base first.
+        private List<PrimitiveDescriptor> Chain(PrimitiveDescriptor primitive)
+        {
+            var chain = new List<PrimitiveDescriptor>();
+            for (PrimitiveDescriptor? current = primitive; current is not null; current = Find(current.Base))
+            {
+                chain.Insert(0, current);
+            }
+
+            return chain;
+        }
+
+        private PrimitiveDescriptor? Find(PrimitiveReference? reference) =>
+            reference is not null && _primitives.TryGetValue(reference, out var primitive) ? primitive : null;
+
         private string TypeText(ValueDescriptor value) =>
             value.Primitive is { } reference ? PrimitiveText(reference) : Text(value.Type);
 
@@ -148,6 +212,18 @@ internal static class MarkdownDocumentation
         }
 
         private void Line(string text = "") => _text.Append(text).Append('\n');
+
+        // A descriptor read from a file isn't checked, so a duplicate keeps the first.
+        private static Dictionary<PrimitiveReference, PrimitiveDescriptor> Index(ContractDescriptor contract)
+        {
+            var primitives = new Dictionary<PrimitiveReference, PrimitiveDescriptor>();
+            foreach (var primitive in contract.Primitives)
+            {
+                primitives.TryAdd(new PrimitiveReference(primitive.Type, primitive.Name), primitive);
+            }
+
+            return primitives;
+        }
 
         private static bool IsWorthListing(PrimitiveDescriptor primitive) =>
             primitive.Description is not null || HasDetails(primitive);

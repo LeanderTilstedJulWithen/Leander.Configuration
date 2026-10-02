@@ -24,7 +24,7 @@ From REVIEW.md. In this order.
 - [x] Nothing throws at registration: the snapshot is read from `IConfiguration` resolved from the container, and an explicitly registered startup validator fails the host at start. An options parameter for setup, no builder. Singleton is our default, not a rule. Record in DESIGN.md.
 
 ### Markdown documentation
-- [ ] Rules shown on the key that uses them, including element and list rules.
+- [x] Rules shown on the key that uses them, including element and list rules.
 - [ ] Folding: a primitive used by one entity is folded into it; one used by several gets its own entry, with "Used by" links to keys and derived primitives.
 - [ ] Converters describe how they parse, in a simple sentence (e.g. "An integer between -2,147,483,648 and 2,147,483,647, parsed with the invariant culture."). Design first: this is in Leander.Primitives.
 

@@ -27,9 +27,12 @@ public class DocumentationTests
     }
 
     [Fact]
-    public void KeySection_HasDescriptionTypeAndPresence()
+    public void KeySection_HasDescriptionTypePresenceAndRules()
     {
-        Assert.Contains("### `Server:Port`\n\nThe port to listen on.\n\n- **Type:** [Int32 (Port)](#int32-port)\n- **Presence:** required\n", Markdown);
+        Assert.Contains(
+            "### `Server:Port`\n\nThe port to listen on.\n\n- **Type:** [Int32 (Port)](#int32-port): A TCP port.\n- **Presence:** required\n" +
+            "- **Validated:** must be between 1 and 65535\n",
+            Markdown);
         Assert.Contains("- **Presence:** optional, missing is null", Markdown);
     }
 

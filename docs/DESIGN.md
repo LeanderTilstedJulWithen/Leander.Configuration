@@ -477,7 +477,8 @@ A TCP port.
 ```
 
 - **Headings and type names use the display name**, `Int32 (Port)`, like diagnostics do.
-- **List primitives** show their element (linked when it's listed) and delimiter, then their own rules. A key only shows its form. They always have something to say, so they are always listed.
+- **A key shows every rule that applies**, so it reads on its own: the primitive's description on the type line (`Int32 (Port): A TCP port.`), the delimiter (for a scalar list), the items with the element's rules nested, the values of an enum, and the normalizers and validators of the primitive and its bases, the bases' first. Some of this repeats the primitive's section, which the type still links to.
+- **List primitives** show their element (linked when it's listed) and delimiter, then their own rules. They always have something to say, so they are always listed.
 - **Angle brackets are escaped** in text (`IReadOnlyList\<Uri\>`), or GitHub reads `<Uri>` as an HTML tag. The example above leaves that out for readability.
 - **Primitives with nothing to say** (no description, rules, base or values), such as `Primitive.String`, are not listed or linked. The key shows only the type.
 - **Derived primitives** say so in their section: "**Derived from:** [String (Email)](…)", followed by their own rules. The base's rules are in the base's section. A base with nothing to say, as in `new("Port", Primitive.Int32)`, is named without a link: "**Derived from:** Int32".
