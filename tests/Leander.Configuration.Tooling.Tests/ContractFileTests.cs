@@ -56,12 +56,12 @@ public class ContractFileTests
     [Fact]
     public void Read_MissingDescription_IsNull_ButMissingKeyThrows()
     {
-        const string value = "\"value\": { \"type\": \"Int32\", \"presence\": \"required\", \"form\": \"scalar\" }";
+        const string value = "\"type\": \"Int32\", \"presence\": \"required\", \"form\": \"scalar\"";
 
-        var contract = ContractFile.Read($$"""{ "formatVersion": 1, "definitions": [ { "key": "Port", "isSensitive": false, {{value}} } ], "primitives": [] }""");
+        var contract = ContractFile.Read($$"""{ "formatVersion": 1, "definitions": [ { "key": "Port", {{value}} } ], "primitives": [] }""");
 
         Assert.Null(Assert.Single(contract.Definitions).Description);
         Assert.ThrowsAny<JsonException>(() => ContractFile.Read(
-            $$"""{ "formatVersion": 1, "definitions": [ { "isSensitive": false, {{value}} } ], "primitives": [] }"""));
+            $$"""{ "formatVersion": 1, "definitions": [ { {{value}} } ], "primitives": [] }"""));
     }
 }

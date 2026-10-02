@@ -12,6 +12,35 @@ Decided and set in motion. Pick up here, in this order.
 - [x] XML documentation comments (`///`) for the public API instead of `//` comments, so users get them in IntelliSense. `GenerateDocumentationFile` in every src project, so a missing comment is a CS1591 warning.
 - [x] Run both samples and check their output. Fix documentation drift, e.g. DESIGN.md (Sources) still says "`Leander.Configuration.Microsoft` will implement `IValueSource`", which is done as Leander.Configuration.MicrosoftExtensions.
 
+## Review (2026-10-02)
+From REVIEW.md. In this order.
+
+### Tooling
+- [x] Contract JSON owned by Tooling: an internal DTO is the only place that defines the format, with plain serializer options. Flat shape: `key`, `description`, `type`, `primitive` (name only; nullability shows in `presence`), `presence`, `default`, `form` (always), `sensitive` (only when true). `FormatVersion` stays 1 while pre-release.
+- [ ] Indexed defaults in `default` as a JSON array instead of a separate `defaultItems`.
+- [ ] Public API by output, formats internal: `Documentation.WriteMarkdown`, `ConfigurationGenerator` (from `ExampleConfiguration`), a new name for `ContractFile` (it doesn't touch files) with `WriteJson` / `ReadJson`, and `ContractComparison` → `ContractDiff`.
+
+### Leander.Configuration.MicrosoftExtensions
+- [ ] Nothing throws at registration: the snapshot is read from `IConfiguration` resolved from the container, and an explicitly registered startup validator fails the host at start. An options parameter for setup, no builder. Singleton is our default, not a rule. Record in DESIGN.md.
+
+### Markdown documentation
+- [ ] Rules shown on the key that uses them, including element and list rules.
+- [ ] Folding: a primitive used by one entity is folded into it; one used by several gets its own entry, with "Used by" links to keys and derived primitives.
+- [ ] Converters describe how they parse, in a simple sentence (e.g. "An integer between -2,147,483,648 and 2,147,483,647, parsed with the invariant culture."). Design first: this is in Leander.Primitives.
+
+### Samples
+- [ ] Leander.Primitives sample (standalone).
+- [ ] Leander.Configuration.MicrosoftExtensions sample without Tooling.
+- [ ] Comprehensive sample covering everything, writing the contract JSON, Markdown and appsettings.json to `samples/output` (committed).
+
+### README
+- [ ] Sections named after projects without the prefix (Primitives, Configuration, …); Microsoft.Extensions in its own section.
+- [ ] "Why" → "Motivation", with a bit more on features; tighten clunky passages ("sharing one is sharing a field").
+- [ ] Samples section linking the samples and `samples/output`; a small Planned section (e.g. `IOptionsMonitor`), separate from TODO.md and DESIGN.md.
+
+### Clean-up
+- [ ] Repo-wide code clean-up for member order (until then, per class when touched): consts; static fields; readonly fields; fields; constructors (public, internal, private); public static members; public properties; internal properties; public methods; internal methods; private methods; nested classes. Primary constructors where possible. Alphabetical within a group, over logical pairs.
+
 ## Tests
 - [x] Rewrite the tests removed with the registry: `Primitive<T>` constructors, deriving (base rules first, own rules only in `Validators`), ready-made and enum primitives, display names, list primitives, the contract builder (name clashes, duplicate keys, presence), and reading (`ConfigurationContractTests`).
 - [x] `ConfigurationContractBuilder`: duplicate keys, resolving primitives (by definition and by name), invalid `Delimited()` use, every failure reported at once.
