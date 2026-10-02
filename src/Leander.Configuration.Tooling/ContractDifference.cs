@@ -77,6 +77,11 @@ public enum DifferenceAspect
     Element,
 
     /// <summary>
+    /// The description of a primitive's converter: what text it reads and writes.
+    /// </summary>
+    Converter,
+
+    /// <summary>
     /// A list primitive's delimiter.
     /// </summary>
     Delimiter,

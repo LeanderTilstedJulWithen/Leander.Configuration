@@ -38,7 +38,9 @@ public abstract class Primitive
     /// </summary>
     public abstract Primitive? Base { get; }
 
-    // The descriptions of its own rules, for code that doesn't know T, e.g. descriptors.
+    // The descriptions of its converter and its own rules, for code that doesn't know T, e.g. descriptors.
+    internal abstract string? ConverterDescription { get; }
+
     internal abstract IReadOnlyList<string> NormalizerDescriptions { get; }
 
     internal abstract IReadOnlyList<string> ValidatorDescriptions { get; }

@@ -60,6 +60,8 @@ public class Primitive<T> : Primitive
     /// </summary>
     public IReadOnlyList<IValidator<T>> Validators { get; init; } = [];
 
+    internal override string? ConverterDescription => Converter.Description;
+
     // Bounds are formatted with the converter, e.g. "must be less than or equal to 0xFF" for a Hex primitive.
     internal override IReadOnlyList<string> NormalizerDescriptions =>
         [.. Normalizers.Select(normalizer => normalizer.Description.FormatWith(Converter))];

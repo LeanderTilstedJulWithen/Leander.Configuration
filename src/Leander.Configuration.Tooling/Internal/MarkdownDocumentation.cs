@@ -6,7 +6,7 @@ namespace Leander.Configuration.Tooling.Internal;
 // Documentation as Markdown. Definitions are grouped by their first key segment, and each group has a summary table
 // followed by a section per key, with every rule that applies. A primitive used by two or more keys or primitives
 // gets its own section at the end, linked from its users. One used once is folded into its user. Primitives with
-// nothing to say (no description, rules, base, element or values) are never listed.
+// nothing to say (no description, format, rules, base, element or values) are never listed.
 internal static class MarkdownDocumentation
 {
     public static string Write(ContractDescriptor contract, string title)
@@ -169,10 +169,18 @@ internal static class MarkdownDocumentation
 
         private bool IsListed(PrimitiveReference reference) => _listed.Contains(reference);
 
-        // A list's delimiter and items, with the item's rules nested, then the rules of the primitive and its bases,
-        // the bases' first, in the order they run.
+        // The format, from the furthest base, whose converter it takes. A list's delimiter and items, with the item's
+        // rules nested, then the rules of the primitive and its bases, the bases' first, in the order they run.
+        // An indexed list (no delimiter shown) isn't read by the list's converter, so its format doesn't apply.
         private void WriteRules(PrimitiveDescriptor primitive, string indent, bool showDelimiter)
         {
+            var chain = Chain(primitive);
+
+            if ((showDelimiter || primitive.Element is null) && chain[0].Converter is { } format)
+            {
+                Line($"{indent}- **Format:** {Text(format)}");
+            }
+
             if (showDelimiter && primitive.Delimiter is { } delimiter)
             {
                 Line($"{indent}- **Delimiter:** {Code(delimiter.ToString())}");
@@ -193,7 +201,6 @@ internal static class MarkdownDocumentation
                 Line($"{indent}- **Values:** {string.Join(", ", values.Select(Code))}");
             }
 
-            var chain = Chain(primitive);
             var normalizers = chain.SelectMany(link => link.Normalizers).ToList();
             var validators = chain.SelectMany(link => link.Validators).ToList();
 
@@ -311,6 +318,7 @@ internal static class MarkdownDocumentation
 
         // The lines under a primitive's description. A list primitive always has its element.
         private static bool HasDetails(PrimitiveDescriptor primitive) =>
+            primitive.Converter is not null ||
             primitive.Base is not null ||
             primitive.Element is not null ||
             primitive.Normalizers.Count > 0 ||

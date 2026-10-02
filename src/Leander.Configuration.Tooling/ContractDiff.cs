@@ -100,6 +100,7 @@ public static class ContractDiff
 
             var name = Name(left);
             Compare(key, DifferenceAspect.Description, name, leftPrimitive.Description, rightPrimitive.Description);
+            Compare(key, DifferenceAspect.Converter, name, leftPrimitive.Converter, rightPrimitive.Converter);
             Compare(key, DifferenceAspect.Delimiter, name, leftPrimitive.Delimiter?.ToString(), rightPrimitive.Delimiter?.ToString());
             Compare(key, DifferenceAspect.Normalizers, name, List(leftPrimitive.Normalizers), List(rightPrimitive.Normalizers));
             Compare(key, DifferenceAspect.Validators, name, List(leftPrimitive.Validators), List(rightPrimitive.Validators));

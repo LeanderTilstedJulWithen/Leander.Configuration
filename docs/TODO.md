@@ -26,7 +26,8 @@ From REVIEW.md. In this order.
 ### Markdown documentation
 - [x] Rules shown on the key that uses them, including element and list rules.
 - [x] Folding: a primitive used by one entity is folded into it; one used by several gets its own entry, with "Used by" links to keys and derived primitives.
-- [ ] Converters describe how they parse, in a simple sentence (see DESIGN.md, Converter descriptions): `IConverter<T>.Description`, ready-made and builder descriptions, composition, `PrimitiveDescriptor.Converter`, contract JSON, Markdown **Format** line, and a `ContractDiff` aspect.
+- [x] Converters describe how they parse, in a simple sentence (see DESIGN.md, Converter descriptions): `IConverter<T>.Description`, ready-made and builder descriptions, composition.
+- [x] Converter descriptions in the documentation: `PrimitiveDescriptor.Converter` (null for a derived primitive), a `converter` field in the contract JSON, the Markdown **Format** line (from the base for a derived primitive; counts as something to say), and a `ContractDiff` aspect.
 
 ### Samples
 - [ ] Leander.Primitives sample (standalone).

@@ -43,11 +43,12 @@ internal sealed class DescriptorContext
 
     private static PrimitiveReference Reference(Primitive primitive) => new(TypeNames.Get(primitive.ValueType), primitive.Name);
 
-    // Only its own rules: the base's rules are on the base's descriptor.
+    // Only its own rules: the base's rules are on the base's descriptor, and so is the converter it takes.
     private static PrimitiveDescriptor Describe(Primitive primitive) =>
         new(TypeNames.Get(primitive.ValueType), primitive.Name, primitive.Description)
         {
             Base = primitive.Base is { } @base ? Reference(@base) : null,
+            Converter = primitive.Base is null ? primitive.ConverterDescription : null,
             Element = primitive is IListPrimitive list ? Reference(list.Element) : null,
             Delimiter = primitive is IListPrimitive { Delimiter: var delimiter } ? delimiter : null,
             Normalizers = primitive.NormalizerDescriptions,

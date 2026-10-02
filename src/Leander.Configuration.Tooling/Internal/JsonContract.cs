@@ -99,6 +99,7 @@ internal static class JsonContract
         new(primitive.Type, primitive.Name, primitive.Description)
         {
             Base = primitive.Base is { } name ? new PrimitiveReference(primitive.Type, name) : null,
+            Converter = primitive.Converter,
             Element = primitive.Element is { } element ? new PrimitiveReference(element.Type, element.Name) : null,
             Delimiter = primitive.Delimiter,
             Normalizers = primitive.Normalizers ?? [],
@@ -127,6 +128,7 @@ internal static class JsonContract
             Type = primitive.Type,
             Name = primitive.Name,
             Description = primitive.Description,
+            Converter = primitive.Converter,
             Base = primitive.Base?.Name,
             Element = primitive.Element is { } element ? new ReferenceJson { Type = element.Type, Name = element.Name } : null,
             Delimiter = primitive.Delimiter,
@@ -198,6 +200,9 @@ internal static class JsonContract
 
         [JsonPropertyName("description")]
         public string? Description { get; init; }
+
+        [JsonPropertyName("converter")]
+        public string? Converter { get; init; }
 
         [JsonPropertyName("base")]
         public string? Base { get; init; }
