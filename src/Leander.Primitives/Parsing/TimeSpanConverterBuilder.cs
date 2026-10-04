@@ -22,6 +22,15 @@ public sealed class TimeSpanConverterBuilder
     }
 
     /// <summary>
+    /// Builds the converter. Add at least one format first.
+    /// </summary>
+    public IConverter<TimeSpan> Build()
+    {
+        var formats = _formats.ToArray();
+        return new TimeSpanFormatConverter(formats, _styles, _description ?? FormatDescriptions.TimeSpan(formats, _styles));
+    }
+
+    /// <summary>
     /// Sets the converter's description, instead of the one generated from the formats and styles.
     /// </summary>
     public TimeSpanConverterBuilder WithDescription(string description)
@@ -37,14 +46,5 @@ public sealed class TimeSpanConverterBuilder
     {
         _styles = styles;
         return this;
-    }
-
-    /// <summary>
-    /// Builds the converter. Add at least one format first.
-    /// </summary>
-    public IConverter<TimeSpan> Build()
-    {
-        var formats = _formats.ToArray();
-        return new TimeSpanFormatConverter(formats, _styles, _description ?? FormatDescriptions.TimeSpan(formats, _styles));
     }
 }

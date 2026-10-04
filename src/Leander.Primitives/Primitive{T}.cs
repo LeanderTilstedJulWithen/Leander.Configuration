@@ -40,9 +40,6 @@ public class Primitive<T> : Primitive
     }
 
     /// <inheritdoc/>
-    public override Type ValueType => typeof(T);
-
-    /// <inheritdoc/>
     public override Primitive<T>? Base { get; }
 
     /// <summary>
@@ -59,6 +56,9 @@ public class Primitive<T> : Primitive
     /// Its own validators. A base's validators run before these.
     /// </summary>
     public IReadOnlyList<IValidator<T>> Validators { get; init; } = [];
+
+    /// <inheritdoc/>
+    public override Type ValueType => typeof(T);
 
     internal override string? ConverterDescription => Converter.Description;
 
@@ -77,28 +77,6 @@ public class Primitive<T> : Primitive
         _allValidators ??= Base is null ? Validators : [.. Base.AllValidators, .. Validators];
 
     /// <summary>
-    /// Parses <paramref name="input"/> with the converter, then normalizes and validates the value.
-    /// On failure, <paramref name="value"/> is <see langword="default"/>.
-    /// </summary>
-    public bool TryParse(string input, out T value) => TryParse(input, out value, null, redact: false);
-
-    /// <summary>
-    /// Parses <paramref name="input"/> with the converter, then normalizes and validates the value.
-    /// On failure, <paramref name="value"/> is <see langword="default"/> and <paramref name="errors"/> lists every failure.
-    /// </summary>
-    public bool TryParse(string input, out T value, out IReadOnlyList<string> errors) =>
-        TryParse(input, redact: false, out value, out errors);
-
-    // With redact, error messages leave out the value, for sensitive configuration values.
-    internal bool TryParse(string input, bool redact, out T value, out IReadOnlyList<string> errors)
-    {
-        var list = new List<string>();
-        var success = TryParse(input, out value, list, redact);
-        errors = list;
-        return success;
-    }
-
-    /// <summary>
     /// Normalizes, then validates a value that is already a <typeparamref name="T"/>, e.g. a default.
     /// On failure, <paramref name="result"/> is <see langword="default"/>.
     /// </summary>
@@ -111,24 +89,25 @@ public class Primitive<T> : Primitive
     public bool TryAccept(T value, out T result, out IReadOnlyList<string> errors) =>
         TryAccept(value, redact: false, out result, out errors);
 
+    /// <summary>
+    /// Parses <paramref name="input"/> with the converter, then normalizes and validates the value.
+    /// On failure, <paramref name="value"/> is <see langword="default"/>.
+    /// </summary>
+    public bool TryParse(string input, out T value) => TryParse(input, out value, null, redact: false);
+
+    /// <summary>
+    /// Parses <paramref name="input"/> with the converter, then normalizes and validates the value.
+    /// On failure, <paramref name="value"/> is <see langword="default"/> and <paramref name="errors"/> lists every failure.
+    /// </summary>
+    public bool TryParse(string input, out T value, out IReadOnlyList<string> errors) =>
+        TryParse(input, redact: false, out value, out errors);
+
     internal bool TryAccept(T value, bool redact, out T result, out IReadOnlyList<string> errors)
     {
         var list = new List<string>();
         var success = TryAccept(value, out result, list, redact);
         errors = list;
         return success;
-    }
-
-    // Without an error list, the first failure stops.
-    internal bool TryParse(string input, out T value, List<string>? errors, bool redact)
-    {
-        if (!TryConvert(input, out var converted, errors, redact))
-        {
-            value = default!;
-            return false;
-        }
-
-        return TryApplyRules(converted, out value, errors, redact);
     }
 
     internal bool TryAccept(T value, out T result, List<string>? errors, bool redact)
@@ -146,6 +125,34 @@ public class Primitive<T> : Primitive
     internal bool TryApplyRules(T value, out T result, List<string>? errors, bool redact) =>
         Rules.TryApply(AllNormalizers, AllValidators, Converter, value, out result, errors, redact);
 
+    // With redact, error messages leave out the value, for sensitive configuration values.
+    internal bool TryParse(string input, bool redact, out T value, out IReadOnlyList<string> errors)
+    {
+        var list = new List<string>();
+        var success = TryParse(input, out value, list, redact);
+        errors = list;
+        return success;
+    }
+
+    // Without an error list, the first failure stops.
+    internal bool TryParse(string input, out T value, List<string>? errors, bool redact)
+    {
+        if (!TryConvert(input, out var converted, errors, redact))
+        {
+            value = default!;
+            return false;
+        }
+
+        return TryApplyRules(converted, out value, errors, redact);
+    }
+
+    // Accepts the items of a value made of items, before this primitive's rules run. A plain value has none.
+    private protected virtual bool TryAcceptItems(T value, out T result, List<string>? errors, bool redact)
+    {
+        result = value;
+        return true;
+    }
+
     // Turns the input into a T, before this primitive's rules run.
     private protected virtual bool TryConvert(string input, out T value, List<string>? errors, bool redact)
     {
@@ -156,12 +163,5 @@ public class Primitive<T> : Primitive
 
         errors?.Add(redact ? $"value is not a valid {DisplayName}" : $"'{input}' is not a valid {DisplayName}");
         return false;
-    }
-
-    // Accepts the items of a value made of items, before this primitive's rules run. A plain value has none.
-    private protected virtual bool TryAcceptItems(T value, out T result, List<string>? errors, bool redact)
-    {
-        result = value;
-        return true;
     }
 }

@@ -7,10 +7,6 @@ internal sealed class ReadContext(ConfigurationContract contract, IValueSource s
 
     public ConfigurationContract Contract { get; } = contract;
 
-    public IValueSource Source { get; } = source;
-
-    public ReadOptions Options { get; } = options;
-
     public IReadOnlyList<ConfigurationDiagnostic> Diagnostics => _diagnostics;
 
     public bool HasErrors { get; private set; }
@@ -18,6 +14,10 @@ internal sealed class ReadContext(ConfigurationContract contract, IValueSource s
     // Whether the contract definition being read is sensitive; its values are left out of diagnostics.
     // Set per contract definition, because the readers it wraps (e.g. for Optional()) don't know.
     public bool IsSensitive { get; set; }
+
+    public ReadOptions Options { get; } = options;
+
+    public IValueSource Source { get; } = source;
 
     // Definition is null for a key the contract doesn't define.
     public void Report(DiagnosticSeverity severity, string key, string message, ConfigurationDefinition? definition)

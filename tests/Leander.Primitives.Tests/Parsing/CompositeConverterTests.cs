@@ -4,8 +4,6 @@ namespace Leander.Primitives.Tests.Parsing;
 
 public class CompositeConverterTests
 {
-    public sealed record Point(int X, int Y);
-
     [Fact]
     public void List_ParsesDelimitedValuesAndTrimsSegments()
     {
@@ -114,4 +112,6 @@ public class CompositeConverterTests
     [InlineData("""{"X":"one"}""")]
     public void Json_RejectsInvalidJson(string input) =>
         ConverterAssert.Rejects(Converters.Json<Point>(), input);
+
+    public sealed record Point(int X, int Y);
 }

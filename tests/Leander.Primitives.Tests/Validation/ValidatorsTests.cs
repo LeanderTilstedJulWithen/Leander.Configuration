@@ -106,13 +106,13 @@ public class ValidatorsTests
         Assert.Equal(["must be at most 0xFF"], Failures(validator, 256, Converters.Int32Hex));
     }
 
-    private static IEnumerable<string> Failures<T>(IValidator<T> validator, T value, IFormatter<T> formatter) =>
-        validator.Validate(value).Select(failure => failure.FormatWith(formatter));
-
     private static void AssertValidity(IValidator<int> validator, int value, bool valid, string description)
     {
         Assert.Equal(description, validator.Description.FormatWith(Converters.Int32));
         Assert.Equal(valid, validator.IsValid(value));
         Assert.Equal(valid ? [] : [description], Failures(validator, value, Converters.Int32));
     }
+
+    private static IEnumerable<string> Failures<T>(IValidator<T> validator, T value, IFormatter<T> formatter) =>
+        validator.Validate(value).Select(failure => failure.FormatWith(formatter));
 }

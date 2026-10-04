@@ -22,6 +22,18 @@ public sealed class DateTimeOffsetConverterBuilder
     }
 
     /// <summary>
+    /// Builds the converter. Add at least one format first.
+    /// </summary>
+    public IConverter<DateTimeOffset> Build()
+    {
+        var formats = _formats.ToArray();
+        return new DateTimeOffsetFormatConverter(
+            formats,
+            _styles,
+            _description ?? FormatDescriptions.DateTime(formats, _styles));
+    }
+
+    /// <summary>
     /// Sets the converter's description, instead of the one generated from the formats and styles.
     /// </summary>
     public DateTimeOffsetConverterBuilder WithDescription(string description)
@@ -37,17 +49,5 @@ public sealed class DateTimeOffsetConverterBuilder
     {
         _styles = styles;
         return this;
-    }
-
-    /// <summary>
-    /// Builds the converter. Add at least one format first.
-    /// </summary>
-    public IConverter<DateTimeOffset> Build()
-    {
-        var formats = _formats.ToArray();
-        return new DateTimeOffsetFormatConverter(
-            formats,
-            _styles,
-            _description ?? FormatDescriptions.DateTime(formats, _styles));
     }
 }

@@ -4,14 +4,6 @@ namespace Leander.Primitives.Tests.Parsing;
 
 public class EnumConverterTests
 {
-    [Flags]
-    public enum Access
-    {
-        None = 0,
-        Read = 1,
-        Write = 2,
-    }
-
     [Theory]
     [InlineData("Monday", DayOfWeek.Monday)]
     [InlineData("monday", DayOfWeek.Monday)]
@@ -50,5 +42,13 @@ public class EnumConverterTests
     {
         Assert.Equal("Monday", Converters.Enum<DayOfWeek>().Format(DayOfWeek.Monday));
         Assert.Equal("Read, Write", Converters.Enum<Access>().Format(Access.Read | Access.Write));
+    }
+
+    [Flags]
+    public enum Access
+    {
+        None = 0,
+        Read = 1,
+        Write = 2,
     }
 }

@@ -6,8 +6,8 @@ internal sealed class ConfigurationValueSource(IConfiguration configuration) : I
 {
     private readonly IConfiguration _configuration = configuration;
 
-    public string? GetValue(string key) => _configuration[key];
-
     public IReadOnlyList<string> GetChildNames(string key) =>
         _configuration.GetSection(key).GetChildren().Select(child => child.Key).ToList();
+
+    public string? GetValue(string key) => _configuration[key];
 }

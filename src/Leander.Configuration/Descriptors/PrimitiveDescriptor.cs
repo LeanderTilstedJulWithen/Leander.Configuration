@@ -17,9 +17,10 @@ public sealed record PrimitiveDescriptor(string Type, string Name, string? Descr
     public PrimitiveReference? Base { get; init; }
 
     /// <summary>
-    /// A list primitive's element, or <see langword="null"/>.
+    /// What text its converter reads and writes, or <see langword="null"/> when the converter has no description.
+    /// A derived primitive's is on its base, so it is <see langword="null"/> here.
     /// </summary>
-    public PrimitiveReference? Element { get; init; }
+    public string? Converter { get; init; }
 
     /// <summary>
     /// A list primitive's delimiter, or <see langword="null"/>.
@@ -27,10 +28,9 @@ public sealed record PrimitiveDescriptor(string Type, string Name, string? Descr
     public char? Delimiter { get; init; }
 
     /// <summary>
-    /// What text its converter reads and writes, or <see langword="null"/> when the converter has no description.
-    /// A derived primitive's is on its base, so it is <see langword="null"/> here.
+    /// A list primitive's element, or <see langword="null"/>.
     /// </summary>
-    public string? Converter { get; init; }
+    public PrimitiveReference? Element { get; init; }
 
     /// <summary>
     /// The descriptions of its own normalizers, in order.

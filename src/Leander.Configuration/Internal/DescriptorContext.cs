@@ -10,11 +10,11 @@ internal sealed class DescriptorContext
     private readonly HashSet<Primitive> _described = new(ReferenceEqualityComparer.Instance);
     private readonly List<PrimitiveDescriptor> _primitives = [];
 
-    public IReadOnlyList<PrimitiveDescriptor> Primitives => _primitives;
-
     // Whether the contract definition being described is sensitive; its defaults are left out.
     // Set per contract definition, like ReadContext.IsSensitive.
     public bool IsSensitive { get; set; }
+
+    public IReadOnlyList<PrimitiveDescriptor> Primitives => _primitives;
 
     // Primitives are described once and referenced. Names are unique per type within a contract (see ContractChecker),
     // so the reference is unambiguous.
@@ -41,8 +41,6 @@ internal sealed class DescriptorContext
         }
     }
 
-    private static PrimitiveReference Reference(Primitive primitive) => new(TypeNames.Get(primitive.ValueType), primitive.Name);
-
     // Only its own rules: the base's rules are on the base's descriptor, and so is the converter it takes.
     private static PrimitiveDescriptor Describe(Primitive primitive) =>
         new(TypeNames.Get(primitive.ValueType), primitive.Name, primitive.Description)
@@ -55,4 +53,6 @@ internal sealed class DescriptorContext
             Validators = primitive.ValidatorDescriptions,
             Values = primitive.ValueType.IsEnum ? Enum.GetNames(primitive.ValueType) : null,
         };
+
+    private static PrimitiveReference Reference(Primitive primitive) => new(TypeNames.Get(primitive.ValueType), primitive.Name);
 }

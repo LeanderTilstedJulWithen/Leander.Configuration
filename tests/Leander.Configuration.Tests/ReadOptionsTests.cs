@@ -4,19 +4,17 @@ namespace Leander.Configuration.Tests;
 
 public class ReadOptionsTests
 {
-    private static readonly ConfigurationDefinition<int> Port =
-        ConfigurationDefinition.Define("Server:Port", Primitive.Int32).Default(80);
+    private static readonly ReadOptions CheckServer = new() { CheckedSections = ["Server"] };
 
     private static readonly ConfigurationDefinition<IReadOnlyList<string>> Hosts =
         ConfigurationDefinition.Indexed("Server:Hosts", new ListPrimitive<string>("Hosts", Primitive.String)).Default([]);
 
+    private static readonly ConfigurationDefinition<int> Port =
+        ConfigurationDefinition.Define("Server:Port", Primitive.Int32).Default(80);
+
+    // After Hosts and Port, which it needs when initialized.
     private static readonly ConfigurationContract Contract =
         new ConfigurationContractBuilder().Register(Port).Register(Hosts).Build();
-
-    private static readonly ReadOptions CheckServer = new() { CheckedSections = ["Server"] };
-
-    private static IValueSource Source(params (string Key, string? Value)[] values) =>
-        ValueSource.FromPairs(values.Select(pair => KeyValuePair.Create(pair.Key, pair.Value)));
 
     [Fact]
     public void Default_ChecksNothingAndKeepsWarnings()
@@ -106,4 +104,7 @@ public class ReadOptionsTests
         Assert.Equal(DiagnosticSeverity.Error, error.Severity);
         Assert.Equal("indices are not contiguous from 0", error.Message);
     }
+
+    private static IValueSource Source(params (string Key, string? Value)[] values) =>
+        ValueSource.FromPairs(values.Select(pair => KeyValuePair.Create(pair.Key, pair.Value)));
 }

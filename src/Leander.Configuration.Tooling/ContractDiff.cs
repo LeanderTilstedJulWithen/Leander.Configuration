@@ -30,8 +30,8 @@ public static class ContractDiff
     private sealed class Comparer(ContractDescriptor left, ContractDescriptor right)
     {
         private readonly ContractDescriptor _left = left;
-        private readonly ContractDescriptor _right = right;
         private readonly Dictionary<PrimitiveReference, PrimitiveDescriptor> _leftPrimitives = Index(left);
+        private readonly ContractDescriptor _right = right;
         private readonly Dictionary<PrimitiveReference, PrimitiveDescriptor> _rightPrimitives = Index(right);
 
         public List<ContractDifference> Differences { get; } = [];
@@ -61,6 +61,20 @@ public static class ContractDiff
             foreach (var definition in _right.Definitions.Where(definition => !leftKeys.Contains(definition.Key)))
             {
                 Differences.Add(new ContractDifference(definition.Key, DifferenceKind.Added));
+            }
+        }
+
+        private void Compare(string key, DifferenceAspect aspect, string? primitive, string? left, string? right)
+        {
+            if (!string.Equals(left, right, StringComparison.Ordinal))
+            {
+                Differences.Add(new ContractDifference(key, DifferenceKind.Changed)
+                {
+                    Aspect = aspect,
+                    Primitive = primitive,
+                    Left = left,
+                    Right = right,
+                });
             }
         }
 
@@ -109,19 +123,8 @@ public static class ContractDiff
             ComparePrimitives(key, DifferenceAspect.Element, name, leftPrimitive.Element, rightPrimitive.Element, compared);
         }
 
-        private void Compare(string key, DifferenceAspect aspect, string? primitive, string? left, string? right)
-        {
-            if (!string.Equals(left, right, StringComparison.Ordinal))
-            {
-                Differences.Add(new ContractDifference(key, DifferenceKind.Changed)
-                {
-                    Aspect = aspect,
-                    Primitive = primitive,
-                    Left = left,
-                    Right = right,
-                });
-            }
-        }
+        // An indexed default is compared by its items, which are exact even when an item contains the delimiter.
+        private static string? DefaultText(ValueDescriptor value) => List(value.DefaultItems) ?? value.Default;
 
         private static Dictionary<PrimitiveReference, PrimitiveDescriptor> Index(ContractDescriptor contract)
         {
@@ -134,15 +137,12 @@ public static class ContractDiff
             return primitives;
         }
 
-        // An indexed default is compared by its items, which are exact even when an item contains the delimiter.
-        private static string? DefaultText(ValueDescriptor value) => List(value.DefaultItems) ?? value.Default;
+        private static string? List(IReadOnlyList<string>? items) => items is null ? null : $"[{string.Join(", ", items)}]";
+
+        private static string Lower<T>(T value) where T : notnull => value.ToString()!.ToLowerInvariant();
 
         // Like Primitive.DisplayName: "Int32 (Port)", or just "Int32" when the name is the type name.
         private static string? Name(PrimitiveReference? reference) =>
             reference is null ? null : reference.Name == reference.Type ? reference.Type : $"{reference.Type} ({reference.Name})";
-
-        private static string? List(IReadOnlyList<string>? items) => items is null ? null : $"[{string.Join(", ", items)}]";
-
-        private static string Lower<T>(T value) where T : notnull => value.ToString()!.ToLowerInvariant();
     }
 }

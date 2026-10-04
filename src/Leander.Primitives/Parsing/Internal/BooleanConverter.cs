@@ -4,7 +4,7 @@ internal sealed class BooleanConverter : IConverter<bool>
 {
     public string Description => "Either true or false, ignoring case.";
 
-    public bool TryParse(string input, out bool result) => bool.TryParse(input, out result);
-
     public string Format(bool value) => value.ToString();
+
+    public bool TryParse(string input, out bool result) => bool.TryParse(input, out result);
 }

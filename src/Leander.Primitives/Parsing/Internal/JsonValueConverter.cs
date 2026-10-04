@@ -9,6 +9,8 @@ internal sealed class JsonValueConverter<T>(JsonSerializerOptions? options) : IC
 
     public string Description => $"{TypeNames.Get(typeof(T))} as JSON.";
 
+    public string Format(T value) => JsonSerializer.Serialize(value, _options);
+
     public bool TryParse(string input, out T result)
     {
         try
@@ -22,6 +24,4 @@ internal sealed class JsonValueConverter<T>(JsonSerializerOptions? options) : IC
             return false;
         }
     }
-
-    public string Format(T value) => JsonSerializer.Serialize(value, _options);
 }

@@ -10,8 +10,8 @@ internal sealed class TimeSpanFormatConverter(string[] formats, TimeSpanStyles s
 
     public string Description => _description;
 
+    public string Format(TimeSpan value) => value.ToString(_formats[0], CultureInfo.InvariantCulture);
+
     public bool TryParse(string input, out TimeSpan result) =>
         TimeSpan.TryParseExact(input, _formats, CultureInfo.InvariantCulture, _styles, out result);
-
-    public string Format(TimeSpan value) => value.ToString(_formats[0], CultureInfo.InvariantCulture);
 }

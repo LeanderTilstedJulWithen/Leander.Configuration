@@ -8,15 +8,15 @@ namespace Leander.Configuration.Tooling.Tests;
 // Contracts and descriptors shared by the renderer tests.
 internal static class Contracts
 {
+    public static readonly ListPrimitive<Uri> Origins = new("Origins", Primitive.Uri)
+    {
+        Validators = [Validators.Collections.NotEmpty<Uri>()],
+    };
+
     public static readonly Primitive<int> Port = new("Port", Converters.Int32)
     {
         Validators = [Validators.InRange(1, 65535)],
         Description = "A TCP port.",
-    };
-
-    public static readonly ListPrimitive<Uri> Origins = new("Origins", Primitive.Uri)
-    {
-        Validators = [Validators.Collections.NotEmpty<Uri>()],
     };
 
     public static ContractDescriptor Describe(params ConfigurationDefinition[] definitions)

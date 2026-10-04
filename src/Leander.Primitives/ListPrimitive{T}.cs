@@ -35,31 +35,29 @@ public sealed class ListPrimitive<T> : Primitive<IReadOnlyList<T>>, IListPrimiti
     }
 
     /// <summary>
-    /// The primitive each item goes through.
-    /// </summary>
-    public Primitive<T> Element { get; }
-
-    /// <summary>
     /// The character the input is split at.
     /// </summary>
     public char Delimiter { get; }
 
+    /// <summary>
+    /// The primitive each item goes through.
+    /// </summary>
+    public Primitive<T> Element { get; }
+
     Primitive IListPrimitive.Element => Element;
-
-    private delegate bool ItemStep<TInput>(TInput input, out T item, List<string>? errors);
-
-    private protected override bool TryConvert(string input, out IReadOnlyList<T> value, List<string>? errors, bool redact) =>
-        TryItems(
-            ListConverter<T>.Split(input, Delimiter),
-            (string segment, out T item, List<string>? itemErrors) => Element.TryParse(segment, out item, itemErrors, redact),
-            out value,
-            errors);
 
     private protected override bool TryAcceptItems(IReadOnlyList<T> value, out IReadOnlyList<T> result, List<string>? errors, bool redact) =>
         TryItems(
             value,
             (T input, out T item, List<string>? itemErrors) => Element.TryAccept(input, out item, itemErrors, redact),
             out result,
+            errors);
+
+    private protected override bool TryConvert(string input, out IReadOnlyList<T> value, List<string>? errors, bool redact) =>
+        TryItems(
+            ListConverter<T>.Split(input, Delimiter),
+            (string segment, out T item, List<string>? itemErrors) => Element.TryParse(segment, out item, itemErrors, redact),
+            out value,
             errors);
 
     // Every item is checked when there is an error list; without one, the first failure stops.
@@ -89,4 +87,6 @@ public sealed class ListPrimitive<T> : Primitive<IReadOnlyList<T>>, IListPrimiti
         result = success ? items : default!;
         return success;
     }
+
+    private delegate bool ItemStep<TInput>(TInput input, out T item, List<string>? errors);
 }

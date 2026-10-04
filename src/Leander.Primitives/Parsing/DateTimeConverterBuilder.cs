@@ -22,6 +22,15 @@ public sealed class DateTimeConverterBuilder
     }
 
     /// <summary>
+    /// Builds the converter. Add at least one format first.
+    /// </summary>
+    public IConverter<DateTime> Build()
+    {
+        var formats = _formats.ToArray();
+        return new DateTimeFormatConverter(formats, _styles, _description ?? FormatDescriptions.DateTime(formats, _styles));
+    }
+
+    /// <summary>
     /// Sets the converter's description, instead of the one generated from the formats and styles.
     /// </summary>
     public DateTimeConverterBuilder WithDescription(string description)
@@ -37,14 +46,5 @@ public sealed class DateTimeConverterBuilder
     {
         _styles = styles;
         return this;
-    }
-
-    /// <summary>
-    /// Builds the converter. Add at least one format first.
-    /// </summary>
-    public IConverter<DateTime> Build()
-    {
-        var formats = _formats.ToArray();
-        return new DateTimeFormatConverter(formats, _styles, _description ?? FormatDescriptions.DateTime(formats, _styles));
     }
 }

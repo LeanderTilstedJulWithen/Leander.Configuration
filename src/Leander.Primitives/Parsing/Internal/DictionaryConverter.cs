@@ -6,10 +6,10 @@ internal sealed class DictionaryConverter<TKey, TValue>(
     char entryDelimiter,
     char keyValueDelimiter) : IConverter<IReadOnlyDictionary<TKey, TValue>> where TKey : notnull
 {
-    private readonly IConverter<TKey> _keyConverter = keyConverter;
-    private readonly IConverter<TValue> _valueConverter = valueConverter;
     private readonly char _entryDelimiter = entryDelimiter;
+    private readonly IConverter<TKey> _keyConverter = keyConverter;
     private readonly char _keyValueDelimiter = keyValueDelimiter;
+    private readonly IConverter<TValue> _valueConverter = valueConverter;
 
     public string Description
     {
@@ -29,6 +29,10 @@ internal sealed class DictionaryConverter<TKey, TValue>(
             return description;
         }
     }
+
+    public string Format(IReadOnlyDictionary<TKey, TValue> value) => string.Join(
+        _entryDelimiter,
+        value.Select(pair => $"{_keyConverter.Format(pair.Key)}{_keyValueDelimiter}{_valueConverter.Format(pair.Value)}"));
 
     public bool TryParse(string input, out IReadOnlyDictionary<TKey, TValue> result)
     {
@@ -56,8 +60,4 @@ internal sealed class DictionaryConverter<TKey, TValue>(
 
         return true;
     }
-
-    public string Format(IReadOnlyDictionary<TKey, TValue> value) => string.Join(
-        _entryDelimiter,
-        value.Select(pair => $"{_keyConverter.Format(pair.Key)}{_keyValueDelimiter}{_valueConverter.Format(pair.Value)}"));
 }

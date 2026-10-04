@@ -10,42 +10,9 @@ public class ServiceCollectionExtensionsTests
     private static readonly ConfigurationDefinition<int> Port =
         ConfigurationDefinition.Define("Server:Port", Primitive.Int32).Default(80);
 
+    // After Port, which it needs when initialized.
     private static readonly ConfigurationContract Contract =
         new ConfigurationContractBuilder().Register(Port).Build();
-
-    private sealed class ServerOptions
-    {
-        public required int Port { get; init; }
-    }
-
-    private static IConfigurationRoot Configuration(params (string Key, string? Value)[] values) =>
-        new ConfigurationBuilder()
-            .AddInMemoryCollection(values.Select(pair => KeyValuePair.Create(pair.Key, pair.Value)))
-            .Build();
-
-    private sealed class FixedOptions(ServerOptions value) : IOptionsSnapshot<ServerOptions>
-    {
-        private readonly ServerOptions _value = value;
-
-        public ServerOptions Value => _value;
-
-        public ServerOptions Get(string? name) => _value;
-    }
-
-    // The configuration is in the container, as in a host.
-    private static IServiceCollection Services(IConfiguration configuration, ConfigurationContractOptions? options = null) =>
-        new ServiceCollection()
-            .AddSingleton(configuration)
-            .AddConfigurationContract(Contract, options);
-
-    private static ServiceProvider Provider(IConfiguration configuration, Action<IServiceCollection>? then = null)
-    {
-        var services = Services(configuration)
-            .AddOptionsFrom(snapshot => new ServerOptions { Port = snapshot.Get(Port) });
-
-        then?.Invoke(services);
-        return services.BuildServiceProvider();
-    }
 
     [Fact]
     public void AddConfigurationContract_RegistersContractAndSnapshot()
@@ -242,5 +209,39 @@ public class ServiceCollectionExtensionsTests
             .BuildServiceProvider();
 
         Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IOptions<ServerOptions>>().Value);
+    }
+
+    private static IConfigurationRoot Configuration(params (string Key, string? Value)[] values) =>
+        new ConfigurationBuilder()
+            .AddInMemoryCollection(values.Select(pair => KeyValuePair.Create(pair.Key, pair.Value)))
+            .Build();
+
+    private static ServiceProvider Provider(IConfiguration configuration, Action<IServiceCollection>? then = null)
+    {
+        var services = Services(configuration)
+            .AddOptionsFrom(snapshot => new ServerOptions { Port = snapshot.Get(Port) });
+
+        then?.Invoke(services);
+        return services.BuildServiceProvider();
+    }
+
+    // The configuration is in the container, as in a host.
+    private static IServiceCollection Services(IConfiguration configuration, ConfigurationContractOptions? options = null) =>
+        new ServiceCollection()
+            .AddSingleton(configuration)
+            .AddConfigurationContract(Contract, options);
+
+    private sealed class FixedOptions(ServerOptions value) : IOptionsSnapshot<ServerOptions>
+    {
+        private readonly ServerOptions _value = value;
+
+        public ServerOptions Value => _value;
+
+        public ServerOptions Get(string? name) => _value;
+    }
+
+    private sealed class ServerOptions
+    {
+        public required int Port { get; init; }
     }
 }

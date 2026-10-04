@@ -15,41 +15,6 @@ public abstract class ConfigurationDefinition
     }
 
     /// <summary>
-    /// The configuration key, with sections separated by <c>:</c>, e.g. <c>Server:Port</c>.
-    /// </summary>
-    public abstract string Key { get; }
-
-    /// <summary>
-    /// The type of the value.
-    /// </summary>
-    public abstract Type ValueType { get; }
-
-    /// <summary>
-    /// What the value is for, for documentation. Optional.
-    /// </summary>
-    public abstract string? Description { get; }
-
-    /// <summary>
-    /// Whether the value must be present: it has no default and is not optional.
-    /// </summary>
-    public bool IsRequired => !HasDefault && !IsOptional;
-
-    /// <summary>
-    /// Whether a missing value is replaced by a default.
-    /// </summary>
-    public abstract bool HasDefault { get; }
-
-    /// <summary>
-    /// Whether a missing value is <see langword="null"/>. See <c>Optional()</c>.
-    /// </summary>
-    public abstract bool IsOptional { get; }
-
-    /// <summary>
-    /// Whether the value is left out of diagnostics and documentation. See <see cref="ConfigurationDefinition{T}.Sensitive"/>.
-    /// </summary>
-    public abstract bool IsSensitive { get; }
-
-    /// <summary>
     /// Defines a value at <paramref name="key"/>, read with <paramref name="primitive"/>.
     /// </summary>
     /// <remarks>
@@ -66,6 +31,41 @@ public abstract class ConfigurationDefinition
     /// </remarks>
     public static ConfigurationDefinition<IReadOnlyList<T>> Indexed<T>(string key, ListPrimitive<T> list) =>
         ConfigurationDefinition<IReadOnlyList<T>>.Create(key, new IndexedReader<T>(list));
+
+    /// <summary>
+    /// What the value is for, for documentation. Optional.
+    /// </summary>
+    public abstract string? Description { get; }
+
+    /// <summary>
+    /// Whether a missing value is replaced by a default.
+    /// </summary>
+    public abstract bool HasDefault { get; }
+
+    /// <summary>
+    /// Whether a missing value is <see langword="null"/>. See <c>Optional()</c>.
+    /// </summary>
+    public abstract bool IsOptional { get; }
+
+    /// <summary>
+    /// Whether the value must be present: it has no default and is not optional.
+    /// </summary>
+    public bool IsRequired => !HasDefault && !IsOptional;
+
+    /// <summary>
+    /// Whether the value is left out of diagnostics and documentation. See <see cref="ConfigurationDefinition{T}.Sensitive"/>.
+    /// </summary>
+    public abstract bool IsSensitive { get; }
+
+    /// <summary>
+    /// The configuration key, with sections separated by <c>:</c>, e.g. <c>Server:Port</c>.
+    /// </summary>
+    public abstract string Key { get; }
+
+    /// <summary>
+    /// The type of the value.
+    /// </summary>
+    public abstract Type ValueType { get; }
 
     internal abstract void Check(ContractChecker checker);
 

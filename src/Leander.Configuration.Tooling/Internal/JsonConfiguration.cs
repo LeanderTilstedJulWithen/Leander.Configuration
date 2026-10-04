@@ -56,6 +56,13 @@ internal static class JsonConfiguration
         section[segments[^1]] = value;
     }
 
+    private static string? ElementName(ContractDescriptor contract, ValueDescriptor value) =>
+        contract.Primitives.FirstOrDefault(primitive =>
+            primitive.Type == value.Primitive?.Type && primitive.Name == value.Primitive.Name)?.Element?.Name;
+
+    private static string Placeholder(ValuePresence presence, string name) =>
+        presence == ValuePresence.Optional ? $"<optional {name}>" : $"<{name}>";
+
     private static JsonNode Value(ContractDescriptor contract, DefinitionDescriptor definition)
     {
         var value = definition.Value;
@@ -74,11 +81,4 @@ internal static class JsonConfiguration
             : value.Default is { } text ? text
             : Placeholder(value.Presence, value.Primitive?.Name ?? value.Type));
     }
-
-    private static string Placeholder(ValuePresence presence, string name) =>
-        presence == ValuePresence.Optional ? $"<optional {name}>" : $"<{name}>";
-
-    private static string? ElementName(ContractDescriptor contract, ValueDescriptor value) =>
-        contract.Primitives.FirstOrDefault(primitive =>
-            primitive.Type == value.Primitive?.Type && primitive.Name == value.Primitive.Name)?.Element?.Name;
 }

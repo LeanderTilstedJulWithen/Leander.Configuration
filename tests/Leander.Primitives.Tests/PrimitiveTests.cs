@@ -6,48 +6,6 @@ namespace Leander.Primitives.Tests;
 
 public class PrimitiveTests
 {
-    private enum Color
-    {
-        Red,
-        Green,
-    }
-
-    // A custom rule whose failure holds the checked value as well as the bound.
-    private sealed class AtMost(int maximum) : IValidator<int>
-    {
-        private readonly int _maximum = maximum;
-
-        public IFormattableText<int> Description =>
-            FormattableText.Create<int>(formatter => $"must be at most {formatter.Format(_maximum)}");
-
-        public IReadOnlyList<IFormattableText<int>> Validate(int value) =>
-            value <= _maximum
-                ? []
-                : [FormattableText.Create<int>(formatter => $"must be at most {formatter.Format(_maximum)}, but was {formatter.Format(value)}")];
-    }
-
-    // A custom rule reporting each unmet requirement.
-    private sealed class PasswordPolicy : IValidator<string>
-    {
-        public IFormattableText<string> Description { get; } = FormattableText.Create<string>("must meet the password policy");
-
-        public IReadOnlyList<IFormattableText<string>> Validate(string value)
-        {
-            var failures = new List<IFormattableText<string>>();
-            if (value.Length < 12)
-            {
-                failures.Add(FormattableText.Create<string>("must be at least 12 characters"));
-            }
-
-            if (!value.Any(char.IsDigit))
-            {
-                failures.Add(FormattableText.Create<string>("must contain a digit"));
-            }
-
-            return failures;
-        }
-    }
-
     private static readonly Primitive<int> Port = new("Port", Converters.Int32)
     {
         Validators = [Validators.InRange(1, 65535)],
@@ -360,5 +318,47 @@ public class PrimitiveTests
         Assert.Equal(Color.Green, color);
         Assert.False(Primitive.Enum<Color>().TryParse("Blue", out _, out var errors));
         Assert.Equal(["'Blue' is not a valid Color"], errors);
+    }
+
+    // A custom rule whose failure holds the checked value as well as the bound.
+    private sealed class AtMost(int maximum) : IValidator<int>
+    {
+        private readonly int _maximum = maximum;
+
+        public IFormattableText<int> Description =>
+            FormattableText.Create<int>(formatter => $"must be at most {formatter.Format(_maximum)}");
+
+        public IReadOnlyList<IFormattableText<int>> Validate(int value) =>
+            value <= _maximum
+                ? []
+                : [FormattableText.Create<int>(formatter => $"must be at most {formatter.Format(_maximum)}, but was {formatter.Format(value)}")];
+    }
+
+    private enum Color
+    {
+        Red,
+        Green,
+    }
+
+    // A custom rule reporting each unmet requirement.
+    private sealed class PasswordPolicy : IValidator<string>
+    {
+        public IFormattableText<string> Description { get; } = FormattableText.Create<string>("must meet the password policy");
+
+        public IReadOnlyList<IFormattableText<string>> Validate(string value)
+        {
+            var failures = new List<IFormattableText<string>>();
+            if (value.Length < 12)
+            {
+                failures.Add(FormattableText.Create<string>("must be at least 12 characters"));
+            }
+
+            if (!value.Any(char.IsDigit))
+            {
+                failures.Add(FormattableText.Create<string>("must contain a digit"));
+            }
+
+            return failures;
+        }
     }
 }

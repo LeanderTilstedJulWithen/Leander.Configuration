@@ -115,15 +115,15 @@ public sealed record ContractDifference(string Key, DifferenceKind Kind)
     public DifferenceAspect? Aspect { get; init; }
 
     /// <summary>
+    /// The left value as text; <see langword="null"/> when it has none, e.g. no default.
+    /// </summary>
+    public string? Left { get; init; }
+
+    /// <summary>
     /// The primitive the aspect belongs to, e.g. "Int32 (Port)";
     /// <see langword="null"/> for an aspect of the definition itself.
     /// </summary>
     public string? Primitive { get; init; }
-
-    /// <summary>
-    /// The left value as text; <see langword="null"/> when it has none, e.g. no default.
-    /// </summary>
-    public string? Left { get; init; }
 
     /// <summary>
     /// The right value as text; <see langword="null"/> when it has none, e.g. no default.

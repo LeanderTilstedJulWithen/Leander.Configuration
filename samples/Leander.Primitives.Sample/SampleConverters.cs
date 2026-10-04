@@ -6,6 +6,8 @@ public class PercentageConverter : IConverter<double>
 {
     public string Description => "A percentage between 0 and 100%.";
 
+    public string Format(double value) => value * 100.0 + "%";
+
     public bool TryParse(string input, out double result)
     {
         result = default;
@@ -29,6 +31,4 @@ public class PercentageConverter : IConverter<double>
         result = default;
         return false;
     }
-
-    public string Format(double value) => value * 100.0 + "%";
 }

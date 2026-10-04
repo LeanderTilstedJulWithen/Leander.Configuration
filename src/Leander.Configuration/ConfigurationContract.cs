@@ -29,6 +29,29 @@ public sealed class ConfigurationContract
     public bool Contains(ConfigurationDefinition definition) => _definitionSet.Contains(definition);
 
     /// <summary>
+    /// Creates a text-only description of every definition and the primitives they use,
+    /// for documentation and contract files.
+    /// </summary>
+    /// <remarks>Defaults of sensitive definitions are left out.</remarks>
+    public ContractDescriptor CreateDescriptor()
+    {
+        var context = new DescriptorContext();
+        var definitions = new List<DefinitionDescriptor>(Definitions.Count);
+
+        foreach (var definition in Definitions)
+        {
+            context.IsSensitive = definition.IsSensitive;
+            definitions.Add(new DefinitionDescriptor(
+                definition.Key,
+                definition.Description,
+                definition.IsSensitive,
+                definition.CreateValueDescriptor(context)));
+        }
+
+        return new ContractDescriptor(definitions, context.Primitives);
+    }
+
+    /// <summary>
     /// Reads every definition from <paramref name="source"/>.
     /// </summary>
     /// <exception cref="InvalidConfigurationException">The source doesn't satisfy the contract; lists every error.</exception>
@@ -131,28 +154,5 @@ public sealed class ConfigurationContract
                 Walk($"{key}{ValueSource.KeySeparator}{name}");
             }
         }
-    }
-
-    /// <summary>
-    /// Creates a text-only description of every definition and the primitives they use,
-    /// for documentation and contract files.
-    /// </summary>
-    /// <remarks>Defaults of sensitive definitions are left out.</remarks>
-    public ContractDescriptor CreateDescriptor()
-    {
-        var context = new DescriptorContext();
-        var definitions = new List<DefinitionDescriptor>(Definitions.Count);
-
-        foreach (var definition in Definitions)
-        {
-            context.IsSensitive = definition.IsSensitive;
-            definitions.Add(new DefinitionDescriptor(
-                definition.Key,
-                definition.Description,
-                definition.IsSensitive,
-                definition.CreateValueDescriptor(context)));
-        }
-
-        return new ContractDescriptor(definitions, context.Primitives);
     }
 }

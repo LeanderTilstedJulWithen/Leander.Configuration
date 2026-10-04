@@ -7,14 +7,14 @@ namespace Leander.Configuration.Internal;
 // Primitive names must be unique per type: two different instances with the same type and name are a clash.
 internal sealed class ContractChecker
 {
-    private readonly Dictionary<(Type Type, string Name), Primitive> _named = [];
     private readonly HashSet<(Type Type, string Name)> _clashes = [];
-
-    // Name clashes, one per type and name, in order of discovery.
-    public List<string> NameClashes { get; } = [];
+    private readonly Dictionary<(Type Type, string Name), Primitive> _named = [];
 
     // Per definition: invalid presence.
     public List<string> Failures { get; } = [];
+
+    // Name clashes, one per type and name, in order of discovery.
+    public List<string> NameClashes { get; } = [];
 
     // Checks the primitive, its bases, and the elements of list primitives.
     public void Check(string key, Primitive primitive)

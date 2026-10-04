@@ -6,12 +6,6 @@ namespace Leander.Configuration.Tooling.Tests;
 
 public class ContractDiffTests
 {
-    private static IReadOnlyList<ContractDifference> Compare(ConfigurationDefinition left, ConfigurationDefinition right) =>
-        ContractDiff.Compare(Contracts.Describe(left), Contracts.Describe(right));
-
-    private static ContractDifference Changed(IReadOnlyList<ContractDifference> differences, DifferenceAspect aspect) =>
-        Assert.Single(differences, difference => difference.Aspect == aspect);
-
     [Fact]
     public void SameContract_HasNoDifferences()
     {
@@ -165,4 +159,10 @@ public class ContractDiffTests
         Assert.Equal("[1,2]", difference.Left);
         Assert.Equal("[1, 2]", difference.Right);
     }
+
+    private static ContractDifference Changed(IReadOnlyList<ContractDifference> differences, DifferenceAspect aspect) =>
+        Assert.Single(differences, difference => difference.Aspect == aspect);
+
+    private static IReadOnlyList<ContractDifference> Compare(ConfigurationDefinition left, ConfigurationDefinition right) =>
+        ContractDiff.Compare(Contracts.Describe(left), Contracts.Describe(right));
 }

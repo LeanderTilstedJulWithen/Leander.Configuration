@@ -4,11 +4,6 @@ namespace Leander.Configuration.MicrosoftExtensions.Tests;
 
 public class ConfigurationExtensionsTests
 {
-    private static IConfigurationRoot Configuration(params (string Key, string? Value)[] values) =>
-        new ConfigurationBuilder()
-            .AddInMemoryCollection(values.Select(pair => KeyValuePair.Create(pair.Key, pair.Value)))
-            .Build();
-
     [Fact]
     public void GetValue_ReturnsValueForKey()
     {
@@ -89,4 +84,9 @@ public class ConfigurationExtensionsTests
         Assert.Equal(["0"], source.GetChildNames("Hosts"));
         Assert.Null(source.GetValue("Server:Port"));
     }
+
+    private static IConfigurationRoot Configuration(params (string Key, string? Value)[] values) =>
+        new ConfigurationBuilder()
+            .AddInMemoryCollection(values.Select(pair => KeyValuePair.Create(pair.Key, pair.Value)))
+            .Build();
 }

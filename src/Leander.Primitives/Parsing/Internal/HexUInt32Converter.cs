@@ -6,11 +6,11 @@ internal sealed class HexUInt32Converter : IConverter<uint>
 {
     public string Description => "A 32-bit unsigned integer in hexadecimal, with or without 0x.";
 
+    public string Format(uint value) => "0x" + value.ToString("X", CultureInfo.InvariantCulture);
+
     public bool TryParse(string input, out uint result)
     {
         var digits = input.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? input[2..] : input;
         return uint.TryParse(digits, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
     }
-
-    public string Format(uint value) => "0x" + value.ToString("X", CultureInfo.InvariantCulture);
 }

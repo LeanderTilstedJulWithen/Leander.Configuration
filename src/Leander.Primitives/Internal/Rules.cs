@@ -78,12 +78,6 @@ internal static class Rules
         return isValid;
     }
 
-    private static string Failed<T>(string kind, IFormattableText<T> description, IFormatter<T> formatter, Exception exception, bool redact)
-    {
-        var text = Describe(description, formatter);
-        return redact ? $"{kind} '{text}' failed" : $"{kind} '{text}' failed: {exception.Message}";
-    }
-
     // A description that throws while formatting still gives a message.
     private static string Describe<T>(IFormattableText<T> description, IFormatter<T> formatter)
     {
@@ -95,5 +89,11 @@ internal static class Rules
         {
             return "(description failed)";
         }
+    }
+
+    private static string Failed<T>(string kind, IFormattableText<T> description, IFormatter<T> formatter, Exception exception, bool redact)
+    {
+        var text = Describe(description, formatter);
+        return redact ? $"{kind} '{text}' failed" : $"{kind} '{text}' failed: {exception.Message}";
     }
 }

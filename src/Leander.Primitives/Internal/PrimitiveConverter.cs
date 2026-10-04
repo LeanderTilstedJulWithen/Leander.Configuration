@@ -10,7 +10,7 @@ internal sealed class PrimitiveConverter<T>(Primitive<T> primitive) : IConverter
     // Only the name: the primitive's format and rules are documented with the primitive itself.
     public string Description => $"{_primitive.DisplayName}.";
 
-    public bool TryParse(string input, out T result) => _primitive.TryParse(input, out result);
-
     public string Format(T value) => _primitive.Converter.Format(value);
+
+    public bool TryParse(string input, out T result) => _primitive.TryParse(input, out result);
 }

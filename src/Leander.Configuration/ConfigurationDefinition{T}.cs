@@ -28,12 +28,6 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
     }
 
     /// <inheritdoc/>
-    public override string Key => _settings.Key;
-
-    /// <inheritdoc/>
-    public override Type ValueType => typeof(T);
-
-    /// <inheritdoc/>
     public override string? Description => _settings.Description;
 
     /// <inheritdoc/>
@@ -45,21 +39,13 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
     /// <inheritdoc/>
     public override bool IsSensitive => _settings.IsSensitive;
 
+    /// <inheritdoc/>
+    public override string Key => _settings.Key;
+
+    /// <inheritdoc/>
+    public override Type ValueType => typeof(T);
+
     internal ValueReader<T> Reader => _settings.Reader;
-
-    internal static ConfigurationDefinition<T> Create(string key, ValueReader<T> reader) => new(new Settings(key, reader));
-
-    /// <summary>
-    /// Returns a copy with a description, for documentation.
-    /// </summary>
-    public ConfigurationDefinition<T> Describe(string description) =>
-        new(_settings with { Description = description });
-
-    /// <summary>
-    /// Returns a copy whose value is left out of diagnostics and documentation, e.g. a password.
-    /// </summary>
-    public ConfigurationDefinition<T> Sensitive() =>
-        new(_settings with { IsSensitive = true });
 
     /// <summary>
     /// Returns a copy that uses <paramref name="value"/> when the value is missing.
@@ -72,14 +58,17 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
     public ConfigurationDefinition<T> Default(T value) =>
         new(_settings with { HasDefault = true, DefaultValue = value });
 
-    // Used by Optional(). The reader turns T into TOptional, i.e. T?.
-    internal ConfigurationDefinition<TOptional> ToOptional<TOptional>(ValueReader<TOptional> reader) =>
-        new(new ConfigurationDefinition<TOptional>.Settings(Key, reader)
-        {
-            Description = Description,
-            IsOptional = true,
-            IsSensitive = IsSensitive,
-        });
+    /// <summary>
+    /// Returns a copy with a description, for documentation.
+    /// </summary>
+    public ConfigurationDefinition<T> Describe(string description) =>
+        new(_settings with { Description = description });
+
+    /// <summary>
+    /// Returns a copy whose value is left out of diagnostics and documentation, e.g. a password.
+    /// </summary>
+    public ConfigurationDefinition<T> Sensitive() =>
+        new(_settings with { IsSensitive = true });
 
     internal override void Check(ContractChecker checker)
     {
@@ -94,6 +83,8 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
 
         Reader.Check(checker, this);
     }
+
+    internal static ConfigurationDefinition<T> Create(string key, ValueReader<T> reader) => new(new Settings(key, reader));
 
     internal override ValueDescriptor CreateValueDescriptor(DescriptorContext context)
     {
@@ -110,6 +101,15 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
             DefaultItems = defaultItems,
         };
     }
+
+    // Used by Optional(). The reader turns T into TOptional, i.e. T?.
+    internal ConfigurationDefinition<TOptional> ToOptional<TOptional>(ValueReader<TOptional> reader) =>
+        new(new ConfigurationDefinition<TOptional>.Settings(Key, reader)
+        {
+            Description = Description,
+            IsOptional = true,
+            IsSensitive = IsSensitive,
+        });
 
     internal override bool TryRead(ReadContext context, out object? value)
     {
@@ -147,6 +147,8 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
 
     private sealed record Settings(string Key, ValueReader<T> Reader)
     {
+        public T? DefaultValue { get; init; }
+
         public string? Description { get; init; }
 
         public bool HasDefault { get; init; }
@@ -154,7 +156,5 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
         public bool IsOptional { get; init; }
 
         public bool IsSensitive { get; init; }
-
-        public T? DefaultValue { get; init; }
     }
 }

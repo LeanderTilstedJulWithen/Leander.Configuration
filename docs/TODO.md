@@ -43,7 +43,7 @@ From REVIEW.md. In this order.
 - [ ] Samples section linking the samples and `samples/output`; a small Planned section (e.g. `IOptionsMonitor`), separate from TODO.md and DESIGN.md.
 
 ### Clean-up
-- [ ] Repo-wide code clean-up for member order (until then, per class when touched): consts; static fields; readonly fields; fields; constructors (public, internal, private); public static members; public properties; internal properties; public methods; internal methods; private methods; nested classes. Primary constructors where possible. Alphabetical within a group, over logical pairs.
+- [x] Repo-wide code clean-up for member order (from then on, per class when touched): consts; static fields; readonly fields; fields; constructors (public, internal, private); public static members; public properties; internal properties; protected and private protected properties; private properties; public methods; internal methods; protected and private protected methods; private methods; nested types. Internal and private static methods sit with the instance methods of the same access; abstract and override members count by their access. Doc comments and comments on a group move with their member. Primary constructors where possible. Alphabetical within a group, over logical pairs. In tests, `[Fact]` and `[Theory]` methods keep their order, which reads from the simple case to the edge cases.
 
 ## Tests
 - [x] Rewrite the tests removed with the registry: `Primitive<T>` constructors, deriving (base rules first, own rules only in `Validators`), ready-made and enum primitives, display names, list primitives, the contract builder (name clashes, duplicate keys, presence), and reading (`ConfigurationContractTests`).

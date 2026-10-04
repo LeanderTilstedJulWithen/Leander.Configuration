@@ -7,6 +7,12 @@ namespace Leander.Configuration.Sample;
 // Reusable kinds of values. The rules live here, not on the configuration keys that use them.
 public static class SamplePrimitives
 {
+    public static readonly Primitive<int> ConnectionLimit = new("ConnectionLimit", Primitive.Int32)
+    {
+        Validators = [Validators.GreaterThan(0)],
+        Description = "A maximum number of connections.",
+    };
+
     // Derived from a ready-made primitive: it takes its converter and rules, and adds its own.
     public static readonly Primitive<string> Email = new("Email", Primitive.String)
     {
@@ -15,16 +21,9 @@ public static class SamplePrimitives
         Description = "An e-mail address.",
     };
 
-    public static readonly Primitive<int> Port = new("Port", Primitive.Int32)
+    public static readonly ListPrimitive<string> Features = new("Features", Primitive.String)
     {
-        Validators = [Validators.InRange(1, 65535)],
-        Description = "A TCP port.",
-    };
-
-    public static readonly Primitive<int> ConnectionLimit = new("ConnectionLimit", Primitive.Int32)
-    {
-        Validators = [Validators.GreaterThan(0)],
-        Description = "A maximum number of connections.",
+        Description = "Feature names.",
     };
 
     // A list is a primitive too: its rules are on the list, the item rules on the element.
@@ -34,8 +33,9 @@ public static class SamplePrimitives
         Description = "Origins, at least one.",
     };
 
-    public static readonly ListPrimitive<string> Features = new("Features", Primitive.String)
+    public static readonly Primitive<int> Port = new("Port", Primitive.Int32)
     {
-        Description = "Feature names.",
+        Validators = [Validators.InRange(1, 65535)],
+        Description = "A TCP port.",
     };
 }

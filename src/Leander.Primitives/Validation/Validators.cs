@@ -45,6 +45,14 @@ public static class Validators
         Create(FormattableText.Create<T>(formatter => $"must be greater than or equal to {formatter.Format(bound)}"), value => value.CompareTo(bound) >= 0);
 
     /// <summary>
+    /// The value must be between <paramref name="minimum"/> and <paramref name="maximum"/>, both included.
+    /// </summary>
+    public static IValidator<T> InRange<T>(T minimum, T maximum) where T : IComparable<T> =>
+        Create(
+            FormattableText.Create<T>(formatter => $"must be between {formatter.Format(minimum)} and {formatter.Format(maximum)}"),
+            value => value.CompareTo(minimum) >= 0 && value.CompareTo(maximum) <= 0);
+
+    /// <summary>
     /// The value must be less than <paramref name="bound"/>.
     /// </summary>
     public static IValidator<T> LessThan<T>(T bound) where T : IComparable<T> =>
@@ -55,14 +63,6 @@ public static class Validators
     /// </summary>
     public static IValidator<T> LessThanOrEqual<T>(T bound) where T : IComparable<T> =>
         Create(FormattableText.Create<T>(formatter => $"must be less than or equal to {formatter.Format(bound)}"), value => value.CompareTo(bound) <= 0);
-
-    /// <summary>
-    /// The value must be between <paramref name="minimum"/> and <paramref name="maximum"/>, both included.
-    /// </summary>
-    public static IValidator<T> InRange<T>(T minimum, T maximum) where T : IComparable<T> =>
-        Create(
-            FormattableText.Create<T>(formatter => $"must be between {formatter.Format(minimum)} and {formatter.Format(maximum)}"),
-            value => value.CompareTo(minimum) >= 0 && value.CompareTo(maximum) <= 0);
 
     /// <summary>
     /// Validators for lists, e.g. the rules of a <see cref="ListPrimitive{T}"/>.

@@ -25,6 +25,9 @@ public sealed class RangePrimitive<T>(string name, Primitive<T> bound)
 
         public string Description => $"Two {_bound.Name} values separated by {Separator}, the smallest first.";
 
+        public string Format(Range<T> value) =>
+            $"{_bound.Converter.Format(value.Minimum)}{Separator}{_bound.Converter.Format(value.Maximum)}";
+
         // Both ends must be valid values of the bound, and in order.
         public bool TryParse(string input, out Range<T> result)
         {
@@ -41,8 +44,5 @@ public sealed class RangePrimitive<T>(string name, Primitive<T> bound)
             result = new Range<T>(minimum, maximum);
             return true;
         }
-
-        public string Format(Range<T> value) =>
-            $"{_bound.Converter.Format(value.Minimum)}{Separator}{_bound.Converter.Format(value.Maximum)}";
     }
 }

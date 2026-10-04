@@ -7,39 +7,15 @@ namespace Leander.Configuration.Tests;
 
 public class ConfigurationContractTests
 {
-    private static readonly Primitive<int> Port = new("Port", Converters.Int32)
-    {
-        Validators = [Validators.InRange(1, 65535)],
-    };
-
     private static readonly ListPrimitive<string> Hosts = new("Hosts", Primitive.String)
     {
         Validators = [Validators.Collections.NotEmpty<string>()],
     };
 
-    private static ConfigurationContract Contract(params ConfigurationDefinition[] definitions)
+    private static readonly Primitive<int> Port = new("Port", Converters.Int32)
     {
-        var builder = new ConfigurationContractBuilder();
-        foreach (var definition in definitions)
-        {
-            builder.Register(definition);
-        }
-
-        return builder.Build();
-    }
-
-    private static IValueSource Source(params (string Key, string? Value)[] values) =>
-        ValueSource.FromPairs(values.Select(pair => KeyValuePair.Create(pair.Key, pair.Value)));
-
-    private static IReadOnlyList<ConfigurationDiagnostic> ReadFailure(ConfigurationContract contract, IValueSource source)
-    {
-        Assert.False(contract.TryRead(source, out var snapshot, out var diagnostics));
-        Assert.Null(snapshot);
-        return diagnostics;
-    }
-
-    private static ConfigurationDiagnostic Single(IReadOnlyList<ConfigurationDiagnostic> diagnostics, DiagnosticSeverity severity) =>
-        Assert.Single(diagnostics, d => d.Severity == severity);
+        Validators = [Validators.InRange(1, 65535)],
+    };
 
     // Scalars
 
@@ -423,4 +399,28 @@ public class ConfigurationContractTests
             exception.Message);
         Assert.Equal(2, exception.Diagnostics.Count);
     }
+
+    private static ConfigurationContract Contract(params ConfigurationDefinition[] definitions)
+    {
+        var builder = new ConfigurationContractBuilder();
+        foreach (var definition in definitions)
+        {
+            builder.Register(definition);
+        }
+
+        return builder.Build();
+    }
+
+    private static IReadOnlyList<ConfigurationDiagnostic> ReadFailure(ConfigurationContract contract, IValueSource source)
+    {
+        Assert.False(contract.TryRead(source, out var snapshot, out var diagnostics));
+        Assert.Null(snapshot);
+        return diagnostics;
+    }
+
+    private static ConfigurationDiagnostic Single(IReadOnlyList<ConfigurationDiagnostic> diagnostics, DiagnosticSeverity severity) =>
+        Assert.Single(diagnostics, d => d.Severity == severity);
+
+    private static IValueSource Source(params (string Key, string? Value)[] values) =>
+        ValueSource.FromPairs(values.Select(pair => KeyValuePair.Create(pair.Key, pair.Value)));
 }

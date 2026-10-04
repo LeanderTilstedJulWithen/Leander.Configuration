@@ -7,13 +7,13 @@ namespace Leander.Configuration;
 public interface IValueSource
 {
     /// <summary>
-    /// Returns the value of <paramref name="key"/>, or <see langword="null"/> when the key has no value.
-    /// </summary>
-    public string? GetValue(string key);
-
-    /// <summary>
     /// Returns the names of the direct children of <paramref name="key"/>,
     /// e.g. "0" and "1" for <c>Key:0</c> and <c>Key:1</c>; each name once.
     /// </summary>
     public IReadOnlyList<string> GetChildNames(string key);
+
+    /// <summary>
+    /// Returns the value of <paramref name="key"/>, or <see langword="null"/> when the key has no value.
+    /// </summary>
+    public string? GetValue(string key);
 }

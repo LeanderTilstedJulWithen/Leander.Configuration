@@ -11,8 +11,8 @@ internal sealed class DateTimeOffsetFormatConverter(string[] formats, DateTimeSt
 
     public string Description => _description;
 
+    public string Format(DateTimeOffset value) => value.ToString(_formats[0], CultureInfo.InvariantCulture);
+
     public bool TryParse(string input, out DateTimeOffset result) =>
         DateTimeOffset.TryParseExact(input, _formats, CultureInfo.InvariantCulture, _styles, out result);
-
-    public string Format(DateTimeOffset value) => value.ToString(_formats[0], CultureInfo.InvariantCulture);
 }

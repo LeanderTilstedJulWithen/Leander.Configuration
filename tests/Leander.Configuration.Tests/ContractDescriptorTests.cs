@@ -8,31 +8,11 @@ namespace Leander.Configuration.Tests;
 
 public class ContractDescriptorTests
 {
-    private enum Color
-    {
-        Red,
-        Green,
-    }
-
     private static readonly Primitive<int> Port = new("Port", Converters.Int32)
     {
         Validators = [Validators.InRange(1, 65535)],
         Description = "A TCP port.",
     };
-
-    private static ContractDescriptor Describe(params ConfigurationDefinition[] definitions)
-    {
-        var builder = new ConfigurationContractBuilder();
-        foreach (var definition in definitions)
-        {
-            builder.Register(definition);
-        }
-
-        return builder.Build().CreateDescriptor();
-    }
-
-    private static PrimitiveDescriptor Described(ContractDescriptor contract, string name) =>
-        Assert.Single(contract.Primitives, primitive => primitive.Name == name);
 
     [Fact]
     public void Definition_HasKeyDescriptionAndValue()
@@ -208,5 +188,25 @@ public class ContractDescriptorTests
             ConfigurationDefinition.Define("C", Primitive.String));
 
         Assert.Equal(["String", "Port"], contract.Primitives.Select(primitive => primitive.Name));
+    }
+
+    private static ContractDescriptor Describe(params ConfigurationDefinition[] definitions)
+    {
+        var builder = new ConfigurationContractBuilder();
+        foreach (var definition in definitions)
+        {
+            builder.Register(definition);
+        }
+
+        return builder.Build().CreateDescriptor();
+    }
+
+    private static PrimitiveDescriptor Described(ContractDescriptor contract, string name) =>
+        Assert.Single(contract.Primitives, primitive => primitive.Name == name);
+
+    private enum Color
+    {
+        Red,
+        Green,
     }
 }

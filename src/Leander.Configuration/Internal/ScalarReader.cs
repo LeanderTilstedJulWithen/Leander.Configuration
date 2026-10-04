@@ -13,6 +13,10 @@ internal sealed class ScalarReader<T>(Primitive<T> primitive) : ValueReader<T>
     public override void Check(ContractChecker checker, ConfigurationDefinition definition) =>
         checker.Check(definition.Key, _primitive);
 
+    public override ValueDescriptor Describe(DescriptorContext context) => context.DescribeValue(_primitive, ValueForm.Scalar);
+
+    public override string Format(DescriptorContext context, T value) => _primitive.Converter.Format(value);
+
     public override ReadStatus Read(ReadContext context, ConfigurationDefinition definition, string key, out T value)
     {
         value = default!;
@@ -39,8 +43,4 @@ internal sealed class ScalarReader<T>(Primitive<T> primitive) : ValueReader<T>
         Pipeline.Report(context, definition, key, errors);
         return success;
     }
-
-    public override ValueDescriptor Describe(DescriptorContext context) => context.DescribeValue(_primitive, ValueForm.Scalar);
-
-    public override string Format(DescriptorContext context, T value) => _primitive.Converter.Format(value);
 }

@@ -5,9 +5,6 @@ namespace Leander.Configuration.Tooling.Tests;
 
 public class ConfigurationGeneratorTests
 {
-    private static JsonNode Example(params ConfigurationDefinition[] definitions) =>
-        JsonNode.Parse(ConfigurationGenerator.WriteJson(Contracts.Describe(definitions)))!;
-
     [Fact]
     public void Server_RendersEveryKey()
     {
@@ -103,4 +100,7 @@ public class ConfigurationGeneratorTests
         Assert.Throws<ArgumentException>(() => ConfigurationGenerator.WriteJson(contract));
         Assert.Throws<ArgumentException>(() => ConfigurationGenerator.WriteJson(reversed));
     }
+
+    private static JsonNode Example(params ConfigurationDefinition[] definitions) =>
+        JsonNode.Parse(ConfigurationGenerator.WriteJson(Contracts.Describe(definitions)))!;
 }

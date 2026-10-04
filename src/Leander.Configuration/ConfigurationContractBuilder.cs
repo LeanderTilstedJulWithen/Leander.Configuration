@@ -10,15 +10,6 @@ public sealed class ConfigurationContractBuilder
     private readonly List<ConfigurationDefinition> _definitions = [];
 
     /// <summary>
-    /// Adds a definition to the contract.
-    /// </summary>
-    public ConfigurationContractBuilder Register(ConfigurationDefinition definition)
-    {
-        _definitions.Add(definition);
-        return this;
-    }
-
-    /// <summary>
     /// Checks the definitions and builds the contract.
     /// </summary>
     /// <exception cref="InvalidOperationException">
@@ -47,5 +38,14 @@ public sealed class ConfigurationContractBuilder
         }
 
         return new ConfigurationContract([.. _definitions]);
+    }
+
+    /// <summary>
+    /// Adds a definition to the contract.
+    /// </summary>
+    public ConfigurationContractBuilder Register(ConfigurationDefinition definition)
+    {
+        _definitions.Add(definition);
+        return this;
     }
 }

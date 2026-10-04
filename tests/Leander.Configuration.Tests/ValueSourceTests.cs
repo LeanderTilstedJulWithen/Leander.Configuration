@@ -2,9 +2,6 @@ namespace Leander.Configuration.Tests;
 
 public class ValueSourceTests
 {
-    private static IValueSource Source(params (string Key, string? Value)[] values) =>
-        ValueSource.FromPairs(values.Select(pair => KeyValuePair.Create(pair.Key, pair.Value)));
-
     [Fact]
     public void GetValue_ReturnsValueForKey()
     {
@@ -182,4 +179,7 @@ public class ValueSourceTests
 
     [Fact]
     public void KeySeparator_IsColon() => Assert.Equal(':', ValueSource.KeySeparator);
+
+    private static IValueSource Source(params (string Key, string? Value)[] values) =>
+        ValueSource.FromPairs(values.Select(pair => KeyValuePair.Create(pair.Key, pair.Value)));
 }

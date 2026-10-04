@@ -8,8 +8,8 @@ namespace Leander.Configuration.Internal;
 // then the list's own rules run on the list. The delimiter isn't used.
 internal sealed class IndexedReader<T>(ListPrimitive<T> list) : ValueReader<IReadOnlyList<T>>
 {
-    private readonly ListPrimitive<T> _list = list;
     private readonly ScalarReader<T> _element = new(list.Element);
+    private readonly ListPrimitive<T> _list = list;
 
     public override void Check(ContractChecker checker, ConfigurationDefinition definition) =>
         checker.Check(definition.Key, _list);

@@ -5,20 +5,6 @@ namespace Leander.Configuration.Tests;
 
 public class ConfigurationContractBuilderTests
 {
-    private static ConfigurationContract Build(params ConfigurationDefinition[] definitions)
-    {
-        var builder = new ConfigurationContractBuilder();
-        foreach (var definition in definitions)
-        {
-            builder.Register(definition);
-        }
-
-        return builder.Build();
-    }
-
-    private static string BuildFailure(params ConfigurationDefinition[] definitions) =>
-        Assert.Throws<InvalidOperationException>(() => Build(definitions)).Message;
-
     [Fact]
     public void Build_KeepsDefinitionsInRegistrationOrder()
     {
@@ -171,4 +157,18 @@ public class ConfigurationContractBuilderTests
         Assert.Contains("B: another primitive is named Int32 (Count).", message);
         Assert.Contains("Name: the default is null", message);
     }
+
+    private static ConfigurationContract Build(params ConfigurationDefinition[] definitions)
+    {
+        var builder = new ConfigurationContractBuilder();
+        foreach (var definition in definitions)
+        {
+            builder.Register(definition);
+        }
+
+        return builder.Build();
+    }
+
+    private static string BuildFailure(params ConfigurationDefinition[] definitions) =>
+        Assert.Throws<InvalidOperationException>(() => Build(definitions)).Message;
 }

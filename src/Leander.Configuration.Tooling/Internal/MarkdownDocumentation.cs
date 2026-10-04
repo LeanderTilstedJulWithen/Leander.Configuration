@@ -50,6 +50,98 @@ internal static class MarkdownDocumentation
             }
         }
 
+        // GitHub's heading anchors: lower case, spaces become hyphens, other punctuation is dropped.
+        private static string Anchor(string heading)
+        {
+            var anchor = new StringBuilder();
+            foreach (var character in heading.ToLowerInvariant())
+            {
+                if (char.IsLetterOrDigit(character) || character is '-' or '_')
+                {
+                    anchor.Append(character);
+                }
+                else if (character == ' ')
+                {
+                    anchor.Append('-');
+                }
+            }
+
+            return anchor.ToString();
+        }
+
+        private static string Cell(string text) => text.Replace("|", "\\|");
+
+        // The primitive and its bases, root first. A descriptor read from a file isn't checked, so a missing base
+        // ends the chain and a cycle is cut.
+        private List<PrimitiveDescriptor> Chain(PrimitiveReference? reference)
+        {
+            var chain = new List<PrimitiveDescriptor>();
+            var seen = new HashSet<PrimitiveReference>();
+            while (reference is not null && seen.Add(reference) && _primitives.TryGetValue(reference, out var primitive))
+            {
+                chain.Insert(0, primitive);
+                reference = primitive.Base;
+            }
+
+            return chain;
+        }
+
+        private static string Code(string text) => text.Length switch
+        {
+            0 => "*empty*",
+            _ when text.Contains('`') => $"`` {text} ``",
+            _ => $"`{text}`",
+        };
+
+        private static string DefaultCell(ValueDescriptor value) =>
+            DefaultText(value) ?? (value.Presence == ValuePresence.Default ? "*hidden*" : "");
+
+        // An indexed default shows its items, one entry each in the source.
+        private static string? DefaultText(ValueDescriptor value) =>
+            value.DefaultItems is { } items ? items.Count == 0 ? "*empty*" : string.Join(", ", items.Select(Code))
+            : value.Default is { } text ? Code(text)
+            : null;
+
+        // Like Primitive.DisplayName: "Int32 (Port)", or just "Int32" when the name is the type name.
+        private static string DisplayName(PrimitiveReference reference) =>
+            reference.Name == reference.Type ? reference.Type : $"{reference.Type} ({reference.Name})";
+
+        private static string GroupName(string key) => key.Split(':')[0];
+
+        // A descriptor read from a file isn't checked, so a duplicate keeps the first.
+        private static Dictionary<PrimitiveReference, PrimitiveDescriptor> Index(ContractDescriptor contract)
+        {
+            var primitives = new Dictionary<PrimitiveReference, PrimitiveDescriptor>();
+            foreach (var primitive in contract.Primitives)
+            {
+                primitives.TryAdd(new PrimitiveReference(primitive.Type, primitive.Name), primitive);
+            }
+
+            return primitives;
+        }
+
+        private void Line(string text = "") => _text.Append(text).Append('\n');
+
+        private static string PresenceDetail(ValueDescriptor value) => value.Presence switch
+        {
+            ValuePresence.Default => DefaultText(value) is { } text ? $"default {text}" : "default (hidden)",
+            ValuePresence.Optional => "optional, missing is null",
+            _ => "required",
+        };
+
+        private static string PresenceText(ValuePresence presence) => presence switch
+        {
+            ValuePresence.Default => "default",
+            ValuePresence.Optional => "optional",
+            _ => "required",
+        };
+
+        // Plain text outside code spans. GitHub would read <Uri> in IReadOnlyList<Uri> as an HTML tag.
+        private static string Text(string text) => text.Replace("<", "\\<").Replace(">", "\\>");
+
+        private static string TypeText(ValueDescriptor value) =>
+            Text(value.Primitive is { } reference ? DisplayName(reference) : value.Type);
+
         private void WriteDefinition(DefinitionDescriptor definition)
         {
             Line($"### {Code(definition.Key)}");
@@ -124,98 +216,6 @@ internal static class MarkdownDocumentation
                 Line($"{indent}- **Items:** {Text(DisplayName(element))}");
                 WriteRules(Chain(element), indent + "  ");
             }
-        }
-
-        // The primitive and its bases, root first. A descriptor read from a file isn't checked, so a missing base
-        // ends the chain and a cycle is cut.
-        private List<PrimitiveDescriptor> Chain(PrimitiveReference? reference)
-        {
-            var chain = new List<PrimitiveDescriptor>();
-            var seen = new HashSet<PrimitiveReference>();
-            while (reference is not null && seen.Add(reference) && _primitives.TryGetValue(reference, out var primitive))
-            {
-                chain.Insert(0, primitive);
-                reference = primitive.Base;
-            }
-
-            return chain;
-        }
-
-        private void Line(string text = "") => _text.Append(text).Append('\n');
-
-        // A descriptor read from a file isn't checked, so a duplicate keeps the first.
-        private static Dictionary<PrimitiveReference, PrimitiveDescriptor> Index(ContractDescriptor contract)
-        {
-            var primitives = new Dictionary<PrimitiveReference, PrimitiveDescriptor>();
-            foreach (var primitive in contract.Primitives)
-            {
-                primitives.TryAdd(new PrimitiveReference(primitive.Type, primitive.Name), primitive);
-            }
-
-            return primitives;
-        }
-
-        private static string TypeText(ValueDescriptor value) =>
-            Text(value.Primitive is { } reference ? DisplayName(reference) : value.Type);
-
-        // Like Primitive.DisplayName: "Int32 (Port)", or just "Int32" when the name is the type name.
-        private static string DisplayName(PrimitiveReference reference) =>
-            reference.Name == reference.Type ? reference.Type : $"{reference.Type} ({reference.Name})";
-
-        private static string GroupName(string key) => key.Split(':')[0];
-
-        private static string PresenceText(ValuePresence presence) => presence switch
-        {
-            ValuePresence.Default => "default",
-            ValuePresence.Optional => "optional",
-            _ => "required",
-        };
-
-        private static string PresenceDetail(ValueDescriptor value) => value.Presence switch
-        {
-            ValuePresence.Default => DefaultText(value) is { } text ? $"default {text}" : "default (hidden)",
-            ValuePresence.Optional => "optional, missing is null",
-            _ => "required",
-        };
-
-        private static string DefaultCell(ValueDescriptor value) =>
-            DefaultText(value) ?? (value.Presence == ValuePresence.Default ? "*hidden*" : "");
-
-        // An indexed default shows its items, one entry each in the source.
-        private static string? DefaultText(ValueDescriptor value) =>
-            value.DefaultItems is { } items ? items.Count == 0 ? "*empty*" : string.Join(", ", items.Select(Code))
-            : value.Default is { } text ? Code(text)
-            : null;
-
-        private static string Code(string text) => text.Length switch
-        {
-            0 => "*empty*",
-            _ when text.Contains('`') => $"`` {text} ``",
-            _ => $"`{text}`",
-        };
-
-        private static string Cell(string text) => text.Replace("|", "\\|");
-
-        // Plain text outside code spans. GitHub would read <Uri> in IReadOnlyList<Uri> as an HTML tag.
-        private static string Text(string text) => text.Replace("<", "\\<").Replace(">", "\\>");
-
-        // GitHub's heading anchors: lower case, spaces become hyphens, other punctuation is dropped.
-        private static string Anchor(string heading)
-        {
-            var anchor = new StringBuilder();
-            foreach (var character in heading.ToLowerInvariant())
-            {
-                if (char.IsLetterOrDigit(character) || character is '-' or '_')
-                {
-                    anchor.Append(character);
-                }
-                else if (character == ' ')
-                {
-                    anchor.Append('-');
-                }
-            }
-
-            return anchor.ToString();
         }
     }
 }
