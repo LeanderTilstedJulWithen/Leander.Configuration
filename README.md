@@ -128,10 +128,10 @@ File.WriteAllText("configuration.contract.json", ContractSerializer.WriteJson(de
 File.WriteAllText("appsettings.example.json", ConfigurationGenerator.WriteJson(descriptor));
 ```
 
-The documentation lists every key with its type, presence, default, form and rules, grouped by the first key segment. Named primitives are described once and linked from the keys that use them.
+The documentation lists every key with its type, presence, default, form and rules, grouped by the first key segment. Each key is documented in full, including the rules of the primitive it uses.
 
 The contract file is JSON and descriptive: validators are code, so it can't be run. Commit it, and a change to the configuration contract shows up in review. `ContractDiff.Compare(committed, current)` says what changed, per key, e.g. `Server:Port: validators of Int32 (Port): [must be between 1 and 65535] → [must be between 1024 and 65535]`. It also compares two programs that share configuration. Programs that share configuration share the C# definitions, not the file.
 
 The example configuration is an `appsettings.json` with every key, to copy and fill in. Defaults are written as they are, and keys without one get a placeholder such as `"<Port>"` or `"<optional Email>"`. Sensitive values are always `"<secret>"`.
 
-See [samples/Leander.Configuration.Sample](samples/Leander.Configuration.Sample) for a complete example, and [samples/Leander.Configuration.MicrosoftExtensions.Sample](samples/Leander.Configuration.MicrosoftExtensions.Sample) for a host with `IOptions<T>`.
+See [samples/Leander.Primitives.Sample](samples/Leander.Primitives.Sample) for primitives on their own, [samples/Leander.Configuration.Sample](samples/Leander.Configuration.Sample) for reading a contract, and [samples/Leander.Configuration.MicrosoftExtensions.Sample](samples/Leander.Configuration.MicrosoftExtensions.Sample) for a host with `IOptions<T>`.
