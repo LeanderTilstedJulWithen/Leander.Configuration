@@ -34,7 +34,7 @@ From REVIEW.md. In this order.
 
 ### Samples
 - [x] Leander.Primitives sample (standalone).
-- [ ] Leander.Configuration.MicrosoftExtensions sample without Tooling.
+- [x] Leander.Configuration sample without Tooling: the documentation output moves to the comprehensive sample. The Leander.Configuration.MicrosoftExtensions sample already doesn't use Tooling.
 - [ ] Comprehensive sample covering everything, writing the contract JSON, Markdown and appsettings.json to `samples/output` (committed).
 
 ### README

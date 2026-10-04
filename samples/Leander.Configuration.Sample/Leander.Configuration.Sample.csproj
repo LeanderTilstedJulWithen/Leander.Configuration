@@ -10,7 +10,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Leander.Configuration\Leander.Configuration.csproj" />
-    <ProjectReference Include="..\..\src\Leander.Configuration.Tooling\Leander.Configuration.Tooling.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,9 +1,7 @@
 using Leander.Configuration;
 using Leander.Configuration.Sample;
-using Leander.Configuration.Tooling;
 
 // The contract is built once at startup. It fails fast if a key is defined twice or two primitives share a name.
-// Named primitives are described once in the documentation and linked from the keys that use them.
 var contract = new ConfigurationContractBuilder()
     .Register(ServerConfiguration.Host)
     .Register(ServerConfiguration.Port)
@@ -83,19 +81,3 @@ catch (InvalidConfigurationException exception)
 {
     Console.WriteLine(exception.Message);
 }
-
-// The contract describes itself. Documentation, the contract file and an example configuration are rendered
-// from the same descriptor. The contract file can be committed, so changes to the contract show up in review.
-var descriptor = contract.CreateDescriptor();
-var documentationPath = Path.Combine(AppContext.BaseDirectory, "configuration.md");
-var contractPath = Path.Combine(AppContext.BaseDirectory, "configuration.contract.json");
-var examplePath = Path.Combine(AppContext.BaseDirectory, "appsettings.example.json");
-File.WriteAllText(documentationPath, Documentation.WriteMarkdown(descriptor, "Server configuration"));
-File.WriteAllText(contractPath, ContractSerializer.WriteJson(descriptor));
-File.WriteAllText(examplePath, ConfigurationGenerator.WriteJson(descriptor));
-
-Console.WriteLine();
-Console.WriteLine("Documentation:");
-Console.WriteLine($"  {documentationPath}");
-Console.WriteLine($"  {contractPath}");
-Console.WriteLine($"  {examplePath}");
