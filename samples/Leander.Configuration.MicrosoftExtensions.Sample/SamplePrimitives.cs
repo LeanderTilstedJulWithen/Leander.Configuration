@@ -15,7 +15,7 @@ public static class SamplePrimitives
 
     public static readonly Primitive<string> FilePath = new("FilePath", Primitive.String)
     {
-        Normalizers = [Normalizers.FullPath],
+        Normalizers = [Normalizers.Strings.FullPath],
         Description = "A file path, made absolute.",
     };
 

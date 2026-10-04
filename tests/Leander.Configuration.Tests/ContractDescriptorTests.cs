@@ -116,8 +116,8 @@ public class ContractDescriptorTests
     {
         var name = new Primitive<string>("Name", Converters.String)
         {
-            Normalizers = [Normalizers.Trim],
-            Validators = [Validators.NotEmpty],
+            Normalizers = [Normalizers.Strings.Trim],
+            Validators = [Validators.Strings.NotEmpty],
             Description = "A name.",
         };
 

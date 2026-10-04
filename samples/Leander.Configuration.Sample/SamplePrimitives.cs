@@ -16,7 +16,7 @@ public static class SamplePrimitives
     // Derived from a ready-made primitive: it takes its converter and rules, and adds its own.
     public static readonly Primitive<string> Email = new("Email", Primitive.String)
     {
-        Normalizers = [Normalizers.Trim],
+        Normalizers = [Normalizers.Strings.Trim],
         Validators = [Validators.Create<string>("must contain @", value => value.Contains('@'))],
         Description = "An e-mail address.",
     };

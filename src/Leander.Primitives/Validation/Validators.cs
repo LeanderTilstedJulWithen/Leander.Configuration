@@ -6,16 +6,17 @@ namespace Leander.Primitives.Validation;
 /// Ready-made validators, and <see cref="Create{T}(string, Func{T, bool})"/> for your own.
 /// </summary>
 /// <remarks>
+/// <para>
+/// Validators for any comparable type are here; validators for one kind of value are in a nested class named after it,
+/// e.g. <see cref="Strings"/> and <see cref="Collections"/>.
+/// </para>
+/// <para>
 /// Each of these reports one failure: its description. A custom <see cref="IValidator{T}"/> may report several.
 /// Bounds are formatted by the primitive's converter.
+/// </para>
 /// </remarks>
 public static class Validators
 {
-    /// <summary>
-    /// The string must not be empty.
-    /// </summary>
-    public static IValidator<string> NotEmpty { get; } = Create<string>("must not be empty", value => !string.IsNullOrEmpty(value));
-
     /// <summary>
     /// Creates a validator from a description and a check. The description is also the failure.
     /// </summary>
@@ -77,5 +78,16 @@ public static class Validators
         /// </summary>
         public static IValidator<IReadOnlyList<T>> NotEmpty<T>() =>
             Create<IReadOnlyList<T>>("must not be empty", list => list.Count > 0);
+    }
+
+    /// <summary>
+    /// Validators for strings.
+    /// </summary>
+    public static class Strings
+    {
+        /// <summary>
+        /// The string must not be empty.
+        /// </summary>
+        public static IValidator<string> NotEmpty { get; } = Create<string>("must not be empty", value => !string.IsNullOrEmpty(value));
     }
 }

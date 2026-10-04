@@ -30,8 +30,8 @@ public class NormalizersTests
     [InlineData("   ", "")]
     public void Trim_RemovesSurroundingWhitespace(string input, string expected)
     {
-        Assert.Equal("trim whitespace", Normalizers.Trim.Description.ToString());
-        Assert.Equal(expected, Normalizers.Trim.Normalize(input));
+        Assert.Equal("trim whitespace", Normalizers.Strings.Trim.Description.ToString());
+        Assert.Equal(expected, Normalizers.Strings.Trim.Normalize(input));
     }
 
     [Fact]
@@ -39,8 +39,8 @@ public class NormalizersTests
     {
         var expected = Path.Combine(Directory.GetCurrentDirectory(), "b");
 
-        Assert.Equal("full path", Normalizers.FullPath.Description.ToString());
-        Assert.Equal(expected, Normalizers.FullPath.Normalize(Path.Combine("a", "..", "b")));
+        Assert.Equal("full path", Normalizers.Strings.FullPath.Description.ToString());
+        Assert.Equal(expected, Normalizers.Strings.FullPath.Normalize(Path.Combine("a", "..", "b")));
     }
 
     [Fact]
@@ -48,6 +48,6 @@ public class NormalizersTests
     {
         var path = Path.Combine(Path.GetTempPath(), "file.txt");
 
-        Assert.Equal(path, Normalizers.FullPath.Normalize(path));
+        Assert.Equal(path, Normalizers.Strings.FullPath.Normalize(path));
     }
 }

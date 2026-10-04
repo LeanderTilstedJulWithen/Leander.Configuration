@@ -18,12 +18,12 @@ public class ValidatorsTests
     }
 
     [Fact]
-    public void NotEmpty_RejectsNullAndEmptyStrings()
+    public void StringsNotEmpty_RejectsNullAndEmptyStrings()
     {
-        Assert.Equal(["must not be empty"], Failures(Validators.NotEmpty, "", Converters.String));
-        Assert.Equal(["must not be empty"], Failures(Validators.NotEmpty, null!, Converters.String));
-        Assert.Empty(Validators.NotEmpty.Validate(" "));
-        Assert.Empty(Validators.NotEmpty.Validate("x"));
+        Assert.Equal(["must not be empty"], Failures(Validators.Strings.NotEmpty, "", Converters.String));
+        Assert.Equal(["must not be empty"], Failures(Validators.Strings.NotEmpty, null!, Converters.String));
+        Assert.Empty(Validators.Strings.NotEmpty.Validate(" "));
+        Assert.Empty(Validators.Strings.NotEmpty.Validate("x"));
     }
 
     [Theory]

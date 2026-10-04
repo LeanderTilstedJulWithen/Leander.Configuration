@@ -73,8 +73,8 @@ public class PrimitiveTests
     {
         var name = new Primitive<string>("Name", Converters.String)
         {
-            Normalizers = [Normalizers.Trim],
-            Validators = [Validators.NotEmpty],
+            Normalizers = [Normalizers.Strings.Trim],
+            Validators = [Validators.Strings.NotEmpty],
         };
 
         Assert.True(name.TryParse("  abc  ", out var value));
@@ -102,7 +102,7 @@ public class PrimitiveTests
         var value = new Primitive<string>("Value", Converters.String)
         {
             Normalizers = [Normalizers.Create<string>("boom", _ => throw new InvalidOperationException("failed hard"))],
-            Validators = [Validators.NotEmpty],
+            Validators = [Validators.Strings.NotEmpty],
         };
 
         Assert.False(value.TryParse("", out _, out var errors));
@@ -302,7 +302,7 @@ public class PrimitiveTests
     [Fact]
     public void Derived_BaseNormalizersRunBeforeOwn()
     {
-        var trimmed = new Primitive<string>("Trimmed", Converters.String) { Normalizers = [Normalizers.Trim] };
+        var trimmed = new Primitive<string>("Trimmed", Converters.String) { Normalizers = [Normalizers.Strings.Trim] };
         var tagged = new Primitive<string>("Tagged", trimmed)
         {
             Normalizers = [Normalizers.Create<string>("tag", value => $"[{value}]")],

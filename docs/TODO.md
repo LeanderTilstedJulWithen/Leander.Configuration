@@ -76,9 +76,10 @@ What stands between the current code and a release. The code is feature-complete
 - [x] Implement conversion errors: `IParser<T>`, the ready-made converters, builders and composite converters, `PrimitiveConverter<T>` behind `AsConverter()`, the primitive's lead line and redaction, and the `RangePrimitive` sample. `ListPrimitive` keeps its `TryConvert` hook, so list errors don't repeat the list before every item.
 - [x] Type names in contract files: the shortest name without collisions in the contract, `Billing.Status` and `Shipping.Status`; `ContractDiff` matches type names by suffix (see DESIGN.md, Type names).
 - [x] Implement type names: naming in the descriptor (value types, primitive types, generic arguments, nested types), the build error for types with the same full name, the Markdown type, and suffix matching in `ContractDiff`, primitive references included.
-- [ ] Validators organisation: one `Validators` class, or one class per type (see DESIGN.md, Open questions). A rename after 1.0.0 is breaking.
-- [ ] Replacing the converter in a derived primitive: record "not allowed" as a decision in DESIGN.md, or allow it.
-- [ ] DESIGN.md, Milestones: milestone 5 (Generator) contradicts the 1.1.0 plan and "no tooling before 1.0.0". Move it after 1.0.0 or drop it.
+- [x] Validators organisation: one entry point per kind of rule, rules for one kind of value in nested classes (see DESIGN.md, Leander.Primitives).
+- [x] Implement the organisation: `Validators.NotEmpty` → `Validators.Strings.NotEmpty`, `Normalizers.Trim` / `FullPath` → `Normalizers.Strings`; update samples, README, DESIGN.md examples and CHANGELOG.
+- [x] Replacing the converter in a derived primitive: not allowed, because a converter carries implicit rules (see DESIGN.md, Deriving).
+- [x] DESIGN.md, Milestones: milestone 5 (Generator) moved after the release.
 
 ### Ship
 - [ ] Package metadata in a shared `Directory.Build.props`: version, description, authors, license, repository URL, tags, and the README as package readme.

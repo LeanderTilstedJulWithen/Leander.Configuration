@@ -99,6 +99,7 @@ public interface INormalizer<T>
 - **A list, not a lazy sequence.** A `yield` enumeration would run the rule after `Validate` returned, outside the primitive's `try/catch`. Empty, not null, means valid.
 - **`IsValid` is a default interface member**, so it can't disagree with `Validate` unless a rule overrides it for speed. The primitive uses it when no error list is wanted.
 - **Custom texts** come from `FormattableText.Create<T>("text")` or `FormattableText.Create<T>(formatter => $"must be at most {formatter.Format(max)}")`. Values of `T` go through the formatter, the checked value included: `must be at most 0xFF, but was 0x100`.
+- **Ready-made rules have one entry point per kind of rule**, `Validators` and `Normalizers`, so typing `Validators.` lists them all. Rules for any type, or any `IComparable<T>`, are at the top: `Create`, `InRange`, `LowerBound`. Rules for one kind of value are in a nested class named after it: `Validators.Strings.NotEmpty`, `Validators.Collections.NotEmpty<T>()`, `Normalizers.Strings.Trim`. New rules go in the same places, e.g. `Validators.Strings.MaxLength`, so names never collide across kinds. Not one class per type (`StringValidators`, …), which gives more types to discover and no home for `Create`; not flat with distinct names (`NotEmptyList<T>()`), which needs a unique name for every rule.
 - **Validators are invariant.** A text hands values of `T` to the formatter, so `T` flows out of the rule, which `in T` doesn't allow. A rule for many types is a generic method returning an exactly typed instance, e.g. `Validators.Collections.NotEmpty<Uri>()`. The only cost is the type argument, which C# can't infer from the list it's put in.
 - **`ToString()`** of the library's texts formats invariantly, for debugging. It isn't part of the contract.
 
@@ -109,7 +110,7 @@ A **primitive** is a reusable kind of value with its rules, similar to a SQL `CR
 ```csharp
 public static readonly Primitive<string> Email = new("Email", Converters.String)
 {
-    Normalizers = [Normalizers.Trim],
+    Normalizers = [Normalizers.Strings.Trim],
     Validators = [Validators.Create<string>("must contain @", v => v.Contains('@'))],
     Description = "An e-mail address.",
 };
@@ -132,7 +133,8 @@ public static readonly Primitive<string> AdminEmail = new("AdminEmail", Email)
 };
 ```
 
-- **A derived primitive can add rules but never remove them.** It takes the base's converter. `Normalizers` and `Validators` hold only its own rules. The base's rules always run first: all normalizers (base, then own), then all validators (base, then own). Every AdminEmail is a valid Email.
+- **A derived primitive can add rules but never remove them.** It takes the base's converter.
+- **The converter can't be replaced.** A converter carries implicit rules: what text is accepted at all, e.g. hexadecimal with or without 0x. Another converter would change them, so a derived primitive would no longer accept what its base accepts. Port's rules with another format are a primitive of their own, which can share the rule list (`Validators = PortRules`). The documentation takes **Format** from the root of the chain, and a derived primitive's descriptor has no converter. `Normalizers` and `Validators` hold only its own rules. The base's rules always run first: all normalizers (base, then own), then all validators (base, then own). Every AdminEmail is a valid Email.
 - **The description is not inherited.** A new name deserves its own description.
 - **`Base`** refers to the base primitive, for documentation ("derived from Email").
 - **Not `with`.** `with` copies the name and lets rules be replaced, which is the opposite of deriving.
@@ -613,8 +615,6 @@ Admin:Contact: added
 
 ## Open questions
 
-- **Replacing the converter** in a derived primitive, e.g. Email with a different parser. Not allowed for now.
-- **Validators organisation.** One `Validators` class, or one class per type (`StringValidation`, …).
 - **Defaults.** Typed vs string defaults.
 - **Collections.** Dictionaries.
 - **Reload.** `IOptionsSnapshot<T>` and `IOptionsMonitor<T>` support. 1.0 reads once at startup. Open: what an invalid reload does (keep the last valid snapshot, and how anyone finds out without a logging dependency), whether the `ConfigurationSnapshot` singleton stays the startup snapshot or gets a holder of its own, and that options types built from one snapshot come from the same read.
@@ -625,4 +625,4 @@ Admin:Contact: added
 2. **Primitives.** Done: parsing, normalization, validation, explicit primitives with deriving and ready-made primitives, contract builder.
 3. **Microsoft adapter.** Done: `IConfiguration` source, DI and `IOptions<T>` registration.
 4. **Documentation.** Done: sensitive values, contract descriptor, Markdown documentation, contract file, example configuration, comparing contracts.
-5. **Generator.** Options construction code.
+5. **Generator.** Options construction code. After 1.0.0, with or after the opt-in registration planned for 1.1.0 (see TODO.md); no tooling before 1.0.0.

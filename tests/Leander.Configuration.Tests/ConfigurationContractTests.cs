@@ -47,8 +47,8 @@ public class ConfigurationContractTests
     {
         var name = ConfigurationDefinition.Define("Name", new Primitive<string>("Name", Converters.String)
         {
-            Normalizers = [Normalizers.Trim],
-            Validators = [Validators.NotEmpty],
+            Normalizers = [Normalizers.Strings.Trim],
+            Validators = [Validators.Strings.NotEmpty],
         });
         var contract = Contract(name);
 

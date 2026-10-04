@@ -5,18 +5,12 @@ namespace Leander.Primitives.Normalization;
 /// <summary>
 /// Ready-made normalizers, and <see cref="Create{T}(string, Func{T, T})"/> for your own.
 /// </summary>
+/// <remarks>
+/// Normalizers for any comparable type are here; normalizers for one kind of value are in a nested class named after it,
+/// e.g. <see cref="Strings"/>.
+/// </remarks>
 public static class Normalizers
 {
-    /// <summary>
-    /// Turns a path into an absolute path with <see cref="Path.GetFullPath(string)"/>.
-    /// </summary>
-    public static INormalizer<string> FullPath { get; } = Create<string>("full path", Path.GetFullPath);
-
-    /// <summary>
-    /// Removes leading and trailing whitespace.
-    /// </summary>
-    public static INormalizer<string> Trim { get; } = Create<string>("trim whitespace", value => value.Trim());
-
     /// <summary>
     /// Creates a normalizer from a description and a function.
     /// </summary>
@@ -46,4 +40,20 @@ public static class Normalizers
         => Create(
             FormattableText.Create<T>(formatter => $"upper bound {formatter.Format(upperBound)}"),
             value => value.CompareTo(upperBound) > 0 ? upperBound : value);
+
+    /// <summary>
+    /// Normalizers for strings.
+    /// </summary>
+    public static class Strings
+    {
+        /// <summary>
+        /// Turns a path into an absolute path with <see cref="Path.GetFullPath(string)"/>.
+        /// </summary>
+        public static INormalizer<string> FullPath { get; } = Create<string>("full path", Path.GetFullPath);
+
+        /// <summary>
+        /// Removes leading and trailing whitespace.
+        /// </summary>
+        public static INormalizer<string> Trim { get; } = Create<string>("trim whitespace", value => value.Trim());
+    }
 }

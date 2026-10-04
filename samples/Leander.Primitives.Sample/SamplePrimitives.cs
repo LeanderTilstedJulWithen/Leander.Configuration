@@ -11,7 +11,7 @@ public static class SamplePrimitives
     // A custom validator. Normalizers run first, so " ops@example.com " is trimmed before it's checked.
     public static readonly Primitive<string> Email = new("Email", Primitive.String)
     {
-        Normalizers = [Normalizers.Trim],
+        Normalizers = [Normalizers.Strings.Trim],
         Validators = [Validators.Create<string>("must contain @", value => value.Contains('@'))],
         Description = "An e-mail address.",
     };
