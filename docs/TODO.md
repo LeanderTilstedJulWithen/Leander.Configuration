@@ -33,7 +33,7 @@ From REVIEW.md. In this order.
 - [x] Converter descriptions in the documentation: `PrimitiveDescriptor.Converter` (null for a derived primitive), a `converter` field in the contract JSON, the Markdown **Format** line (from the base for a derived primitive; counts as something to say), and a `ContractDiff` aspect.
 
 ### Samples
-- [ ] Leander.Primitives sample (standalone).
+- [x] Leander.Primitives sample (standalone).
 - [ ] Leander.Configuration.MicrosoftExtensions sample without Tooling.
 - [ ] Comprehensive sample covering everything, writing the contract JSON, Markdown and appsettings.json to `samples/output` (committed).
 
