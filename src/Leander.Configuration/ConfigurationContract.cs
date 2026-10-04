@@ -11,11 +11,13 @@ namespace Leander.Configuration;
 public sealed class ConfigurationContract
 {
     private readonly HashSet<ConfigurationDefinition> _definitionSet;
+    private readonly ContractTypeNames _typeNames;
 
-    internal ConfigurationContract(IReadOnlyList<ConfigurationDefinition> definitions)
+    internal ConfigurationContract(IReadOnlyList<ConfigurationDefinition> definitions, ContractTypeNames typeNames)
     {
         Definitions = definitions;
         _definitionSet = [.. definitions];
+        _typeNames = typeNames;
     }
 
     /// <summary>
@@ -32,10 +34,13 @@ public sealed class ConfigurationContract
     /// Creates a text-only description of every definition and the primitives they use,
     /// for documentation and contract files.
     /// </summary>
-    /// <remarks>Defaults of sensitive definitions are left out.</remarks>
+    /// <remarks>
+    /// Defaults of sensitive definitions are left out. Types are named as briefly as the contract allows, e.g. <c>Billing.Status</c>
+    /// next to <c>Shipping.Status</c>, and just <c>Int32</c> without a collision.
+    /// </remarks>
     public ContractDescriptor CreateDescriptor()
     {
-        var context = new DescriptorContext();
+        var context = new DescriptorContext(_typeNames);
         var definitions = new List<DefinitionDescriptor>(Definitions.Count);
 
         foreach (var definition in Definitions)

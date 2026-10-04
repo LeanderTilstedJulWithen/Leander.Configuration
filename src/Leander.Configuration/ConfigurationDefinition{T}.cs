@@ -1,6 +1,5 @@
 using Leander.Configuration.Descriptors;
 using Leander.Configuration.Internal;
-using Leander.Primitives.Internal;
 
 namespace Leander.Configuration;
 
@@ -95,7 +94,7 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
         // An indexed default has items only: the source has no single entry to show.
         return descriptor with
         {
-            Type = TypeNames.Get(Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T)),
+            Type = context.TypeName(Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T)),
             Presence = IsOptional ? ValuePresence.Optional : HasDefault ? ValuePresence.Default : ValuePresence.Required,
             Default = showDefault && defaultItems is null ? Reader.Format(context, _settings.DefaultValue!) : null,
             DefaultItems = defaultItems,

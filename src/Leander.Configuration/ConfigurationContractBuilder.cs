@@ -14,7 +14,7 @@ public sealed class ConfigurationContractBuilder
     /// </summary>
     /// <exception cref="InvalidOperationException">
     /// The definitions are invalid; lists every failure: duplicate keys, primitive name clashes,
-    /// and invalid presence (a null default, or a default with <c>Optional()</c>).
+    /// types with the same full name from different assemblies, and invalid presence (a null default, or a default with <c>Optional()</c>).
     /// </exception>
     // Primitives are complete, so nothing is resolved.
     public ConfigurationContract Build()
@@ -30,14 +30,16 @@ public sealed class ConfigurationContractBuilder
             definition.Check(checker);
         }
 
-        List<string> failures = [.. duplicates, .. checker.NameClashes, .. checker.Failures];
+        var typeNames = new ContractTypeNames(checker.Types);
+
+        List<string> failures = [.. duplicates, .. checker.NameClashes, .. typeNames.Failures, .. checker.Failures];
         if (failures.Count > 0)
         {
             throw new InvalidOperationException(
                 "Configuration contract could not be built:" + Environment.NewLine + string.Join(Environment.NewLine, failures));
         }
 
-        return new ConfigurationContract([.. _definitions]);
+        return new ConfigurationContract([.. _definitions], typeNames);
     }
 
     /// <summary>

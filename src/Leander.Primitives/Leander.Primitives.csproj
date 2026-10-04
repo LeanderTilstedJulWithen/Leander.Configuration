@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Leander.Configuration uses the redacting TryParse/TryAccept overloads, Primitive.DisplayName and TypeNames. -->
+    <!-- Leander.Configuration uses the redacting TryParse/TryAccept/TryApplyRules overloads, Primitive.DisplayName, and the primitive internals descriptors need. -->
     <InternalsVisibleTo Include="Leander.Configuration" />
   </ItemGroup>
 

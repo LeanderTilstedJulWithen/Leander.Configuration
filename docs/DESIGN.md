@@ -383,7 +383,7 @@ contract.Read(source, new ReadOptions
 
 ### Parse error messages
 
-`IParser<T>.TryParse` stays `bool`-only: fast, allocation-light, reusable. Messages are built from the type and the primitive name, e.g. "'abc' is not a valid Int32 (Hex)". If richer errors are needed later, an opt-in interface (e.g. `IDiagnosticParser<T> : IParser<T>`) can be detected with `is`.
+Messages lead with the type and the primitive name, e.g. "'abc' is not a valid Int32 (Hex)", followed by the converter's reasons, if any (see Leander.Primitives, Conversion errors).
 
 ### Sensitive values
 
@@ -457,7 +457,7 @@ DefinitionDescriptor
   Value              ValueDescriptor
 
 ValueDescriptor
-  Type               display name without Nullable<>, e.g. "Int32", "IReadOnlyList<String>"
+  Type               the type's name in the contract (see Type names), without Nullable<>, e.g. "Int32", "IReadOnlyList<String>"
   Presence           Required | Default | Optional
   Default            Scalar only: formatted with the primitive's converter; null when there is none or the definition is sensitive
   DefaultItems       Indexed only: each item of the default, formatted with the element's converter; null like Default
@@ -483,6 +483,28 @@ The descriptor types are records, so a renderer or a comparison can use `with` a
 - **Defaults are formatted by the converter**, so a `TimeSpan` default reads `00:00:30`, the same text that would be written in the source. A list default is formatted by the list's converter. An indexed default also has its items, each formatted by the element's converter, because splitting the formatted list again is wrong when an item contains the delimiter.
 - **Primitives are referenced.** A definition refers to its primitive by type and name, and the primitive is described once. Names are unique per type within a contract (see Contract), so the reference is unambiguous.
 - **Primitives are listed in order of first use**, each followed by its bases and elements, and only those some definition uses. That includes ready-made primitives such as `Int32`, so the contract file is complete.
+
+### Type names
+
+Status: decided, not implemented.
+
+A type is named as briefly as the contract allows: its short name, with only as many namespace levels as it takes to tell it apart from the other types in the same contract.
+
+```
+MyApp.Billing.Status, MyApp.Shipping.Status   →  Billing.Status, Shipping.Status
+System.Int32, MyApp.Int32                      →  System.Int32, MyApp.Int32
+System.Uri (no collision)                      →  Uri
+IReadOnlyList<MyApp.Billing.Status>            →  IReadOnlyList<Billing.Status>
+```
+
+- **Short names alone are ambiguous.** A definition refers to its primitive by type and name. Two enums named `Status` in different namespaces, each with `Primitive.Enum<T>()`, are both `(Status, Status)` in the file. The contract builder accepts them, because they are different `System.Type`s.
+- **Full names everywhere are noise.** Operators don't care about namespaces, and moving a type to another namespace would show up as a difference.
+- **The descriptor names types**, because it is built from the whole contract and knows every type in it: value types, primitive types, and their generic arguments. Each named type collides with the others on its short name or not; colliding types get namespace levels from the right until they differ.
+- **Generic arguments are named the same way**, each on its own: `IReadOnlyList<Billing.Status>`.
+- **A nested type counts its declaring type as a level**: `Outer.Status`.
+- **Types with the same full name** in different assemblies can't be told apart, even by their full name. The contract build rejects them.
+- **Diagnostics stay short** (`Int32 (Port)`). They come from Leander.Primitives, which doesn't know the contract, and they name the key anyway.
+- **A name depends on the rest of the contract.** Adding `Shipping.Status` changes how `Billing.Status` is written, and two programs sharing keys may write the same type differently. Comparing contracts allows for that (see Comparing contracts).
 
 ### Documentation
 
@@ -527,7 +549,7 @@ Origins allowed to call the server.
 ```
 
 - **Primitives are an implementation detail.** They keep the code tidy, but a reader editing the configuration wants everything about a key in one place. Each key is documented in full, every time. There is no Primitives section and nothing to link to. Linking some keys to shared primitives and folding others made a boundary the reader couldn't see.
-- **The type is the primitive's display name**, `Int32 (Port)`, like diagnostics show it. It isn't linked, but a reader can still spot that two keys share a primitive.
+- **The type is the primitive's display name**, `Int32 (Port)`, like diagnostics show it, but with the type's name in the contract: `Billing.Status (Status)` (see Type names). It isn't linked, but a reader can still spot that two keys share a primitive.
 - **The primitive's description isn't shown.** The key's own description says what the value is for, so repeating the primitive's ("A TCP port.") is noise. The primitive's description is still in the descriptor and the contract file.
 - **Rules are collected along the base chain**, base first, the order they run in: **Values** (an enum's names), **Normalized** and **Validated**. **Format** is the converter's description and comes from the root of the chain, the primitive whose converter reads the value.
 - **A list's items get a nested block** under **Items**: the element's display name, then its format, values and rules, collected the same way.
@@ -561,6 +583,7 @@ Admin:Contact: added
 - **Primitives are compared on every key that uses them**, down through their bases and elements. The same primitive change shows up on each key, so every key answers "do both sides agree on this key?" on its own. When the keys refer to different primitives, only the reference is reported.
 - **Keys match case-insensitively**, like `IConfiguration` reads them. A difference in spelling is its own aspect.
 - **An indexed default is compared by its items.**
+- **Type names match when one is a suffix of the other** at namespace boundaries: `Status` matches `Billing.Status`, and generic arguments are compared one by one. A type name depends on the rest of the contract (see Type names), so adding a colliding type, or comparing two programs where only one has the collision, doesn't report a change. `Billing.Status` against `Shipping.Status` is one. The same applies to primitive references, which include the type.
 - **What a difference means is not decided here.** Whether it's breaking depends on which side is the source of truth, and on the use case (see IDEAS.md).
 
 ### Example configuration
@@ -594,7 +617,6 @@ Admin:Contact: added
 
 - **Replacing the converter** in a derived primitive, e.g. Email with a different parser. Not allowed for now.
 - **Validators organisation.** One `Validators` class, or one class per type (`StringValidation`, …).
-- **Type names in contract files** are short (`Int32`, `Verbosity`). Two application types with the same name in different namespaces can't be told apart.
 - **Defaults.** Typed vs string defaults.
 - **Collections.** Dictionaries.
 - **Reload.** `IOptionsSnapshot<T>` and `IOptionsMonitor<T>` support. 1.0 reads once at startup. Open: what an invalid reload does (keep the last valid snapshot, and how anyone finds out without a logging dependency), whether the `ConfigurationSnapshot` singleton stays the startup snapshot or gets a holder of its own, and that options types built from one snapshot come from the same read.

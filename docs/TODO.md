@@ -74,7 +74,8 @@ What stands between the current code and a release. The code is feature-complete
 ### Decide first (breaking after 1.0.0)
 - [x] Conversion errors from converters: the converter's `TryParse` outputs its errors as `IFormattableText<string>`, the primitive leads with its own line, the bool-only `TryParse` stays as a default interface member, and `Primitive<T>.AsConverter()` for wrapping (see DESIGN.md, Conversion errors).
 - [x] Implement conversion errors: `IParser<T>`, the ready-made converters, builders and composite converters, `PrimitiveConverter<T>` behind `AsConverter()`, the primitive's lead line and redaction, and the `RangePrimitive` sample. `ListPrimitive` keeps its `TryConvert` hook, so list errors don't repeat the list before every item.
-- [ ] Type names in contract files are short (`Int32`, `Verbosity`), so types with the same name in different namespaces can't be told apart (see DESIGN.md, Open questions). Changing it later needs a new format version.
+- [x] Type names in contract files: the shortest name without collisions in the contract, `Billing.Status` and `Shipping.Status`; `ContractDiff` matches type names by suffix (see DESIGN.md, Type names).
+- [ ] Implement type names: naming in the descriptor (value types, primitive types, generic arguments, nested types), the build error for types with the same full name, the Markdown type, and suffix matching in `ContractDiff`, primitive references included. Then remove the status note in DESIGN.md.
 - [ ] Validators organisation: one `Validators` class, or one class per type (see DESIGN.md, Open questions). A rename after 1.0.0 is breaking.
 - [ ] Replacing the converter in a derived primitive: record "not allowed" as a decision in DESIGN.md, or allow it.
 - [ ] DESIGN.md, Milestones: milestone 5 (Generator) contradicts the 1.1.0 plan and "no tooling before 1.0.0". Move it after 1.0.0 or drop it.

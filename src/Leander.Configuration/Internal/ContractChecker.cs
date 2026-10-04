@@ -16,11 +16,16 @@ internal sealed class ContractChecker
     // Name clashes, one per type and name, in order of discovery.
     public List<string> NameClashes { get; } = [];
 
+    // The value types of every primitive checked, for naming types in the contract.
+    public HashSet<Type> Types { get; } = [];
+
     // Checks the primitive, its bases, and the elements of list primitives.
     public void Check(string key, Primitive primitive)
     {
         for (Primitive? current = primitive; current is not null; current = current.Base)
         {
+            Types.Add(current.ValueType);
+
             var entry = (current.ValueType, current.Name);
             if (!_named.TryAdd(entry, current) && !ReferenceEquals(_named[entry], current) && _clashes.Add(entry))
             {
