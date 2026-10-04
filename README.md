@@ -171,3 +171,7 @@ After 1.0.0:
 
 - **Reloading:** `IOptionsSnapshot<T>` and `IOptionsMonitor<T>` from a snapshot read again when `IConfiguration` reloads.
 - **Registration without listing every definition:** opt-in, through attributes first and a source generator later. Explicit registration stays the default.
+
+## License
+
+[MIT](LICENSE)
