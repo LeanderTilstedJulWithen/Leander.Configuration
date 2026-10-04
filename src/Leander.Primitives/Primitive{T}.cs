@@ -19,6 +19,7 @@ public class Primitive<T> : Primitive
 {
     private IReadOnlyList<INormalizer<T>>? _allNormalizers;
     private IReadOnlyList<IValidator<T>>? _allValidators;
+    private IConverter<T>? _asConverter;
 
     /// <summary>
     /// Creates a primitive that reads values with <paramref name="converter"/>.
@@ -75,6 +76,20 @@ public class Primitive<T> : Primitive
 
     private IReadOnlyList<IValidator<T>> AllValidators =>
         _allValidators ??= Base is null ? Validators : [.. Base.AllValidators, .. Validators];
+
+    /// <summary>
+    /// The whole primitive as a converter, for a converter that wraps it, e.g. each end of a range.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Parsing applies all of the primitive's rules, and its errors are reasons for the outer primitive, which leads with its own line
+    /// and hides the value when it is sensitive. Formatting uses <see cref="Converter"/>.
+    /// </para>
+    /// <para>
+    /// Not the same as <see cref="Converter"/>, which is only how this primitive reads text, without its rules.
+    /// </para>
+    /// </remarks>
+    public IConverter<T> AsConverter() => _asConverter ??= new PrimitiveConverter<T>(this);
 
     /// <summary>
     /// Normalizes, then validates a value that is already a <typeparamref name="T"/>, e.g. a default.

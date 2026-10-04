@@ -34,10 +34,12 @@ internal sealed class DictionaryConverter<TKey, TValue>(
         _entryDelimiter,
         value.Select(pair => $"{_keyConverter.Format(pair.Key)}{_keyValueDelimiter}{_valueConverter.Format(pair.Value)}"));
 
+    // Every entry is checked, and every reason is reported, e.g. "entry 1: value: 'x' is not a valid Int32". Entries count from 0.
     public bool TryParse(string input, out IReadOnlyDictionary<TKey, TValue> result, out IReadOnlyList<IFormattableText<string>> errors)
     {
-        errors = [];
         var dictionary = new Dictionary<TKey, TValue>();
+        var reasons = new List<IFormattableText<string>>();
+        errors = reasons;
         result = dictionary;
 
         var trimmed = input.Trim();
@@ -46,17 +48,43 @@ internal sealed class DictionaryConverter<TKey, TValue>(
             return true;
         }
 
-        foreach (var entry in trimmed.Split(_entryDelimiter))
+        var entries = trimmed.Split(_entryDelimiter);
+        for (var index = 0; index < entries.Length; index++)
         {
+            var prefix = $"entry {index}: ";
+            var entry = entries[index].Trim();
             var parts = entry.Split(_keyValueDelimiter, 2);
-            if (parts.Length != 2 ||
-                !_keyConverter.TryParse(parts[0].Trim(), out var key) ||
-                !_valueConverter.TryParse(parts[1].Trim(), out var value) ||
-                !dictionary.TryAdd(key, value))
+            if (parts.Length != 2)
             {
-                result = new Dictionary<TKey, TValue>();
-                return false;
+                reasons.Add(FormattableText.Create<string>(formatter => $"{prefix}{formatter.Format($"'{entry}'")} has no '{_keyValueDelimiter}'"));
+                continue;
             }
+
+            var keyText = parts[0].Trim();
+            var valueText = parts[1].Trim();
+
+            var hasKey = _keyConverter.TryParse(keyText, out var key, out var keyErrors);
+            if (!hasKey)
+            {
+                reasons.AddRange(PartErrors.Of<TKey>($"{prefix}key: ", keyText, keyErrors));
+            }
+
+            var hasValue = _valueConverter.TryParse(valueText, out var value, out var valueErrors);
+            if (!hasValue)
+            {
+                reasons.AddRange(PartErrors.Of<TValue>($"{prefix}value: ", valueText, valueErrors));
+            }
+
+            if (hasKey && hasValue && !dictionary.TryAdd(key, value))
+            {
+                reasons.Add(FormattableText.Create<string>(formatter => $"{prefix}duplicate key {formatter.Format($"'{keyText}'")}"));
+            }
+        }
+
+        if (reasons.Count > 0)
+        {
+            result = new Dictionary<TKey, TValue>();
+            return false;
         }
 
         return true;

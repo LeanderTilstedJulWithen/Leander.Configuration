@@ -18,7 +18,7 @@ public sealed class ListPrimitive<T> : Primitive<IReadOnlyList<T>>, IListPrimiti
     /// </summary>
     // The converter applies the element's rules too, so a plain primitive derived from this list still checks its items.
     public ListPrimitive(string name, Primitive<T> element, char delimiter = ',')
-        : base(name, Converters.List(new PrimitiveConverter<T>(element), delimiter))
+        : base(name, Converters.List(element.AsConverter(), delimiter))
     {
         Element = element;
         Delimiter = delimiter;

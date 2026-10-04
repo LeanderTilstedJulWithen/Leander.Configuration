@@ -133,14 +133,14 @@ public class ListPrimitiveTests
     }
 
     [Fact]
-    public void DerivedAsPlainPrimitive_StillChecksItemsWithoutNamingThem()
+    public void DerivedAsPlainPrimitive_StillChecksItemsThroughTheConverter()
     {
         var plain = new Primitive<IReadOnlyList<int>>("PlainPorts", Ports);
 
         Assert.True(plain.TryParse("80,443", out var value));
         Assert.Equal([80, 443], value);
         Assert.False(plain.TryParse("80,0", out _, out var errors));
-        Assert.Equal(["'80,0' is not a valid IReadOnlyList<Int32> (PlainPorts)"], errors);
+        Assert.Equal(["'80,0' is not a valid IReadOnlyList<Int32> (PlainPorts): item 1: must be between 1 and 65535"], errors);
     }
 
     [Fact]

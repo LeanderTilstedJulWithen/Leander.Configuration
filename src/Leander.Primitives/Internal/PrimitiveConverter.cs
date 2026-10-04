@@ -3,6 +3,7 @@ using Leander.Primitives.Parsing;
 namespace Leander.Primitives.Internal;
 
 // A primitive as a converter: parsing applies all of the primitive's rules, formatting uses its converter.
+// Its errors come back unformatted, so the outer primitive decides whether the value is hidden.
 internal sealed class PrimitiveConverter<T>(Primitive<T> primitive) : IConverter<T>
 {
     private readonly Primitive<T> _primitive = primitive;
@@ -12,9 +13,13 @@ internal sealed class PrimitiveConverter<T>(Primitive<T> primitive) : IConverter
 
     public string Format(T value) => _primitive.Converter.Format(value);
 
+    public bool TryParse(string input, out T result) => _primitive.TryParse(input, out result);
+
     public bool TryParse(string input, out T result, out IReadOnlyList<IFormattableText<string>> errors)
     {
-        errors = [];
-        return _primitive.TryParse(input, out result);
+        var list = new List<ErrorText>();
+        var success = _primitive.TryParse(input, out result, list);
+        errors = list;
+        return success;
     }
 }
