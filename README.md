@@ -160,10 +160,10 @@ The example configuration is an `appsettings.json` with every key, to copy and f
 
 ## Samples
 
-- [Leander.Primitives.Sample](samples/Leander.Primitives.Sample): primitives on their own. Ready-made, custom, derived and list primitives, parsing and formatting, and a primitive wrapping another.
-- [Leander.Configuration.Sample](samples/Leander.Configuration.Sample): a contract read from key/value pairs, with every problem reported and a strict read that catches a misspelled key.
-- [Leander.Configuration.MicrosoftExtensions.Sample](samples/Leander.Configuration.MicrosoftExtensions.Sample): reading an `IConfiguration`, a scoped snapshot, and a host with options with and without `IOptions<T>`.
-- [Leander.Configuration.Tooling.Sample](samples/Leander.Configuration.Tooling.Sample): documentation, contract file and example configuration, and a comparison with the committed contract file. Its output is committed, so it can be read without running anything: [configuration.md](samples/Leander.Configuration.Tooling.Sample/output/configuration.md), [configuration.contract.json](samples/Leander.Configuration.Tooling.Sample/output/configuration.contract.json) and [appsettings.example.json](samples/Leander.Configuration.Tooling.Sample/output/appsettings.example.json).
+- [Leander.Primitives.Sample](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/tree/main/samples/Leander.Primitives.Sample): primitives on their own. Ready-made, custom, derived and list primitives, parsing and formatting, and a primitive wrapping another.
+- [Leander.Configuration.Sample](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/tree/main/samples/Leander.Configuration.Sample): a contract read from key/value pairs, with every problem reported and a strict read that catches a misspelled key.
+- [Leander.Configuration.MicrosoftExtensions.Sample](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/tree/main/samples/Leander.Configuration.MicrosoftExtensions.Sample): reading an `IConfiguration`, a scoped snapshot, and a host with options with and without `IOptions<T>`.
+- [Leander.Configuration.Tooling.Sample](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/tree/main/samples/Leander.Configuration.Tooling.Sample): documentation, contract file and example configuration, and a comparison with the committed contract file. Its output is committed, so it can be read without running anything: [configuration.md](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/blob/main/samples/Leander.Configuration.Tooling.Sample/output/configuration.md), [configuration.contract.json](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/blob/main/samples/Leander.Configuration.Tooling.Sample/output/configuration.contract.json) and [appsettings.example.json](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/blob/main/samples/Leander.Configuration.Tooling.Sample/output/appsettings.example.json).
 
 ## Planned
 
@@ -174,4 +174,4 @@ After 1.0.0:
 
 ## License
 
-[MIT](LICENSE)
+[MIT](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/blob/main/LICENSE)
