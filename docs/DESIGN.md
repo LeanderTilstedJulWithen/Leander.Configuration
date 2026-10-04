@@ -169,8 +169,6 @@ public interface IConverter<T> : IParser<T>, IFormatter<T>
 
 ### Conversion errors
 
-Status: decided, not implemented.
-
 A converter says why it failed, not only that it did. Otherwise a converter that wraps a primitive loses the primitive's reasons: a range of ports reports "'1024..70000' is not a valid Range\<Int32\> (PortRange)", and never "must be between 1 and 65535".
 
 ```csharp
@@ -186,7 +184,7 @@ FormattableText.Create<string>(formatter => $"'{formatter.Format(segment)}' is n
 
 - **`IFormattableText<string>`, not plain strings**, because of sensitive values. A converter's errors usually contain the input, and the converter can't redact: it doesn't know about keys, and the `redact` flag stays internal (see Sensitive values). Values in the text are pieces of the input, and the primitive formats them as they are, or with a redacting formatter. Same mechanism as rule texts.
 - **Every reason is reported.** The interface allows several, like a validator; empty is allowed too. Empty, not null, on success.
-- **The primitive leads with its own line.** Each reason becomes `'1024..70000' is not a valid Range<Int32> (PortRange): upper bound: must be between 1 and 65535`; without reasons, just `'1024..70000' is not a valid Range<Int32> (PortRange)`. Redacted, the lead is `value is not a valid …` and the reasons are formatted with the redacting formatter. One line per reason, like item errors, so every diagnostic stands on its own.
+- **The primitive leads with its own line.** Each reason becomes `'1024..70000' is not a valid Range<Int32> (PortRange): maximum: must be between 1 and 65535`; without reasons, just `'1024..70000' is not a valid Range<Int32> (PortRange)`. Redacted, the lead is `value is not a valid …` and the reasons are formatted with the redacting formatter. One line per reason, like item errors, so every diagnostic stands on its own.
 - **The bool-only `TryParse` stays**, as a default interface member, like `IsValid` on validators. A converter overrides it only for speed.
 - **A primitive as a converter: `Primitive<T>.AsConverter()`.** A converter that wraps a primitive, e.g. a range or `Converters.List` inside a list primitive, holds it as a converter: parsing applies all of the primitive's rules, and its errors come back unformatted, so the outer primitive decides on redaction. Formatting uses the primitive's `Converter`. `Converter` is how a primitive reads text; `AsConverter()` is the whole primitive. Not another `TryParse` overload: `out var` couldn't choose between `IReadOnlyList<string>` and `IReadOnlyList<IFormattableText<string>>`. Its inner rule texts are formatted with the inner converter, or redacted when the outer primitive redacts.
 
@@ -205,7 +203,7 @@ public static readonly ListPrimitive<Uri> Origins = new("Origins", Primitive.Uri
 - **The delimiter is a constructor argument**, not an `init` property: the converter is built in the constructor, and a derived list can't change the format.
 - **Items go through the element primitive**: parse, normalize and validate, with all its rules. Then the list's own normalizers and validators run on the list. A value that is already a list, e.g. a default, goes through `TryAccept` the same way: each item through the element's `TryAccept`, then the list's rules.
 - **The converter is delimited**: parsing splits on the delimiter and trims each item, and empty input is an empty list. Formatting joins the items' formatted values with it. This is `Converters.List` over the element primitive's `AsConverter()`, so item rules are applied and item errors are its reasons.
-- **Item errors name the item**, because a primitive knows nothing about keys: `item 2: 'x' is not a valid Uri`, or `item 2: value is not a valid Uri` when redacted. Items are counted from 0, like indexed keys. Every item is checked, and every failure is reported.
+- **Item errors name the item**, because a primitive knows nothing about keys: `item 2: 'x' is not a valid Uri`, or `item 2: value is not a valid Uri` when redacted. Items are counted from 0, like indexed keys. Every item is checked, and every failure is reported. Unlike other primitives (see Conversion errors), a list doesn't lead with its own line: the item number already says which part failed, and repeating the whole list before every item error is noise. That is why `ListPrimitive<T>` reads items itself, with an internal hook, although its converter reports the same reasons.
 - **Nested lists** are a list primitive whose element is another list primitive, e.g. `;` between rows and `,` within them. Using the same delimiter twice is the user's bug, and it isn't checked.
 - **Deriving** a list uses `new ListPrimitive<T>(name, baseList)`: it keeps the element and delimiter, and adds list rules. Deriving with the `Primitive<T>` constructor gives a plain primitive without `Element`, which can't be used with `Indexed` (see Collections). It still checks its items through the converter, whose reasons name the item after the primitive's own line: `'80,0' is not a valid IReadOnlyList<Int32> (PlainPorts): item 1: must be between 1 and 65535`.
 - **No shortcut** like `Primitive.List(Primitive.String)`. Every call would give a new instance with the same name, which clashes in a contract. Lists are declared as fields, like other primitives.

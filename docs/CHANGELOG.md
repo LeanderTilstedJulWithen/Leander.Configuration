@@ -8,7 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 #### Leander.Primitives
-- `Leander.Primitives.Parsing`: converters, parsers and formatters, copied from Leander.Parsing with only the namespace changed. `IFormatter<T>` is now contravariant (`IFormatter<in T>`).
+- `Leander.Primitives.Parsing`: converters, parsers and formatters, copied from Leander.Parsing. `IFormatter<T>` is now contravariant (`IFormatter<in T>`).
+- Conversion errors: `IParser<T>.TryParse(input, out result, out errors)` returns every reason a value can't be read, as `IFormattableText<string>`, so pieces of the input can be hidden for sensitive values; the bool-only `TryParse` is a default interface member. The primitive leads with its own line: `'1024..70000' is not a valid Range<Int32> (PortRange): maximum: must be between 1 and 65535`. List and dictionary converters report every failing item or entry (`item 2: …`, `entry 1: value: …`).
+- `Primitive<T>.AsConverter()`: the whole primitive as a converter, with its rules, for a converter that wraps it. Its errors become the outer primitive's reasons.
 - `Leander.Primitives.Validation`: `IValidator<T>` with `Description`, `Validate` (every failure, empty when valid) and `IsValid`, and `Validators` (`Create`, `NotEmpty`, `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, `LessThanOrEqual`, `InRange`, `Collections.NotEmpty<T>()`). Validators are invariant, and may report several failures.
 - `Leander.Primitives.Normalization`: `INormalizer<T>` with `Description` and `Normalize`, and `Normalizers` (`Create`, `Trim`, `FullPath`, `UpperBound`, `LowerBound`).
 - `IFormattableText<T>` and `FormattableText.Create`: rule descriptions and failures, formatted by the primitive with its converter in documentation and error messages, e.g. `must be less than or equal to 0xFF` on a Hex primitive. For sensitive values, every value of `T` in them is hidden.
