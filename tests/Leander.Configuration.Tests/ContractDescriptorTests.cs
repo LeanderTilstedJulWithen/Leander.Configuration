@@ -190,6 +190,82 @@ public class ContractDescriptorTests
         Assert.Equal(["String", "Port"], contract.Primitives.Select(primitive => primitive.Name));
     }
 
+    // Type names
+
+    [Fact]
+    public void TypeName_WithoutCollision_IsShort()
+    {
+        var contract = Describe(ConfigurationDefinition.Define("Status", Primitive.Enum<Billing.Status>()));
+
+        Assert.Equal("Status", contract.Definitions[0].Value.Type);
+        Assert.Equal(new PrimitiveReference("Status", "Status"), contract.Definitions[0].Value.Primitive);
+    }
+
+    [Fact]
+    public void TypeNames_Colliding_GetNamespaceLevels()
+    {
+        var contract = Describe(
+            ConfigurationDefinition.Define("Billing", Primitive.Enum<Billing.Status>()),
+            ConfigurationDefinition.Define("Shipping", Primitive.Enum<Shipping.Status>()));
+
+        Assert.Equal(["Billing.Status", "Shipping.Status"], contract.Definitions.Select(definition => definition.Value.Type));
+        Assert.Equal(new PrimitiveReference("Billing.Status", "Status"), contract.Definitions[0].Value.Primitive);
+        Assert.Equal(["Billing.Status", "Shipping.Status"], contract.Primitives.Select(primitive => primitive.Type));
+    }
+
+    [Fact]
+    public void TypeNames_Colliding_GetAsManyLevelsAsItTakes()
+    {
+        var contract = Describe(
+            ConfigurationDefinition.Define("Ours", Primitive.Enum<Billing.Status>()),
+            ConfigurationDefinition.Define("Theirs", Primitive.Enum<Other.Billing.Status>()));
+
+        Assert.Equal(["Tests.Billing.Status", "Other.Billing.Status"], contract.Definitions.Select(definition => definition.Value.Type));
+    }
+
+    [Fact]
+    public void TypeNames_NestedType_CountsItsDeclaringType()
+    {
+        var contract = Describe(
+            ConfigurationDefinition.Define("Shipping", Primitive.Enum<Shipping.Status>()),
+            ConfigurationDefinition.Define("Outer", Primitive.Enum<Shipping.Outer.Status>()));
+
+        Assert.Equal(["Shipping.Status", "Outer.Status"], contract.Definitions.Select(definition => definition.Value.Type));
+    }
+
+    [Fact]
+    public void TypeNames_CollidingWithAFrameworkType()
+    {
+        var contract = Describe(
+            ConfigurationDefinition.Define("Number", Primitive.Int32),
+            ConfigurationDefinition.Define("Custom", Primitive.Enum<Custom.Int32>()));
+
+        Assert.Equal(["System.Int32", "Custom.Int32"], contract.Definitions.Select(definition => definition.Value.Type));
+    }
+
+    [Fact]
+    public void TypeNames_GenericArguments_AreNamedTheSameWay()
+    {
+        var statuses = new ListPrimitive<Billing.Status>("Statuses", Primitive.Enum<Billing.Status>());
+
+        var contract = Describe(
+            ConfigurationDefinition.Define("Statuses", statuses),
+            ConfigurationDefinition.Define("Shipping", Primitive.Enum<Shipping.Status>()));
+
+        Assert.Equal("IReadOnlyList<Billing.Status>", contract.Definitions[0].Value.Type);
+        Assert.Equal(new PrimitiveReference("Billing.Status", "Status"), contract.Primitives[0].Element);
+    }
+
+    [Fact]
+    public void TypeNames_Optional_IsNamedWithoutNullable()
+    {
+        var contract = Describe(
+            ConfigurationDefinition.Define("Billing", Primitive.Enum<Billing.Status>()).Optional(),
+            ConfigurationDefinition.Define("Shipping", Primitive.Enum<Shipping.Status>()));
+
+        Assert.Equal("Billing.Status", contract.Definitions[0].Value.Type);
+    }
+
     private static ContractDescriptor Describe(params ConfigurationDefinition[] definitions)
     {
         var builder = new ConfigurationContractBuilder();

@@ -160,6 +160,53 @@ public class ContractDiffTests
         Assert.Equal("[1, 2]", difference.Right);
     }
 
+    // Type names
+
+    [Fact]
+    public void AddingACollidingType_DoesNotChangeTheKeysThatUseTheOther()
+    {
+        var statuses = new ListPrimitive<Billing.Status>("Statuses", Primitive.Enum<Billing.Status>());
+        var left = Contracts.Describe(
+            ConfigurationDefinition.Define("Status", Primitive.Enum<Billing.Status>()),
+            ConfigurationDefinition.Define("Statuses", statuses));
+        var right = Contracts.Describe(
+            ConfigurationDefinition.Define("Status", Primitive.Enum<Billing.Status>()),
+            ConfigurationDefinition.Define("Statuses", statuses),
+            ConfigurationDefinition.Define("Shipping", Primitive.Enum<Shipping.Status>()));
+
+        Assert.Equal("Status", left.Definitions[0].Value.Type);
+        Assert.Equal("Billing.Status", right.Definitions[0].Value.Type);
+        Assert.Equal([new ContractDifference("Shipping", DifferenceKind.Added)], ContractDiff.Compare(left, right));
+    }
+
+    [Fact]
+    public void CollidingTypesSwapped_AreReported()
+    {
+        var left = Contracts.Describe(
+            ConfigurationDefinition.Define("A", Primitive.Enum<Billing.Status>()),
+            ConfigurationDefinition.Define("B", Primitive.Enum<Shipping.Status>()));
+        var right = Contracts.Describe(
+            ConfigurationDefinition.Define("A", Primitive.Enum<Shipping.Status>()),
+            ConfigurationDefinition.Define("B", Primitive.Enum<Billing.Status>()));
+
+        var differences = ContractDiff.Compare(left, right).Where(difference => difference.Key == "A").ToList();
+
+        Assert.Equal("A: type: Billing.Status → Shipping.Status", Changed(differences, DifferenceAspect.Type).ToString());
+        Assert.Equal(
+            "A: primitive: Billing.Status (Status) → Shipping.Status (Status)",
+            Changed(differences, DifferenceAspect.Primitive).ToString());
+    }
+
+    [Fact]
+    public void TypeNames_MatchOnlyAtANamespaceBoundary()
+    {
+        var differences = Compare(
+            ConfigurationDefinition.Define("Status", new Primitive<OrderStatus>("Status", Converters.Enum<OrderStatus>())),
+            ConfigurationDefinition.Define("Status", Primitive.Enum<Billing.Status>()));
+
+        Assert.Equal("Status: type: OrderStatus → Status", Changed(differences, DifferenceAspect.Type).ToString());
+    }
+
     private static ContractDifference Changed(IReadOnlyList<ContractDifference> differences, DifferenceAspect aspect) =>
         Assert.Single(differences, difference => difference.Aspect == aspect);
 

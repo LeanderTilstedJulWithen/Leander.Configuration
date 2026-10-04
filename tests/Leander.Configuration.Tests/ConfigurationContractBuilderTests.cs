@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Reflection.Emit;
 using Leander.Primitives;
 using Leander.Primitives.Parsing;
 
@@ -158,6 +160,14 @@ public class ConfigurationContractBuilderTests
         Assert.Contains("Name: the default is null", message);
     }
 
+    [Fact]
+    public void Build_TypesWithTheSameFullName_FromDifferentAssemblies_AreAFailure()
+    {
+        var message = BuildFailure(DefineRuntimeEnum("First", "A"), DefineRuntimeEnum("Second", "B"));
+
+        Assert.Contains("Runtime.Status: types with this name come from different assemblies (First, Second), so they can't be told apart.", message);
+    }
+
     private static ConfigurationContract Build(params ConfigurationDefinition[] definitions)
     {
         var builder = new ConfigurationContractBuilder();
@@ -171,4 +181,17 @@ public class ConfigurationContractBuilderTests
 
     private static string BuildFailure(params ConfigurationDefinition[] definitions) =>
         Assert.Throws<InvalidOperationException>(() => Build(definitions)).Message;
+
+    // Defines key with Primitive.Enum<T>() for an enum Runtime.Status in an assembly of its own, made at runtime.
+    private static ConfigurationDefinition DefineRuntimeEnum(string assembly, string key)
+    {
+        var module = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(assembly), AssemblyBuilderAccess.Run).DefineDynamicModule(assembly);
+        var builder = module.DefineEnum("Runtime.Status", TypeAttributes.Public, typeof(int));
+        builder.DefineLiteral("Open", 0);
+        var type = builder.CreateType();
+
+        var primitive = typeof(Primitive).GetMethod(nameof(Primitive.Enum))!.MakeGenericMethod(type).Invoke(null, null);
+        var define = typeof(ConfigurationDefinition).GetMethod(nameof(ConfigurationDefinition.Define))!.MakeGenericMethod(type);
+        return (ConfigurationDefinition)define.Invoke(null, [key, primitive])!;
+    }
 }

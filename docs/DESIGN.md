@@ -486,8 +486,6 @@ The descriptor types are records, so a renderer or a comparison can use `with` a
 
 ### Type names
 
-Status: decided, not implemented.
-
 A type is named as briefly as the contract allows: its short name, with only as many namespace levels as it takes to tell it apart from the other types in the same contract.
 
 ```
