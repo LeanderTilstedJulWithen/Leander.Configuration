@@ -465,76 +465,52 @@ The descriptor types are records, so a renderer or a comparison can use `with` a
 
 ### Documentation
 
-`Documentation.WriteMarkdown(descriptor, title)` renders Markdown, because it renders on GitHub and diffs well when committed. Definitions are grouped by their first key segment, in order of first appearance. Each group has a summary table, followed by a section per key. Then every primitive is described once, under Primitives, and linked from wherever it's used:
+`Documentation.WriteMarkdown(descriptor, title)` renders Markdown, because it renders on GitHub and diffs well when committed. Definitions are grouped by their first key segment, in order of first appearance. Each group has a summary table, followed by a section per key with everything about the key:
 
 ```markdown
 ## Server
 
 | Key | Type | Presence | Default |
 |-----|------|----------|---------|
-| [`Server:Port`](#serverport) | [Int32 (Port)](#int32-port) | default | `8080` |
-| [`Server:AllowedOrigins`](#serverallowedorigins) | [IReadOnlyList<Uri> (Origins)](#ireadonlylisturi-origins) | required |  |
-| [`Server:Features`](#serverfeatures) | [IReadOnlyList<String> (Features)](#ireadonlyliststring-features) | required |  |
+| [`Server:Port`](#serverport) | Int32 (Port) | default | `8080` |
+| [`Server:AllowedOrigins`](#serverallowedorigins) | IReadOnlyList<Uri> (Origins) | required |  |
+| [`Server:Features`](#serverfeatures) | IReadOnlyList<String> (Features) | required |  |
 
 ### `Server:Port`
 
 The port to listen on.
 
-- **Type:** [Int32 (Port)](#int32-port): A TCP port.
+- **Type:** Int32 (Port)
+- **Format:** A 32-bit integer.
+- **Validated:** must be between 1 and 65535
 - **Presence:** default `8080`
 
 ### `Server:AllowedOrigins`
 
 Origins allowed to call the server.
 
-- **Type:** [IReadOnlyList<Uri> (Origins)](#ireadonlylisturi-origins): Origins, at least one.
-- **Presence:** required
+- **Type:** IReadOnlyList<Uri> (Origins)
 - **Form:** indexed: `Server:AllowedOrigins:0`, `Server:AllowedOrigins:1`, …
+- **Validated:** must not be empty
+- **Items:** Uri
+  - **Format:** An absolute URI, e.g. https://example.com.
+- **Presence:** required
 
 ### `Server:Features`
 
-- **Type:** [IReadOnlyList<String> (Features)](#ireadonlyliststring-features): Feature names.
-- **Presence:** required
+- **Type:** IReadOnlyList<String> (Features)
 - **Form:** one entry, items separated by `,`
-
-## Primitives
-
-### Int32
-
-- **Format:** A 32-bit integer.
-- **Derived primitives:** [Int32 (Port)](#int32-port), [Int32 (ConnectionLimit)](#int32-connectionlimit)
-
-### Int32 (Port)
-
-A TCP port.
-
-- **Derived from:** [Int32](#int32)
-- **Validated:** must be between 1 and 65535
-- **Used by:** [`Server:Port`](#serverport)
-
-### IReadOnlyList<Uri> (Origins)
-
-Origins, at least one.
-
-- **Items:** [Uri](#uri)
-- **Delimiter:** `,`
-- **Validated:** must not be empty
-- **Used by:** [`Server:AllowedOrigins`](#serverallowedorigins)
-
-### Uri
-
-- **Format:** An absolute URI, e.g. https://example.com.
-- **Used by:** [IReadOnlyList<Uri> (Origins)](#ireadonlylisturi-origins)
+- **Items:** String
+  - **Format:** Any text.
+- **Presence:** required
 ```
 
-- **Rules live on primitives, not on keys.** A primitive is the unit of reuse, so it is documented once, where it's defined. A key says what belongs to the key: its description, its type (linked, with the primitive's description), presence, form and whether it's sensitive. Repeating every rule on every key hid which keys share a primitive, and how primitives derive from each other.
-- **Every primitive with something to say has a section**, however often it's used, ready-made primitives included. "Something to say" is a description, a format, own rules, a base, an element or values. A primitive without any, e.g. one with a custom converter that has no description, isn't listed or linked. Its name is all there is to show.
-- **A section shows only the primitive's own parts**: description, format, items (linked), delimiter, values, normalizers and validators. A derived primitive links its base with **Derived from**, and the base links back with **Derived primitives**. The base's rules and format are in the base's section, one click away. This is how primitives work, and the documentation shows it.
-- **Format** is the converter's description. Only a primitive that isn't derived has one, because a derived primitive takes its base's converter. A list primitive shows **Items** and **Delimiter** instead, which say the same thing.
-- **The key's Form says how the key is written.** An indexed list is `Key:0`, `Key:1`, …, and the delimiter doesn't apply. A list in one entry repeats the delimiter: "one entry, items separated by `,`". A scalar that isn't a list has no Form line.
-- **Used by** links the keys that use a primitive and the list primitives that have it as their element. Derived primitives have their own line.
-- **Primitives are sorted by type, then name**, the one named after its type first: Int32, Int32 (ConnectionLimit), Int32 (Port), … A ready-made primitive is followed by those derived from it, and the list is easy to scan. Order of first use scattered a family across the section.
-- **Headings and type names use the display name**, `Int32 (Port)`, like diagnostics do.
+- **Primitives are an implementation detail.** They keep the code tidy, but a reader editing the configuration wants everything about a key in one place. Each key is documented in full, every time. There is no Primitives section and nothing to link to. Linking some keys to shared primitives and folding others made a boundary the reader couldn't see.
+- **The type is the primitive's display name**, `Int32 (Port)`, like diagnostics show it. It isn't linked, but a reader can still spot that two keys share a primitive.
+- **The primitive's description isn't shown.** The key's own description says what the value is for, so repeating the primitive's ("A TCP port.") is noise. The primitive's description is still in the descriptor and the contract file.
+- **Rules are collected along the base chain**, base first, the order they run in: **Values** (an enum's names), **Normalized** and **Validated**. **Format** is the converter's description and comes from the root of the chain, the primitive whose converter reads the value.
+- **A list's items get a nested block** under **Items**: the element's display name, then its format, values and rules, collected the same way.
+- **The key's Form says how the key is written.** An indexed list is `Key:0`, `Key:1`, …, and the delimiter doesn't apply. A list in one entry gives the delimiter: "one entry, items separated by `,`". A scalar that isn't a list has no Form line.
 - **Angle brackets are escaped** in text (`IReadOnlyList\<Uri\>`), or GitHub reads `<Uri>` as an HTML tag. The example above leaves that out for readability.
 - **Sensitive definitions** get a **Sensitive** line, and a default shows as *hidden*.
 - Lines end in `\n` on every platform, so the committed file doesn't change with the machine that wrote it.

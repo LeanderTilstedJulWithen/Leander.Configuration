@@ -397,3 +397,16 @@ Notes:
 - Loading the assembly with its dependencies runs application code, since static initializers build the definitions.
 - There is no need yet: a few library calls in the application or a test do the same.
 - Verdict: not before 1.0.0. Tooling on top of the library waits until the library itself is stable.
+
+## Structural rewrite
+
+### Everything needs to be accessable by keys.
+Each converter gets a key (perhaps split into parser and formatter each getting a key), Normalizers get a key, Validators get a key.
+
+A primitive is then defined by it's converter keys, normalizer keys, validators keys and then resolved by registry (yes, this reintroduces the registry)
+
+What this does? First of all documentation no longer needs to live on the object. The documentation can then live on a separate metadata registry, and metadata can be changed without touching the core library functionality. This fixes an issue where a feature like markdown generation doesn't meddle with the core library.
+
+This also enables contract import, since importing a primitive is just importing a set of keys (the keys themselves need to resolved in code of course.)
+
+Main drawback is the full rewrite, which may cause too much project, but if we feel like rewriting this from scratch .. :)
