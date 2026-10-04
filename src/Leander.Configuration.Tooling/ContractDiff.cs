@@ -10,6 +10,8 @@ namespace Leander.Configuration.Tooling;
 /// Differences are per key: a changed primitive is reported on every key that uses it,
 /// so each key answers "do both sides agree on this key?" on its own.
 /// Keys match case-insensitively, like <c>IConfiguration</c> reads them.
+/// Type names match when one ends with the other at a namespace boundary, e.g. <c>Status</c> and <c>Billing.Status</c>,
+/// because a contract names its types as briefly as it can, and that depends on the other types in it.
 /// </remarks>
 public static class ContractDiff
 {
@@ -64,17 +66,20 @@ public static class ContractDiff
             }
         }
 
+        private void Add(string key, DifferenceAspect aspect, string? primitive, string? left, string? right) =>
+            Differences.Add(new ContractDifference(key, DifferenceKind.Changed)
+            {
+                Aspect = aspect,
+                Primitive = primitive,
+                Left = left,
+                Right = right,
+            });
+
         private void Compare(string key, DifferenceAspect aspect, string? primitive, string? left, string? right)
         {
             if (!string.Equals(left, right, StringComparison.Ordinal))
             {
-                Differences.Add(new ContractDifference(key, DifferenceKind.Changed)
-                {
-                    Aspect = aspect,
-                    Primitive = primitive,
-                    Left = left,
-                    Right = right,
-                });
+                Add(key, aspect, primitive, left, right);
             }
         }
 
@@ -84,7 +89,11 @@ public static class ContractDiff
             var (leftValue, rightValue) = (left.Value, right.Value);
 
             Compare(key, DifferenceAspect.Key, null, left.Key, right.Key);
-            Compare(key, DifferenceAspect.Type, null, leftValue.Type, rightValue.Type);
+            if (!SameType(leftValue.Type, rightValue.Type))
+            {
+                Add(key, DifferenceAspect.Type, null, leftValue.Type, rightValue.Type);
+            }
+
             Compare(key, DifferenceAspect.Presence, null, Lower(leftValue.Presence), Lower(rightValue.Presence));
             Compare(key, DifferenceAspect.Default, null, DefaultText(leftValue), DefaultText(rightValue));
             Compare(key, DifferenceAspect.Form, null, Lower(leftValue.Form), Lower(rightValue.Form));
@@ -103,11 +112,15 @@ public static class ContractDiff
             PrimitiveReference? right,
             HashSet<PrimitiveReference> compared)
         {
-            Compare(key, aspect, owner, Name(left), Name(right));
+            if (!SameReference(left, right))
+            {
+                Add(key, aspect, owner, Name(left), Name(right));
+                return;
+            }
 
-            if (left is null || left != right || !compared.Add(left)
+            if (left is null || right is null || !compared.Add(left)
                 || !_leftPrimitives.TryGetValue(left, out var leftPrimitive)
-                || !_rightPrimitives.TryGetValue(left, out var rightPrimitive))
+                || !_rightPrimitives.TryGetValue(right, out var rightPrimitive))
             {
                 return;
             }
@@ -144,5 +157,43 @@ public static class ContractDiff
         // Like Primitive.DisplayName: "Int32 (Port)", or just "Int32" when the name is the type name.
         private static string? Name(PrimitiveReference? reference) =>
             reference is null ? null : reference.Name == reference.Type ? reference.Type : $"{reference.Type} ({reference.Name})";
+
+        // Whether one name ends with the other at a namespace boundary: "Status" and "Billing.Status", but not "Billing.Status"
+        // and "Shipping.Status", nor "Status" and "OrderStatus".
+        private static bool SameName(string left, string right)
+        {
+            var (shorter, longer) = left.Length <= right.Length ? (left.Split('.'), right.Split('.')) : (right.Split('.'), left.Split('.'));
+            return longer.AsSpan()[^shorter.Length..].SequenceEqual(shorter);
+        }
+
+        private static bool SameReference(PrimitiveReference? left, PrimitiveReference? right) =>
+            left is null || right is null ? left == right : left.Name == right.Name && SameType(left.Type, right.Type);
+
+        // A type's name depends on the rest of its contract, which names it as briefly as it can, so names match by suffix:
+        // "IReadOnlyList<Status>" and "IReadOnlyList<Billing.Status>" are the same type. Generic arguments are compared one by one.
+        private static bool SameType(string left, string right)
+        {
+            var (leftTokens, rightTokens) = (Tokens(left), Tokens(right));
+            return leftTokens.Count == rightTokens.Count && leftTokens.Zip(rightTokens).All(pair => SameName(pair.First, pair.Second));
+        }
+
+        // Names and the characters between them: "IReadOnlyList<Billing.Status>" is ["IReadOnlyList", "<", "Billing.Status", ">", ""].
+        private static List<string> Tokens(string type)
+        {
+            var tokens = new List<string>();
+            var start = 0;
+            for (var index = 0; index < type.Length; index++)
+            {
+                if (type[index] is '<' or '>' or ',' or '[' or ']')
+                {
+                    tokens.Add(type[start..index].Trim());
+                    tokens.Add(type[index].ToString());
+                    start = index + 1;
+                }
+            }
+
+            tokens.Add(type[start..].Trim());
+            return tokens;
+        }
     }
 }
