@@ -217,6 +217,49 @@ public class ConfigurationContractTests
         Assert.Equal("value is not a valid Int32", error.Message);
     }
 
+    [Fact]
+    public void Read_Sensitive_HidesInputInConverterReasons()
+    {
+        var numbers = new Primitive<IReadOnlyList<int>>("Numbers", Converters.List(Converters.Int32));
+        var key = ConfigurationDefinition.Define("Key", numbers).Sensitive();
+
+        var error = Single(ReadFailure(Contract(key), Source(("Key", "1,secret"))), DiagnosticSeverity.Error);
+
+        Assert.Equal("value is not a valid IReadOnlyList<Int32> (Numbers): item 1: (hidden) is not a valid Int32", error.Message);
+    }
+
+    [Fact]
+    public void Read_Sensitive_HidesValuesInWrappedPrimitiveErrors()
+    {
+        var ports = new Primitive<IReadOnlyList<int>>("PortList", Converters.List(Port.AsConverter()));
+        var key = ConfigurationDefinition.Define("Key", ports).Sensitive();
+
+        var errors = ReadFailure(Contract(key), Source(("Key", "80,0,secret")));
+
+        Assert.Equal(
+            [
+                "value is not a valid IReadOnlyList<Int32> (PortList): item 1: must be between (hidden) and (hidden)",
+                "value is not a valid IReadOnlyList<Int32> (PortList): item 2: value is not a valid Int32 (Port)",
+            ],
+            errors.Select(error => error.Message));
+    }
+
+    [Fact]
+    public void Read_NotSensitive_ShowsWrappedPrimitiveErrors()
+    {
+        var ports = new Primitive<IReadOnlyList<int>>("PortList", Converters.List(Port.AsConverter()));
+        var key = ConfigurationDefinition.Define("Key", ports);
+
+        var errors = ReadFailure(Contract(key), Source(("Key", "80,0,abc")));
+
+        Assert.Equal(
+            [
+                "'80,0,abc' is not a valid IReadOnlyList<Int32> (PortList): item 1: must be between 1 and 65535",
+                "'80,0,abc' is not a valid IReadOnlyList<Int32> (PortList): item 2: 'abc' is not a valid Int32 (Port)",
+            ],
+            errors.Select(error => error.Message));
+    }
+
     // Delimited lists
 
     [Fact]

@@ -1,5 +1,6 @@
 using Leander.Primitives.Normalization;
 using Leander.Primitives.Parsing;
+using Leander.Primitives.Tests.Parsing;
 using Leander.Primitives.Validation;
 
 namespace Leander.Primitives.Tests;
@@ -127,6 +128,70 @@ public class PrimitiveTests
         Assert.Equal(8080, accepted);
         Assert.False(Port.TryAccept(0, out _, out var errors));
         Assert.Equal(["must be between 1 and 65535"], errors);
+    }
+
+    // Conversion errors
+
+    [Fact]
+    public void TryParse_ConverterReasons_EachFollowTheLead()
+    {
+        var value = new Primitive<int>("Value", new ReasonConverter());
+
+        Assert.False(value.TryParse("x", out _, out var errors));
+        Assert.Equal(["'x' is not a valid Int32 (Value): not ok", "'x' is not a valid Int32 (Value): 'x' was given"], errors);
+    }
+
+    [Fact]
+    public void TryParse_CompositeConverter_ReasonsNameThePart()
+    {
+        var numbers = new Primitive<IReadOnlyList<int>>("Numbers", Converters.List(Converters.Int32));
+
+        Assert.False(numbers.TryParse("1,x", out _, out var errors));
+        Assert.Equal(["'1,x' is not a valid IReadOnlyList<Int32> (Numbers): item 1: 'x' is not a valid Int32"], errors);
+    }
+
+    [Fact]
+    public void Parser_BoolOnlyTryParse_CallsTheOverloadWithErrors()
+    {
+        IParser<int> parser = new ReasonConverter();
+
+        Assert.True(parser.TryParse("ok", out var value));
+        Assert.Equal(1, value);
+        Assert.False(parser.TryParse("x", out _));
+    }
+
+    // As a converter
+
+    [Fact]
+    public void AsConverter_ParsesWithAllRules_AndFormatsWithTheConverter()
+    {
+        var mask = new Primitive<int>("Mask", Converters.Int32Hex) { Validators = [Validators.LessThanOrEqual(0xFF)] };
+
+        var converter = mask.AsConverter();
+
+        Assert.True(converter.TryParse("0x1F", out var value, out var errors));
+        Assert.Equal(0x1F, value);
+        Assert.Empty(errors);
+        Assert.Equal("0x1F", converter.Format(value));
+        Assert.Equal(["must be less than or equal to 0xFF"], ConverterAssert.Reasons(converter, "0x100"));
+    }
+
+    [Fact]
+    public void AsConverter_ReasonsLeadLikeThePrimitive()
+    {
+        Assert.Equal(["'abc' is not a valid Int32 (Port)"], ConverterAssert.Reasons(Port.AsConverter(), "abc"));
+    }
+
+    [Fact]
+    public void AsConverter_IsTheSameInstance()
+    {
+        Assert.Same(Port.AsConverter(), Port.AsConverter());
+    }
+
+    [Fact]
+    public void AsConverter_DescriptionIsTheDisplayName()
+    {
+        Assert.Equal("Int32 (Port).", Port.AsConverter().Description);
     }
 
     // Deriving
@@ -359,6 +424,26 @@ public class PrimitiveTests
             }
 
             return failures;
+        }
+    }
+
+    // A converter that reads only "ok", with two reasons for anything else; implements only the overload with errors.
+    private sealed class ReasonConverter : IConverter<int>
+    {
+        public string Format(int value) => "ok";
+
+        public bool TryParse(string input, out int result, out IReadOnlyList<IFormattableText<string>> errors)
+        {
+            if (input == "ok")
+            {
+                result = 1;
+                errors = [];
+                return true;
+            }
+
+            result = default;
+            errors = [FormattableText.Create<string>("not ok"), FormattableText.Create<string>(formatter => $"'{formatter.Format(input)}' was given")];
+            return false;
         }
     }
 }
