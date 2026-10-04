@@ -85,7 +85,7 @@ What stands between the current code and a release. The code is feature-complete
 - [x] Package metadata in a shared `src/Directory.Build.props`: version, authors, license, repository URL, tags, and the README as package readme; a description per project.
 - [x] LICENSE file: MIT.
 - [ ] CI: build and test on push. Optionally regenerate the Tooling sample's output and fail when it changes.
-- [ ] CHANGELOG: `[Unreleased]` becomes `[1.0.0]`, possibly reset to a short first-release summary.
+- [x] CHANGELOG: `[Unreleased]` becomes `[1.0.0]`, possibly reset to a short first-release summary.
 
 ## 1.1.0
 Planned after 1.0.0, not before.
