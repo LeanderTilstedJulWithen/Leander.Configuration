@@ -1,10 +1,9 @@
 namespace Leander.Configuration.MicrosoftExtensions.Sample;
 
-// Written by the application. Construction is explicit; see ServerOptions.From.
+// Written by the application and injected as it is, without IOptions. Construction is explicit; see FromSnapshot.
 public sealed record ServerOptions(
     string Host,
     int Port,
-    IReadOnlyList<Uri> AllowedOrigins,
     IReadOnlyList<string> Features,
     string? CertificatePath)
 {
@@ -12,7 +11,6 @@ public sealed record ServerOptions(
     public static ServerOptions FromSnapshot(ConfigurationSnapshot configuration) => new(
         configuration.Get(ServerConfiguration.Host),
         configuration.Get(ServerConfiguration.Port),
-        configuration.Get(ServerConfiguration.AllowedOrigins),
         configuration.Get(ServerConfiguration.Features),
         configuration.Get(ServerConfiguration.CertificatePath));
 }
