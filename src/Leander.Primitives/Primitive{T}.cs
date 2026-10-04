@@ -80,7 +80,7 @@ public class Primitive<T> : Primitive
     /// Normalizes, then validates a value that is already a <typeparamref name="T"/>, e.g. a default.
     /// On failure, <paramref name="result"/> is <see langword="default"/>.
     /// </summary>
-    public bool TryAccept(T value, out T result) => TryAccept(value, out result, null, redact: false);
+    public bool TryAccept(T value, out T result) => TryAccept(value, out result, errors: null);
 
     /// <summary>
     /// Normalizes, then validates a value that is already a <typeparamref name="T"/>, e.g. a default.
@@ -93,7 +93,7 @@ public class Primitive<T> : Primitive
     /// Parses <paramref name="input"/> with the converter, then normalizes and validates the value.
     /// On failure, <paramref name="value"/> is <see langword="default"/>.
     /// </summary>
-    public bool TryParse(string input, out T value) => TryParse(input, out value, null, redact: false);
+    public bool TryParse(string input, out T value) => TryParse(input, out value, errors: null);
 
     /// <summary>
     /// Parses <paramref name="input"/> with the converter, then normalizes and validates the value.
@@ -102,60 +102,69 @@ public class Primitive<T> : Primitive
     public bool TryParse(string input, out T value, out IReadOnlyList<string> errors) =>
         TryParse(input, redact: false, out value, out errors);
 
+    // The overloads with redact are the boundary: errors are collected in both forms, and redact picks one.
+    // With redact, error messages leave out the value, for sensitive configuration values.
     internal bool TryAccept(T value, bool redact, out T result, out IReadOnlyList<string> errors)
     {
-        var list = new List<string>();
-        var success = TryAccept(value, out result, list, redact);
-        errors = list;
+        var list = new List<ErrorText>();
+        var success = TryAccept(value, out result, list);
+        errors = ErrorText.Pick(list, redact);
         return success;
     }
 
-    internal bool TryAccept(T value, out T result, List<string>? errors, bool redact)
+    internal bool TryAccept(T value, out T result, List<ErrorText>? errors)
     {
-        if (!TryAcceptItems(value, out var accepted, errors, redact))
+        if (!TryAcceptItems(value, out var accepted, errors))
         {
             result = default!;
             return false;
         }
 
-        return TryApplyRules(accepted, out result, errors, redact);
+        return TryApplyRules(accepted, out result, errors);
     }
 
     // Only this primitive's rules (the base's, then its own), not its items'. For a list whose items were accepted one by one.
-    internal bool TryApplyRules(T value, out T result, List<string>? errors, bool redact) =>
-        Rules.TryApply(AllNormalizers, AllValidators, Converter, value, out result, errors, redact);
+    internal bool TryApplyRules(T value, bool redact, out T result, out IReadOnlyList<string> errors)
+    {
+        var list = new List<ErrorText>();
+        var success = TryApplyRules(value, out result, list);
+        errors = ErrorText.Pick(list, redact);
+        return success;
+    }
 
-    // With redact, error messages leave out the value, for sensitive configuration values.
+    internal bool TryApplyRules(T value, out T result, List<ErrorText>? errors) =>
+        Rules.TryApply(AllNormalizers, AllValidators, Converter, value, out result, errors);
+
     internal bool TryParse(string input, bool redact, out T value, out IReadOnlyList<string> errors)
     {
-        var list = new List<string>();
-        var success = TryParse(input, out value, list, redact);
-        errors = list;
+        var list = new List<ErrorText>();
+        var success = TryParse(input, out value, list);
+        errors = ErrorText.Pick(list, redact);
         return success;
     }
 
     // Without an error list, the first failure stops.
-    internal bool TryParse(string input, out T value, List<string>? errors, bool redact)
+    internal bool TryParse(string input, out T value, List<ErrorText>? errors)
     {
-        if (!TryConvert(input, out var converted, errors, redact))
+        if (!TryConvert(input, out var converted, errors))
         {
             value = default!;
             return false;
         }
 
-        return TryApplyRules(converted, out value, errors, redact);
+        return TryApplyRules(converted, out value, errors);
     }
 
     // Accepts the items of a value made of items, before this primitive's rules run. A plain value has none.
-    private protected virtual bool TryAcceptItems(T value, out T result, List<string>? errors, bool redact)
+    private protected virtual bool TryAcceptItems(T value, out T result, List<ErrorText>? errors)
     {
         result = value;
         return true;
     }
 
     // Turns the input into a T, before this primitive's rules run. Without an error list, the converter isn't asked for reasons.
-    // Each reason follows the primitive's own line; pieces of the input in it are hidden with redact.
-    private protected virtual bool TryConvert(string input, out T value, List<string>? errors, bool redact)
+    // Each reason follows the primitive's own line.
+    private protected virtual bool TryConvert(string input, out T value, List<ErrorText>? errors)
     {
         if (errors is null)
         {
@@ -167,15 +176,15 @@ public class Primitive<T> : Primitive
             return true;
         }
 
-        var lead = redact ? $"value is not a valid {DisplayName}" : $"'{input}' is not a valid {DisplayName}";
+        var shown = $"'{input}' is not a valid {DisplayName}";
+        var hidden = $"value is not a valid {DisplayName}";
         if (reasons.Count == 0)
         {
-            errors.Add(lead);
+            errors.Add(new ErrorText(shown, hidden));
             return false;
         }
 
-        IFormatter<string> formatter = redact ? RedactingFormatter<string>.Instance : InvariantFormatter<string>.Instance;
-        errors.AddRange(reasons.Select(reason => $"{lead}: {reason.FormatWith(formatter)}"));
+        errors.AddRange(reasons.Select(reason => ErrorText.From(reason).WithPrefix($"{shown}: ", $"{hidden}: ")));
         return false;
     }
 }

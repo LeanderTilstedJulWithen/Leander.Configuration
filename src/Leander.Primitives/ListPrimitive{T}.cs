@@ -46,29 +46,29 @@ public sealed class ListPrimitive<T> : Primitive<IReadOnlyList<T>>, IListPrimiti
 
     Primitive IListPrimitive.Element => Element;
 
-    private protected override bool TryAcceptItems(IReadOnlyList<T> value, out IReadOnlyList<T> result, List<string>? errors, bool redact) =>
+    private protected override bool TryAcceptItems(IReadOnlyList<T> value, out IReadOnlyList<T> result, List<ErrorText>? errors) =>
         TryItems(
             value,
-            (T input, out T item, List<string>? itemErrors) => Element.TryAccept(input, out item, itemErrors, redact),
+            (T input, out T item, List<ErrorText>? itemErrors) => Element.TryAccept(input, out item, itemErrors),
             out result,
             errors);
 
-    private protected override bool TryConvert(string input, out IReadOnlyList<T> value, List<string>? errors, bool redact) =>
+    private protected override bool TryConvert(string input, out IReadOnlyList<T> value, List<ErrorText>? errors) =>
         TryItems(
             ListConverter<T>.Split(input, Delimiter),
-            (string segment, out T item, List<string>? itemErrors) => Element.TryParse(segment, out item, itemErrors, redact),
+            (string segment, out T item, List<ErrorText>? itemErrors) => Element.TryParse(segment, out item, itemErrors),
             out value,
             errors);
 
     // Every item is checked when there is an error list; without one, the first failure stops.
-    private static bool TryItems<TInput>(IReadOnlyList<TInput> inputs, ItemStep<TInput> step, out IReadOnlyList<T> result, List<string>? errors)
+    private static bool TryItems<TInput>(IReadOnlyList<TInput> inputs, ItemStep<TInput> step, out IReadOnlyList<T> result, List<ErrorText>? errors)
     {
         var items = new List<T>(inputs.Count);
         var success = true;
 
         for (var index = 0; index < inputs.Count; index++)
         {
-            var itemErrors = errors is null ? null : new List<string>();
+            var itemErrors = errors is null ? null : new List<ErrorText>();
             if (step(inputs[index], out var item, itemErrors))
             {
                 items.Add(item);
@@ -81,12 +81,12 @@ public sealed class ListPrimitive<T> : Primitive<IReadOnlyList<T>>, IListPrimiti
                 break;
             }
 
-            errors.AddRange(itemErrors!.Select(error => $"item {index}: {error}"));
+            errors.AddRange(itemErrors!.Select(error => error.WithPrefix($"item {index}: ")));
         }
 
         result = success ? items : default!;
         return success;
     }
 
-    private delegate bool ItemStep<TInput>(TInput input, out T item, List<string>? errors);
+    private delegate bool ItemStep<TInput>(TInput input, out T item, List<ErrorText>? errors);
 }

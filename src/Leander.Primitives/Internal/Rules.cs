@@ -9,7 +9,7 @@ internal static class Rules
     // Normalizes, then validates. A failing normalizer stops processing.
     // With an error list, all validators run and every failure is collected; without one, the first failure stops,
     // and validators are only asked IsValid.
-    // Rule texts are formatted with the primitive's converter. With redact, every value of T in them is hidden
+    // Rule texts are formatted with the primitive's converter. In the hidden form, every value of T in them is hidden
     // and exception messages are left out, because they may contain the value.
     public static bool TryApply<T>(
         IReadOnlyList<INormalizer<T>> normalizers,
@@ -17,10 +17,8 @@ internal static class Rules
         IFormatter<T> converter,
         T value,
         out T result,
-        List<string>? errors,
-        bool redact = false)
+        List<ErrorText>? errors)
     {
-        var formatter = redact ? RedactingFormatter<T>.Instance : converter;
         result = value;
 
         foreach (var normalizer in normalizers)
@@ -31,7 +29,7 @@ internal static class Rules
             }
             catch (Exception exception)
             {
-                errors?.Add(Failed("normalizer", normalizer.Description, formatter, exception, redact));
+                errors?.Add(Failed("normalizer", normalizer.Description, converter, exception));
                 result = default!;
                 return false;
             }
@@ -54,7 +52,9 @@ internal static class Rules
                 }
 
                 // Formatted here, so an exception from a text is reported like one from the rule.
-                var failures = validator.Validate(result).Select(failure => failure.FormatWith(formatter)).ToList();
+                var failures = validator.Validate(result)
+                    .Select(failure => new ErrorText(failure.FormatWith(converter), failure.FormatWith(RedactingFormatter<T>.Instance)))
+                    .ToList();
                 isValid &= failures.Count == 0;
                 errors.AddRange(failures);
             }
@@ -66,7 +66,7 @@ internal static class Rules
                     break;
                 }
 
-                errors.Add(Failed("validator", validator.Description, formatter, exception, redact));
+                errors.Add(Failed("validator", validator.Description, converter, exception));
             }
         }
 
@@ -91,9 +91,7 @@ internal static class Rules
         }
     }
 
-    private static string Failed<T>(string kind, IFormattableText<T> description, IFormatter<T> formatter, Exception exception, bool redact)
-    {
-        var text = Describe(description, formatter);
-        return redact ? $"{kind} '{text}' failed" : $"{kind} '{text}' failed: {exception.Message}";
-    }
+    private static ErrorText Failed<T>(string kind, IFormattableText<T> description, IFormatter<T> converter, Exception exception) => new(
+        $"{kind} '{Describe(description, converter)}' failed: {exception.Message}",
+        $"{kind} '{Describe(description, RedactingFormatter<T>.Instance)}' failed");
 }

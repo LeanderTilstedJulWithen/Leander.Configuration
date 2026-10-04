@@ -104,8 +104,7 @@ internal sealed class IndexedReader<T>(ListPrimitive<T> list) : ValueReader<IRea
         }
 
         // Only the list's rules: the items went through the element primitive already.
-        var errors = new List<string>();
-        var success = _list.TryApplyRules(items, out value, errors, context.IsSensitive);
+        var success = _list.TryApplyRules(items, context.IsSensitive, out value, out var errors);
         Pipeline.Report(context, definition, key, errors);
         return success ? ReadStatus.Read : ReadStatus.Failed;
     }
