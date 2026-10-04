@@ -1,0 +1,211 @@
+{
+  "formatVersion": 1,
+  "definitions": [
+    {
+      "key": "Server:Host",
+      "description": "The host name to listen on.",
+      "type": "String",
+      "primitive": "String",
+      "presence": "default",
+      "default": "localhost",
+      "form": "scalar"
+    },
+    {
+      "key": "Server:Port",
+      "description": "The port to listen on.",
+      "type": "Int32",
+      "primitive": "Port",
+      "presence": "default",
+      "default": "8080",
+      "form": "scalar"
+    },
+    {
+      "key": "Server:RequestTimeout",
+      "description": "Maximum time allowed for a request.",
+      "type": "TimeSpan",
+      "primitive": "TimeSpan",
+      "presence": "default",
+      "default": "00:00:30",
+      "form": "scalar"
+    },
+    {
+      "key": "Server:MaxConnections",
+      "description": "Maximum number of concurrent connections. No limit when missing.",
+      "type": "Int32",
+      "primitive": "ConnectionLimit",
+      "presence": "optional",
+      "form": "scalar"
+    },
+    {
+      "key": "Server:AllowedOrigins",
+      "description": "Origins allowed to call the server.",
+      "type": "IReadOnlyList<Uri>",
+      "primitive": "Origins",
+      "presence": "required",
+      "form": "indexed"
+    },
+    {
+      "key": "Server:Features",
+      "description": "Enabled features.",
+      "type": "IReadOnlyList<String>",
+      "primitive": "Features",
+      "presence": "default",
+      "default": "",
+      "form": "scalar"
+    },
+    {
+      "key": "Server:ApiKey",
+      "description": "Key for calling the payment provider. Payments are disabled when missing.",
+      "type": "String",
+      "primitive": "String",
+      "presence": "optional",
+      "form": "scalar",
+      "sensitive": true
+    },
+    {
+      "key": "Admin:Port",
+      "description": "The port of the admin interface.",
+      "type": "Int32",
+      "primitive": "UnprivilegedPort",
+      "presence": "default",
+      "default": "9090",
+      "form": "scalar"
+    },
+    {
+      "key": "Admin:Email",
+      "description": "Where operational alerts are sent.",
+      "type": "String",
+      "primitive": "Email",
+      "presence": "required",
+      "form": "scalar"
+    },
+    {
+      "key": "Logging:Verbosity",
+      "description": "How much the server logs.",
+      "type": "Verbosity",
+      "primitive": "Verbosity",
+      "presence": "default",
+      "default": "Normal",
+      "form": "scalar"
+    },
+    {
+      "key": "Logging:TraceMask",
+      "description": "Which subsystems write trace messages, one bit each.",
+      "type": "Int32",
+      "primitive": "Mask",
+      "presence": "default",
+      "default": "0xF",
+      "form": "scalar"
+    }
+  ],
+  "primitives": [
+    {
+      "type": "String",
+      "name": "String",
+      "converter": "Any text."
+    },
+    {
+      "type": "Int32",
+      "name": "Port",
+      "description": "A TCP port.",
+      "base": "Int32",
+      "validators": [
+        "must be between 1 and 65535"
+      ]
+    },
+    {
+      "type": "Int32",
+      "name": "Int32",
+      "converter": "A 32-bit integer."
+    },
+    {
+      "type": "TimeSpan",
+      "name": "TimeSpan",
+      "converter": "A duration as [-][d.]hh:mm:ss[.fffffff], e.g. 00:00:30."
+    },
+    {
+      "type": "Int32",
+      "name": "ConnectionLimit",
+      "description": "A maximum number of connections.",
+      "base": "Int32",
+      "validators": [
+        "must be greater than 0"
+      ]
+    },
+    {
+      "type": "IReadOnlyList<Uri>",
+      "name": "Origins",
+      "description": "Origins, at least one.",
+      "converter": "A list separated by ','. Each item: Uri.",
+      "element": {
+        "type": "Uri",
+        "name": "Uri"
+      },
+      "delimiter": ",",
+      "validators": [
+        "must not be empty"
+      ]
+    },
+    {
+      "type": "Uri",
+      "name": "Uri",
+      "converter": "An absolute URI, e.g. https://example.com."
+    },
+    {
+      "type": "IReadOnlyList<String>",
+      "name": "Features",
+      "description": "Feature names.",
+      "converter": "A list separated by ','. Each item: String.",
+      "element": {
+        "type": "String",
+        "name": "String"
+      },
+      "delimiter": ","
+    },
+    {
+      "type": "Int32",
+      "name": "UnprivilegedPort",
+      "description": "A TCP port that doesn't need administrator rights.",
+      "base": "Port",
+      "validators": [
+        "must be greater than or equal to 1024"
+      ]
+    },
+    {
+      "type": "String",
+      "name": "Email",
+      "description": "An e-mail address.",
+      "base": "String",
+      "normalizers": [
+        "trim whitespace"
+      ],
+      "validators": [
+        "must contain @"
+      ]
+    },
+    {
+      "type": "Verbosity",
+      "name": "Verbosity",
+      "converter": "One of the names, or its number, ignoring case.",
+      "values": [
+        "Quiet",
+        "Normal",
+        "Verbose"
+      ]
+    },
+    {
+      "type": "Int32",
+      "name": "Mask",
+      "description": "A bit mask of 8 bits.",
+      "base": "Hex",
+      "validators": [
+        "must be less than or equal to 0xFF"
+      ]
+    },
+    {
+      "type": "Int32",
+      "name": "Hex",
+      "converter": "A 32-bit integer in hexadecimal, with or without 0x."
+    }
+  ]
+}

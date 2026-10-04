@@ -1,6 +1,6 @@
 using Leander.Configuration.MicrosoftExtensions.Sample;
 
-// Each example uses the same contract from ServerComtract.cs.
+// Each example uses the same contract from ServerContract.cs.
 ReadingIConfiguration.Run();
 
 ScopedSnapshots.Run();

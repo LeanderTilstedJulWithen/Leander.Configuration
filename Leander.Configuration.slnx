@@ -2,6 +2,7 @@
   <Folder Name="/samples/">
     <Project Path="samples/Leander.Configuration.MicrosoftExtensions.Sample/Leander.Configuration.MicrosoftExtensions.Sample.csproj" />
     <Project Path="samples/Leander.Configuration.Sample/Leander.Configuration.Sample.csproj" />
+    <Project Path="samples/Leander.Configuration.Tooling.Sample/Leander.Configuration.Tooling.Sample.csproj" />
     <Project Path="samples/Leander.Primitives.Sample/Leander.Primitives.Sample.csproj" />
   </Folder>
   <Folder Name="/src/">
