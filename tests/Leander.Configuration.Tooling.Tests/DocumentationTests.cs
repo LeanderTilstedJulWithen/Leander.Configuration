@@ -28,11 +28,11 @@ public class DocumentationTests
     }
 
     [Fact]
-    public void KeySection_HasDescriptionTypePresenceAndRules()
+    public void KeySection_HasEverythingAboutTheKey()
     {
         Assert.Contains(
-            "### `Server:Port`\n\nThe port to listen on.\n\n- **Type:** Int32 (Port): A TCP port.\n- **Presence:** required\n" +
-            "- **Validated:** must be between 1 and 65535\n",
+            "### `Server:Port`\n\nThe port to listen on.\n\n- **Type:** Int32 (Port)\n- **Format:** A 32-bit integer.\n" +
+            "- **Validated:** must be between 1 and 65535\n- **Presence:** required\n",
             Markdown);
         Assert.Contains("- **Presence:** optional, missing is null", Markdown);
     }
@@ -59,91 +59,57 @@ public class DocumentationTests
     }
 
     [Fact]
-    public void SingleUsePrimitives_AreFolded()
+    public void Primitives_HaveNoSectionsOrLinks_AndTheirDescriptionIsNotShown()
     {
         Assert.DoesNotContain("## Primitives", Markdown);
-        Assert.DoesNotContain("](#int32-port)", Markdown);
+        Assert.DoesNotContain("](#int32", Markdown);
+        Assert.DoesNotContain("A TCP port.", Markdown);
     }
 
     [Fact]
-    public void SharedPrimitive_IsListed_WithUsedBy()
+    public void SharedPrimitive_IsDocumentedOnEveryKey()
     {
         var markdown = Documentation.WriteMarkdown(Contracts.Describe(
             ConfigurationDefinition.Define("A", Contracts.Port),
             ConfigurationDefinition.Define("B", Contracts.Port)));
 
-        Assert.Contains("- **Type:** [Int32 (Port)](#int32-port): A TCP port.\n", markdown);
-        Assert.Contains(
-            "### Int32 (Port)\n\nA TCP port.\n\n- **Validated:** must be between 1 and 65535\n- **Used by:** [`A`](#a), [`B`](#b)\n",
-            markdown);
+        var section = "- **Type:** Int32 (Port)\n- **Format:** A 32-bit integer.\n- **Validated:** must be between 1 and 65535\n";
+        Assert.Equal(2, markdown.Split(section).Length - 1);
     }
 
     [Fact]
-    public void UsedBy_LooksThroughFoldedPrimitives()
-    {
-        var markdown = Documentation.WriteMarkdown(Contracts.Describe(
-            ConfigurationDefinition.Define("Server:Port", Contracts.Port),
-            ConfigurationDefinition.Define("Admin:Port", new Primitive<int>("AdminPort", Contracts.Port))));
-
-        Assert.Contains("- **Used by:** [`Server:Port`](#serverport), [`Admin:Port`](#adminport)\n", markdown);
-        Assert.Contains("- **Type:** Int32 (AdminPort)\n- **Presence:** required\n- **Validated:** must be between 1 and 65535\n", markdown);
-        Assert.DoesNotContain("Derived primitives", markdown);
-    }
-
-    [Fact]
-    public void ListedDerived_LinksToBase_AndBaseLinksToIt()
+    public void Derived_CollectsFormatAndRulesAlongTheChain_BaseFirst()
     {
         var adminPort = new Primitive<int>("AdminPort", Contracts.Port) { Validators = [Validators.GreaterThan(1024)] };
         var markdown = Documentation.WriteMarkdown(Contracts.Describe(
-            ConfigurationDefinition.Define("Server:Port", Contracts.Port),
-            ConfigurationDefinition.Define("Admin:Port", adminPort),
-            ConfigurationDefinition.Define("Admin:BackupPort", adminPort)));
+            ConfigurationDefinition.Define("Admin:Port", adminPort)));
 
         Assert.Contains(
-            "### Int32 (AdminPort)\n\n- **Derived from:** [Int32 (Port)](#int32-port)\n" +
-            "- **Validated:** must be between 1 and 65535; must be greater than 1024\n" +
-            "- **Used by:** [`Admin:Port`](#adminport), [`Admin:BackupPort`](#adminbackupport)\n",
+            "- **Type:** Int32 (AdminPort)\n- **Format:** A 32-bit integer.\n" +
+            "- **Validated:** must be between 1 and 65535; must be greater than 1024\n",
             markdown);
-        Assert.Contains("- **Used by:** [`Server:Port`](#serverport)\n- **Derived primitives:** [Int32 (AdminPort)](#int32-adminport)\n", markdown);
     }
 
     [Fact]
-    public void ListPrimitive_ShowsItemsAndRules_WithEscapedAngleBrackets()
+    public void ListPrimitive_ShowsFormRulesAndItems_WithEscapedAngleBrackets()
     {
         Assert.Contains(
-            "- **Type:** IReadOnlyList\\<Uri\\> (Origins)\n- **Presence:** required\n" +
+            "- **Type:** IReadOnlyList\\<Uri\\> (Origins)\n" +
             "- **Form:** indexed: `Server:AllowedOrigins:0`, `Server:AllowedOrigins:1`, …\n" +
-            "- **Items:** Uri\n- **Validated:** must not be empty\n",
+            "- **Validated:** must not be empty\n" +
+            "- **Items:** Uri\n  - **Format:** An absolute URI, e.g. https://example.com.\n" +
+            "- **Presence:** required\n",
             Markdown);
-        Assert.Contains("- **Delimiter:** `,`\n- **Items:** String\n", Markdown);
+        Assert.Contains("- **Form:** one entry, items separated by `,`\n- **Items:** String\n  - **Format:** Any text.\n", Markdown);
     }
 
     [Fact]
-    public void ListItems_ShowTheElementsRulesNested()
+    public void ListItems_ShowTheElementsFormatAndRulesNested()
     {
         var markdown = Documentation.WriteMarkdown(Contracts.Describe(
             ConfigurationDefinition.Define("Ports", new ListPrimitive<int>("Ports", Contracts.Port))));
 
-        Assert.Contains("- **Items:** Int32 (Port)\n  - **Validated:** must be between 1 and 65535\n", markdown);
-    }
-
-    [Fact]
-    public void PrimitivesWithNothingToSay_AreNotListed()
-    {
-        Assert.DoesNotContain("### String", Markdown);
-        Assert.DoesNotContain("### Int32\n", Markdown);
-    }
-
-    [Fact]
-    public void FoldedBase_IsNotNamed()
-    {
-        var count = new Primitive<int>("Count", Primitive.Int32) { Description = "A count." };
-        var markdown = Documentation.WriteMarkdown(Contracts.Describe(
-            ConfigurationDefinition.Define("A", count),
-            ConfigurationDefinition.Define("B", count)));
-
-        Assert.Contains("### Int32 (Count)\n", markdown);
-        Assert.DoesNotContain("Derived from", markdown);
+        Assert.Contains("- **Items:** Int32 (Port)\n  - **Format:** A 32-bit integer.\n  - **Validated:** must be between 1 and 65535\n", markdown);
     }
 
     [Fact]

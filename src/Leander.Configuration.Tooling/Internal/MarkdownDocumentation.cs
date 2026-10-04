@@ -4,8 +4,8 @@ using Leander.Configuration.Descriptors;
 namespace Leander.Configuration.Tooling.Internal;
 
 // Documentation as Markdown. Definitions are grouped by their first key segment, and each group has a summary table
-// followed by a section per key with what belongs to the key. Then every primitive with something to say has a
-// section with its own parts, linked from its users: rules live on primitives, not on keys.
+// followed by a section per key with everything about the key. Primitives are an implementation detail: their
+// format and rules are collected along the base chain and shown on every key that uses them.
 internal static class MarkdownDocumentation
 {
     public static string Write(ContractDescriptor contract, string title)
@@ -18,8 +18,6 @@ internal static class MarkdownDocumentation
     private sealed class Writer(ContractDescriptor contract)
     {
         private readonly ContractDescriptor _contract = contract;
-        private readonly HashSet<PrimitiveReference> _listed =
-            [.. contract.Primitives.Where(HasSomethingToSay).Select(Reference)];
         private readonly Dictionary<PrimitiveReference, PrimitiveDescriptor> _primitives = Index(contract);
         private readonly StringBuilder _text = new();
 
@@ -50,24 +48,6 @@ internal static class MarkdownDocumentation
                     WriteDefinition(definition);
                 }
             }
-
-            if (_listed.Count > 0)
-            {
-                Line("## Primitives");
-                Line();
-
-                // By type, so a ready-made primitive is followed by those derived from it: Int32, Int32 (Port), …
-                var listed = _contract.Primitives
-                    .Where(primitive => _listed.Contains(Reference(primitive)))
-                    .OrderBy(primitive => primitive.Type, StringComparer.Ordinal)
-                    .ThenBy(primitive => primitive.Name != primitive.Type)
-                    .ThenBy(primitive => primitive.Name, StringComparer.Ordinal);
-
-                foreach (var primitive in listed)
-                {
-                    WritePrimitive(primitive);
-                }
-            }
         }
 
         private void WriteDefinition(DefinitionDescriptor definition)
@@ -81,20 +61,21 @@ internal static class MarkdownDocumentation
                 Line();
             }
 
-            var primitive = Find(definition.Value.Primitive);
-            var type = TypeText(definition.Value);
-            Line(primitive?.Description is { } primitiveDescription ? $"- **Type:** {type}: {primitiveDescription}" : $"- **Type:** {type}");
-            Line($"- **Presence:** {PresenceDetail(definition.Value)}");
+            var chain = Chain(definition.Value.Primitive);
+            Line($"- **Type:** {TypeText(definition.Value)}");
 
             // How the key is written. An indexed list has an entry per item, so the delimiter doesn't apply.
             if (definition.Value.Form == ValueForm.Indexed)
             {
                 Line($"- **Form:** indexed: {Code($"{definition.Key}:0")}, {Code($"{definition.Key}:1")}, …");
             }
-            else if (primitive?.Delimiter is { } delimiter)
+            else if (chain.FirstOrDefault()?.Delimiter is { } delimiter)
             {
                 Line($"- **Form:** one entry, items separated by {Code(delimiter.ToString())}");
             }
+
+            WriteRules(chain, "");
+            Line($"- **Presence:** {PresenceDetail(definition.Value)}");
 
             if (definition.IsSensitive)
             {
@@ -104,91 +85,61 @@ internal static class MarkdownDocumentation
             Line();
         }
 
-        // Only the primitive's own parts. A derived primitive's format, items, delimiter and values are its base's.
-        private void WritePrimitive(PrimitiveDescriptor primitive)
+        // The format and values come from the root, whose converter reads the value; rules from the whole chain,
+        // base first, the order they run in. A list's items get the same, one level deeper.
+        private void WriteRules(IReadOnlyList<PrimitiveDescriptor> chain, string indent)
         {
-            Line($"### {Text(Heading(primitive))}");
-            Line();
-
-            if (primitive.Description is { } description)
+            if (chain.Count == 0)
             {
-                Line(description);
-                Line();
+                return;
             }
 
-            // A list's converter description says what Items and Delimiter already say.
-            if (primitive.Converter is { } format && primitive.Element is null)
+            var root = chain[0];
+
+            // A list's converter description says what Items and Form already say.
+            if (root.Converter is { } format && root.Element is null)
             {
-                Line($"- **Format:** {Text(format)}");
+                Line($"{indent}- **Format:** {Text(format)}");
             }
 
-            if (primitive.Base is { } @base)
+            if (root.Values is { } values)
             {
-                Line($"- **Derived from:** {PrimitiveText(@base)}");
-            }
-            else
-            {
-                if (primitive.Element is { } element)
-                {
-                    Line($"- **Items:** {PrimitiveText(element)}");
-                }
-
-                if (primitive.Delimiter is { } delimiter)
-                {
-                    Line($"- **Delimiter:** {Code(delimiter.ToString())}");
-                }
-
-                if (primitive.Values is { } values)
-                {
-                    Line($"- **Values:** {string.Join(", ", values.Select(Code))}");
-                }
+                Line($"{indent}- **Values:** {string.Join(", ", values.Select(Code))}");
             }
 
-            if (primitive.Normalizers.Count > 0)
+            var normalizers = chain.SelectMany(primitive => primitive.Normalizers).ToList();
+            if (normalizers.Count > 0)
             {
-                Line($"- **Normalized:** {string.Join("; ", primitive.Normalizers)}");
+                Line($"{indent}- **Normalized:** {string.Join("; ", normalizers)}");
             }
 
-            if (primitive.Validators.Count > 0)
+            var validators = chain.SelectMany(primitive => primitive.Validators).ToList();
+            if (validators.Count > 0)
             {
-                Line($"- **Validated:** {string.Join("; ", primitive.Validators)}");
+                Line($"{indent}- **Validated:** {string.Join("; ", validators)}");
             }
 
-            var reference = Reference(primitive);
-            var usedBy = _contract.Definitions
-                .Where(definition => definition.Value.Primitive == reference)
-                .Select(definition => $"[{Code(definition.Key)}](#{Anchor(definition.Key)})")
-                .Concat(_contract.Primitives.Where(user => user.Base is null && user.Element == reference).Select(PrimitiveLink))
-                .ToList();
-            var derived = _contract.Primitives.Where(user => user.Base == reference).Select(PrimitiveLink).ToList();
-
-            if (usedBy.Count > 0)
+            if (root.Element is { } element)
             {
-                Line($"- **Used by:** {string.Join(", ", usedBy)}");
+                Line($"{indent}- **Items:** {Text(DisplayName(element))}");
+                WriteRules(Chain(element), indent + "  ");
             }
-
-            if (derived.Count > 0)
-            {
-                Line($"- **Derived primitives:** {string.Join(", ", derived)}");
-            }
-
-            Line();
         }
 
-        private PrimitiveDescriptor? Find(PrimitiveReference? reference) =>
-            reference is not null && _primitives.TryGetValue(reference, out var primitive) ? primitive : null;
-
-        private string TypeText(ValueDescriptor value) =>
-            value.Primitive is { } reference ? PrimitiveText(reference) : Text(value.Type);
-
-        // A listed primitive links to its section; one with nothing to say is only named.
-        private string PrimitiveText(PrimitiveReference reference)
+        // The primitive and its bases, root first. A descriptor read from a file isn't checked, so a missing base
+        // ends the chain and a cycle is cut.
+        private List<PrimitiveDescriptor> Chain(PrimitiveReference? reference)
         {
-            var heading = Heading(reference.Type, reference.Name);
-            return _listed.Contains(reference) ? $"[{Text(heading)}](#{Anchor(heading)})" : Text(heading);
-        }
+            var chain = new List<PrimitiveDescriptor>();
+            var seen = new HashSet<PrimitiveReference>();
+            while (reference is not null && seen.Add(reference) && _primitives.TryGetValue(reference, out var primitive))
+            {
+                chain.Insert(0, primitive);
+                reference = primitive.Base;
+            }
 
-        private string PrimitiveLink(PrimitiveDescriptor primitive) => PrimitiveText(Reference(primitive));
+            return chain;
+        }
 
         private void Line(string text = "") => _text.Append(text).Append('\n');
 
@@ -204,24 +155,14 @@ internal static class MarkdownDocumentation
             return primitives;
         }
 
-        private static PrimitiveReference Reference(PrimitiveDescriptor primitive) => new(primitive.Type, primitive.Name);
-
-        // Anything for its section to show besides links to its users.
-        private static bool HasSomethingToSay(PrimitiveDescriptor primitive) =>
-            primitive.Description is not null ||
-            primitive.Converter is not null ||
-            primitive.Base is not null ||
-            primitive.Element is not null ||
-            primitive.Normalizers.Count > 0 ||
-            primitive.Validators.Count > 0 ||
-            primitive.Values is not null;
-
-        private static string GroupName(string key) => key.Split(':')[0];
-
-        private static string Heading(PrimitiveDescriptor primitive) => Heading(primitive.Type, primitive.Name);
+        private static string TypeText(ValueDescriptor value) =>
+            Text(value.Primitive is { } reference ? DisplayName(reference) : value.Type);
 
         // Like Primitive.DisplayName: "Int32 (Port)", or just "Int32" when the name is the type name.
-        private static string Heading(string type, string name) => name == type ? type : $"{type} ({name})";
+        private static string DisplayName(PrimitiveReference reference) =>
+            reference.Name == reference.Type ? reference.Type : $"{reference.Type} ({reference.Name})";
+
+        private static string GroupName(string key) => key.Split(':')[0];
 
         private static string PresenceText(ValuePresence presence) => presence switch
         {

@@ -29,7 +29,7 @@ From REVIEW.md. In this order.
 - [x] Converters describe how they parse, in a simple sentence (see DESIGN.md, Converter descriptions): `IConverter<T>.Description`, ready-made and builder descriptions, composition.
 - [x] ~~Rules shown on the key, and folding~~: replaced. Rules live on primitives: a key shows its type (linked), presence, form and sensitivity, and every primitive with something to say has one section with its own parts, sorted by type (see DESIGN.md, Documentation).
 - [x] ~~Markdown output is still a bit flawed: every list and every bound needs its own named primitive.~~ Resolved by treating primitives as an implementation detail (below). Parameterized primitives stay out of scope (see IDEAS.md, Parameterized primitives).
-- [ ] Primitives are an implementation detail: everything folded into the key (see DESIGN.md, Documentation). No Primitives section, no links. Type is the display name, and the primitive's description isn't shown. Format, values and rules are collected along the base chain, and a list's items get a nested block.
+- [x] Primitives are an implementation detail: everything folded into the key (see DESIGN.md, Documentation). No Primitives section, no links. Type is the display name, and the primitive's description isn't shown. Format, values and rules are collected along the base chain, and a list's items get a nested block.
 - [x] Converter descriptions in the documentation: `PrimitiveDescriptor.Converter` (null for a derived primitive), a `converter` field in the contract JSON, the Markdown **Format** line (from the base for a derived primitive; counts as something to say), and a `ContractDiff` aspect.
 
 ### Samples
