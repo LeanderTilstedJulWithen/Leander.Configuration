@@ -1,0 +1,29 @@
+<Project>
+
+  <!-- Shared by every project under src: each one is a package. Tests and samples are outside src and don't get these. -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!-- Package metadata. Each project adds its own Description. -->
+  <PropertyGroup>
+    <Version>1.0.0</Version>
+    <Authors>Leander Tilsted Jul Withen</Authors>
+    <Copyright>Copyright (c) 2026 Leander Tilsted Jul Withen</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/LeanderTilstedJulWithen/Leander.Configuration</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/LeanderTilstedJulWithen/Leander.Configuration</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>configuration;validation;primitives;appsettings;documentation</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)..\README.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
+
+</Project>
