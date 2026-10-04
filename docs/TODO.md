@@ -38,9 +38,9 @@ From REVIEW.md. In this order.
 - [x] ~~Comprehensive sample covering everything~~: a Tooling sample instead, whose contract uses everything the documentation can show. It compares the committed contract file with the current contract, then writes the contract JSON, Markdown and example appsettings.json to its own `output` folder (committed).
 
 ### README
-- [ ] Sections named after projects without the prefix (Primitives, Configuration, …); Microsoft.Extensions in its own section.
-- [ ] "Why" → "Motivation", with a bit more on features; tighten clunky passages ("sharing one is sharing a field").
-- [ ] Samples section linking the samples and `samples/output`; a small Planned section (e.g. `IOptionsMonitor`), separate from TODO.md and DESIGN.md.
+- [x] Sections named after projects without the prefix (Primitives, Configuration, …); Microsoft.Extensions in its own section.
+- [x] "Why" → "Motivation", with a bit more on features; tighten clunky passages ("sharing one is sharing a field").
+- [x] Samples section linking the samples and their committed output (the Tooling sample's `output` folder, not `samples/output`); a small Planned section (e.g. `IOptionsMonitor`), separate from TODO.md and DESIGN.md.
 
 ### Clean-up
 - [x] Repo-wide code clean-up for member order (from then on, per class when touched): consts; static fields; readonly fields; fields; constructors (public, internal, private); public static members; public properties; internal properties; protected and private protected properties; private properties; public methods; internal methods; protected and private protected methods; private methods; nested types. Internal and private static methods sit with the instance methods of the same access; abstract and override members count by their access. Doc comments and comments on a group move with their member. Primary constructors where possible. Alphabetical within a group, over logical pairs. In tests, `[Fact]` and `[Theory]` methods keep their order, which reads from the simple case to the edge cases.
@@ -57,7 +57,6 @@ From REVIEW.md. In this order.
 - [x] ~~Nested `Delimited()` with different delimiters~~: covered by list primitives with a list primitive as element. The same delimiter twice is the user's bug and isn't checked.
 - [x] Opt-in check when reading that the contract and the source are aligned beyond presence, e.g. keys in the source that the contract doesn't know: `ReadOptions.CheckedSections` (see DESIGN.md, Read options).
 - [x] Opt-in handling of warnings when reading: `ReadOptions.WarningsAsErrors`. Ignoring needs no option: warnings never block.
-- [ ] Conversion errors from converters. A converter only says yes or no, so a primitive wrapping another in its converter loses the wrapped primitive's reasons: `RangePrimitive` in the Primitives sample reports "'1024..70000' is not a valid Range\<Int32\> (PortRange)", not "must be between 1 and 65535". `ListPrimitive` keeps them only because its hooks are internal. Fix: the converter's `TryParse` outputs its conversion error(s), as strings or `IFormattableText<T>`.
 
 ## Documentation
 - [x] Sensitive values: `.Sensitive()` / `IsSensitive`, carried over by `Indexed()` / `Delimited()` / `Optional()`, and redacted diagnostics (see DESIGN.md, Sensitive values).
@@ -68,6 +67,22 @@ From REVIEW.md. In this order.
 - [x] `ContractFile.Read` failed on a definition or primitive without a description, and checked the format version only after reading the whole file. Found by `ContractFileTests`.
 - [x] Example configuration (`appsettings.json`) rendered from the descriptor, with placeholders for sensitive values.
 - [x] Compare two contract descriptors, e.g. two programs sharing keys, or the committed file against the current contract.
+
+## 1.0.0
+What stands between the current code and a release. The code is feature-complete; these freeze the API and ship it.
+
+### Decide first (breaking after 1.0.0)
+- [ ] Conversion errors from converters. A converter only says yes or no, so a primitive wrapping another in its converter loses the wrapped primitive's reasons: `RangePrimitive` in the Primitives sample reports "'1024..70000' is not a valid Range\<Int32\> (PortRange)", not "must be between 1 and 65535". `ListPrimitive` keeps them only because its hooks are internal. Fix: the converter's `TryParse` outputs its conversion error(s), as strings or `IFormattableText<T>`. Changes `IParser<T>` / `IConverter<T>`, which every custom converter implements.
+- [ ] Type names in contract files are short (`Int32`, `Verbosity`), so types with the same name in different namespaces can't be told apart (see DESIGN.md, Open questions). Changing it later needs a new format version.
+- [ ] Validators organisation: one `Validators` class, or one class per type (see DESIGN.md, Open questions). A rename after 1.0.0 is breaking.
+- [ ] Replacing the converter in a derived primitive: record "not allowed" as a decision in DESIGN.md, or allow it.
+- [ ] DESIGN.md, Milestones: milestone 5 (Generator) contradicts the 1.1.0 plan and "no tooling before 1.0.0". Move it after 1.0.0 or drop it.
+
+### Ship
+- [ ] Package metadata in a shared `Directory.Build.props`: version, description, authors, license, repository URL, tags, and the README as package readme.
+- [ ] LICENSE file.
+- [ ] CI: build and test on push. Optionally regenerate the Tooling sample's output and fail when it changes.
+- [ ] CHANGELOG: `[Unreleased]` becomes `[1.0.0]`, possibly reset to a short first-release summary.
 
 ## 1.1.0
 Planned after 1.0.0, not before.
