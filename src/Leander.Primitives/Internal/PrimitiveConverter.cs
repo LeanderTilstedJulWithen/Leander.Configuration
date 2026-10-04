@@ -12,5 +12,9 @@ internal sealed class PrimitiveConverter<T>(Primitive<T> primitive) : IConverter
 
     public string Format(T value) => _primitive.Converter.Format(value);
 
-    public bool TryParse(string input, out T result) => _primitive.TryParse(input, out result);
+    public bool TryParse(string input, out T result, out IReadOnlyList<IFormattableText<string>> errors)
+    {
+        errors = [];
+        return _primitive.TryParse(input, out result);
+    }
 }

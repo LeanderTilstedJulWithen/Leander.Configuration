@@ -8,6 +8,9 @@ internal sealed class SingleConverter : IConverter<float>
 
     public string Format(float value) => value.ToString(CultureInfo.InvariantCulture);
 
-    public bool TryParse(string input, out float result) =>
-        float.TryParse(input, NumberStyles.Float, CultureInfo.InvariantCulture, out result);
+    public bool TryParse(string input, out float result, out IReadOnlyList<IFormattableText<string>> errors)
+    {
+        errors = [];
+        return float.TryParse(input, NumberStyles.Float, CultureInfo.InvariantCulture, out result);
+    }
 }

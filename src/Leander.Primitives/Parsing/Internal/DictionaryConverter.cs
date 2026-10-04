@@ -34,8 +34,9 @@ internal sealed class DictionaryConverter<TKey, TValue>(
         _entryDelimiter,
         value.Select(pair => $"{_keyConverter.Format(pair.Key)}{_keyValueDelimiter}{_valueConverter.Format(pair.Value)}"));
 
-    public bool TryParse(string input, out IReadOnlyDictionary<TKey, TValue> result)
+    public bool TryParse(string input, out IReadOnlyDictionary<TKey, TValue> result, out IReadOnlyList<IFormattableText<string>> errors)
     {
+        errors = [];
         var dictionary = new Dictionary<TKey, TValue>();
         result = dictionary;
 

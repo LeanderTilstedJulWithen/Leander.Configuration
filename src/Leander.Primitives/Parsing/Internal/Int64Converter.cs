@@ -8,6 +8,9 @@ internal sealed class Int64Converter : IConverter<long>
 
     public string Format(long value) => value.ToString(CultureInfo.InvariantCulture);
 
-    public bool TryParse(string input, out long result) =>
-        long.TryParse(input, NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
+    public bool TryParse(string input, out long result, out IReadOnlyList<IFormattableText<string>> errors)
+    {
+        errors = [];
+        return long.TryParse(input, NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
+    }
 }

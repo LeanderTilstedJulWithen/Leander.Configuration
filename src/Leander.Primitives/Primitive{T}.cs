@@ -153,15 +153,29 @@ public class Primitive<T> : Primitive
         return true;
     }
 
-    // Turns the input into a T, before this primitive's rules run.
+    // Turns the input into a T, before this primitive's rules run. Without an error list, the converter isn't asked for reasons.
+    // Each reason follows the primitive's own line; pieces of the input in it are hidden with redact.
     private protected virtual bool TryConvert(string input, out T value, List<string>? errors, bool redact)
     {
-        if (Converter.TryParse(input, out value))
+        if (errors is null)
+        {
+            return Converter.TryParse(input, out value);
+        }
+
+        if (Converter.TryParse(input, out value, out var reasons))
         {
             return true;
         }
 
-        errors?.Add(redact ? $"value is not a valid {DisplayName}" : $"'{input}' is not a valid {DisplayName}");
+        var lead = redact ? $"value is not a valid {DisplayName}" : $"'{input}' is not a valid {DisplayName}";
+        if (reasons.Count == 0)
+        {
+            errors.Add(lead);
+            return false;
+        }
+
+        IFormatter<string> formatter = redact ? RedactingFormatter<string>.Instance : InvariantFormatter<string>.Instance;
+        errors.AddRange(reasons.Select(reason => $"{lead}: {reason.FormatWith(formatter)}"));
         return false;
     }
 }

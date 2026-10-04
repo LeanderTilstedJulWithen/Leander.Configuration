@@ -1,3 +1,4 @@
+using Leander.Primitives;
 using Leander.Primitives.Normalization;
 using Leander.Primitives.Parsing;
 using Leander.Primitives.Validation;
@@ -8,8 +9,9 @@ public class PercentageConverter : IConverter<double>
 
     public string Format(double value) => value * 100.0 + "%";
 
-    public bool TryParse(string input, out double result)
+    public bool TryParse(string input, out double result, out IReadOnlyList<IFormattableText<string>> errors)
     {
+        errors = [];
         result = default;
         if (input is null) return false;
 

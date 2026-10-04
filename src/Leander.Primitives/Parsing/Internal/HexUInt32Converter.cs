@@ -8,8 +8,9 @@ internal sealed class HexUInt32Converter : IConverter<uint>
 
     public string Format(uint value) => "0x" + value.ToString("X", CultureInfo.InvariantCulture);
 
-    public bool TryParse(string input, out uint result)
+    public bool TryParse(string input, out uint result, out IReadOnlyList<IFormattableText<string>> errors)
     {
+        errors = [];
         var digits = input.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? input[2..] : input;
         return uint.TryParse(digits, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
     }

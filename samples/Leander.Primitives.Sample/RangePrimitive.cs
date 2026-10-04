@@ -29,8 +29,9 @@ public sealed class RangePrimitive<T>(string name, Primitive<T> bound)
             $"{_bound.Converter.Format(value.Minimum)}{Separator}{_bound.Converter.Format(value.Maximum)}";
 
         // Both ends must be valid values of the bound, and in order.
-        public bool TryParse(string input, out Range<T> result)
+        public bool TryParse(string input, out Range<T> result, out IReadOnlyList<IFormattableText<string>> errors)
         {
+            errors = [];
             result = default;
             var separator = input.IndexOf(Separator, StringComparison.Ordinal);
             if (separator < 0 ||

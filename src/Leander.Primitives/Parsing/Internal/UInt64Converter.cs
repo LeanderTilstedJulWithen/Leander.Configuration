@@ -8,6 +8,9 @@ internal sealed class UInt64Converter : IConverter<ulong>
 
     public string Format(ulong value) => value.ToString(CultureInfo.InvariantCulture);
 
-    public bool TryParse(string input, out ulong result) =>
-        ulong.TryParse(input, NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
+    public bool TryParse(string input, out ulong result, out IReadOnlyList<IFormattableText<string>> errors)
+    {
+        errors = [];
+        return ulong.TryParse(input, NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
+    }
 }

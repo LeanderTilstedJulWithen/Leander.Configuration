@@ -8,6 +8,9 @@ internal sealed class UInt16Converter : IConverter<ushort>
 
     public string Format(ushort value) => value.ToString(CultureInfo.InvariantCulture);
 
-    public bool TryParse(string input, out ushort result) =>
-        ushort.TryParse(input, NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
+    public bool TryParse(string input, out ushort result, out IReadOnlyList<IFormattableText<string>> errors)
+    {
+        errors = [];
+        return ushort.TryParse(input, NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
+    }
 }

@@ -11,8 +11,9 @@ internal sealed class JsonValueConverter<T>(JsonSerializerOptions? options) : IC
 
     public string Format(T value) => JsonSerializer.Serialize(value, _options);
 
-    public bool TryParse(string input, out T result)
+    public bool TryParse(string input, out T result, out IReadOnlyList<IFormattableText<string>> errors)
     {
+        errors = [];
         try
         {
             result = JsonSerializer.Deserialize<T>(input, _options)!;

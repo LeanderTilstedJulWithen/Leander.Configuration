@@ -8,5 +8,9 @@ internal sealed class GuidConverter : IConverter<Guid>
 
     public string Format(Guid value) => value.ToString("D", CultureInfo.InvariantCulture);
 
-    public bool TryParse(string input, out Guid result) => Guid.TryParse(input, out result);
+    public bool TryParse(string input, out Guid result, out IReadOnlyList<IFormattableText<string>> errors)
+    {
+        errors = [];
+        return Guid.TryParse(input, out result);
+    }
 }

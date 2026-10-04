@@ -12,6 +12,9 @@ internal sealed class DateTimeFormatConverter(string[] formats, DateTimeStyles s
 
     public string Format(DateTime value) => value.ToString(_formats[0], CultureInfo.InvariantCulture);
 
-    public bool TryParse(string input, out DateTime result) =>
-        DateTime.TryParseExact(input, _formats, CultureInfo.InvariantCulture, _styles, out result);
+    public bool TryParse(string input, out DateTime result, out IReadOnlyList<IFormattableText<string>> errors)
+    {
+        errors = [];
+        return DateTime.TryParseExact(input, _formats, CultureInfo.InvariantCulture, _styles, out result);
+    }
 }

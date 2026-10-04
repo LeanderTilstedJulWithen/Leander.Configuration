@@ -10,8 +10,10 @@ internal sealed class EnumConverter<TEnum>(bool isFlags) : IConverter<TEnum> whe
 
     public string Format(TEnum value) => value.ToString();
 
-    public bool TryParse(string input, out TEnum result)
+    public bool TryParse(string input, out TEnum result, out IReadOnlyList<IFormattableText<string>> errors)
     {
+        errors = [];
+
         // Enum.TryParse ORs comma-separated names together, which only makes sense for flags.
         if (!_isFlags && input.Contains(','))
         {

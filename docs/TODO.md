@@ -72,7 +72,8 @@ From REVIEW.md. In this order.
 What stands between the current code and a release. The code is feature-complete; these freeze the API and ship it.
 
 ### Decide first (breaking after 1.0.0)
-- [ ] Conversion errors from converters. A converter only says yes or no, so a primitive wrapping another in its converter loses the wrapped primitive's reasons: `RangePrimitive` in the Primitives sample reports "'1024..70000' is not a valid Range\<Int32\> (PortRange)", not "must be between 1 and 65535". `ListPrimitive` keeps them only because its hooks are internal. Fix: the converter's `TryParse` outputs its conversion error(s), as strings or `IFormattableText<T>`. Changes `IParser<T>` / `IConverter<T>`, which every custom converter implements.
+- [x] Conversion errors from converters: the converter's `TryParse` outputs its errors as `IFormattableText<string>`, the primitive leads with its own line, the bool-only `TryParse` stays as a default interface member, and `Primitive<T>.AsConverter()` for wrapping (see DESIGN.md, Conversion errors).
+- [ ] Implement conversion errors: `IParser<T>`, the ready-made converters, builders and composite converters, `PrimitiveConverter<T>` behind `AsConverter()`, the primitive's lead line and redaction, and the `RangePrimitive` sample. Check whether `ListPrimitive` still needs its `TryConvert` hook. Then remove the status note in DESIGN.md.
 - [ ] Type names in contract files are short (`Int32`, `Verbosity`), so types with the same name in different namespaces can't be told apart (see DESIGN.md, Open questions). Changing it later needs a new format version.
 - [ ] Validators organisation: one `Validators` class, or one class per type (see DESIGN.md, Open questions). A rename after 1.0.0 is breaking.
 - [ ] Replacing the converter in a derived primitive: record "not allowed" as a decision in DESIGN.md, or allow it.

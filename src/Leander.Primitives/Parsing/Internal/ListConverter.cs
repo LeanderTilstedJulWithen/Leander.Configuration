@@ -11,8 +11,9 @@ internal sealed class ListConverter<T>(IConverter<T> elementConverter, char deli
 
     public string Format(IReadOnlyList<T> value) => string.Join(_delimiter, value.Select(_elementConverter.Format));
 
-    public bool TryParse(string input, out IReadOnlyList<T> result)
+    public bool TryParse(string input, out IReadOnlyList<T> result, out IReadOnlyList<IFormattableText<string>> errors)
     {
+        errors = [];
         var list = new List<T>();
         result = list;
 

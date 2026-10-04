@@ -70,7 +70,7 @@ Parsers, normalizers and validators are all plain operations on values. None of 
 
 | Operation         | Signature             | Variance              |
 |-------------------|-----------------------|-----------------------|
-| `IParser<T>`      | `string → T`          | invariant (`out` parameter) |
+| `IParser<T>`      | `string → T` or failures | invariant (`out` parameter) |
 | `IFormatter<in T>`| `T → string`          | contravariant         |
 | `IConverter<T>`   | both                  | invariant             |
 | `INormalizer<T>`  | `T → T`               | invariant             |
@@ -166,6 +166,29 @@ public interface IConverter<T> : IParser<T>, IFormatter<T>
 - **Builders generate it from their formats and styles**, e.g. "A date and time as yyyy-MM-ddTHH:mm:ssK or yyyy-MM-dd; without an offset, UTC." Standard formats, a single letter, are shown as their pattern: `TimeSpan` reads "A duration as [-][d.]hh:mm:ss[.fffffff], e.g. 00:00:30." Durations get an example, formatted from 30 seconds; dates don't, because a local date's offset depends on the machine. `WithDescription(...)` replaces the generated text.
 - **Composite converters compose.** `Converters.List` reads "A list separated by ','. Each item: {element}", and `Converters.Dictionary` adds "Each key: …" and "Each value: …"; without an element description, only the separator part. Inside a list primitive the element converter is the element primitive, whose description is its display name: "A list separated by ','. Each item: Uri." The element's own format is on the element, which the documentation links to. An enum reads "One of the names, or its number, ignoring case." (the names are in `Values`), and `Json<T>` reads "{Type} as JSON."
 - **A derived primitive takes the base's converter**, so its description is on the base, like the base's rules.
+
+### Conversion errors
+
+Status: decided, not implemented.
+
+A converter says why it failed, not only that it did. Otherwise a converter that wraps a primitive loses the primitive's reasons: a range of ports reports "'1024..70000' is not a valid Range\<Int32\> (PortRange)", and never "must be between 1 and 65535".
+
+```csharp
+public interface IParser<T>
+{
+    bool TryParse(string input, out T result, out IReadOnlyList<IFormattableText<string>> errors);
+    bool TryParse(string input, out T result) => TryParse(input, out result, out _);   // override only for speed
+}
+
+// in a converter:
+FormattableText.Create<string>(formatter => $"'{formatter.Format(segment)}' is not a number")
+```
+
+- **`IFormattableText<string>`, not plain strings**, because of sensitive values. A converter's errors usually contain the input, and the converter can't redact: it doesn't know about keys, and the `redact` flag stays internal (see Sensitive values). Values in the text are pieces of the input, and the primitive formats them as they are, or with a redacting formatter. Same mechanism as rule texts.
+- **Every reason is reported.** The interface allows several, like a validator; empty is allowed too. Empty, not null, on success.
+- **The primitive leads with its own line.** Each reason becomes `'1024..70000' is not a valid Range<Int32> (PortRange): upper bound: must be between 1 and 65535`; without reasons, just `'1024..70000' is not a valid Range<Int32> (PortRange)`. Redacted, the lead is `value is not a valid …` and the reasons are formatted with the redacting formatter. One line per reason, like item errors, so every diagnostic stands on its own.
+- **The bool-only `TryParse` stays**, as a default interface member, like `IsValid` on validators. A converter overrides it only for speed.
+- **A primitive as a converter: `Primitive<T>.AsConverter()`.** A converter that wraps a primitive, e.g. a range or `Converters.List` inside a list primitive, holds it as a converter: parsing applies all of the primitive's rules, and its errors come back unformatted, so the outer primitive decides on redaction. Formatting uses the primitive's `Converter`. `Converter` is how a primitive reads text; `AsConverter()` is the whole primitive. Not another `TryParse` overload: `out var` couldn't choose between `IReadOnlyList<string>` and `IReadOnlyList<IFormattableText<string>>`. Its inner rule texts are formatted with the inner converter, or redacted when the outer primitive redacts.
 
 ### List primitives
 

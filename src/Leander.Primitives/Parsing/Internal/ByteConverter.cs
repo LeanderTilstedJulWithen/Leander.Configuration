@@ -8,6 +8,9 @@ internal sealed class ByteConverter : IConverter<byte>
 
     public string Format(byte value) => value.ToString(CultureInfo.InvariantCulture);
 
-    public bool TryParse(string input, out byte result) =>
-        byte.TryParse(input, NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
+    public bool TryParse(string input, out byte result, out IReadOnlyList<IFormattableText<string>> errors)
+    {
+        errors = [];
+        return byte.TryParse(input, NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
+    }
 }

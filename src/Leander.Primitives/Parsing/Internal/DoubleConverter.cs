@@ -8,6 +8,9 @@ internal sealed class DoubleConverter : IConverter<double>
 
     public string Format(double value) => value.ToString(CultureInfo.InvariantCulture);
 
-    public bool TryParse(string input, out double result) =>
-        double.TryParse(input, NumberStyles.Float, CultureInfo.InvariantCulture, out result);
+    public bool TryParse(string input, out double result, out IReadOnlyList<IFormattableText<string>> errors)
+    {
+        errors = [];
+        return double.TryParse(input, NumberStyles.Float, CultureInfo.InvariantCulture, out result);
+    }
 }

@@ -8,6 +8,9 @@ internal sealed class DecimalConverter : IConverter<decimal>
 
     public string Format(decimal value) => value.ToString(CultureInfo.InvariantCulture);
 
-    public bool TryParse(string input, out decimal result) =>
-        decimal.TryParse(input, NumberStyles.Float, CultureInfo.InvariantCulture, out result);
+    public bool TryParse(string input, out decimal result, out IReadOnlyList<IFormattableText<string>> errors)
+    {
+        errors = [];
+        return decimal.TryParse(input, NumberStyles.Float, CultureInfo.InvariantCulture, out result);
+    }
 }
