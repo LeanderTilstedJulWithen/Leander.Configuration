@@ -57,6 +57,7 @@ From REVIEW.md. In this order.
 - [x] ~~Nested `Delimited()` with different delimiters~~: covered by list primitives with a list primitive as element. The same delimiter twice is the user's bug and isn't checked.
 - [x] Opt-in check when reading that the contract and the source are aligned beyond presence, e.g. keys in the source that the contract doesn't know: `ReadOptions.CheckedSections` (see DESIGN.md, Read options).
 - [x] Opt-in handling of warnings when reading: `ReadOptions.WarningsAsErrors`. Ignoring needs no option: warnings never block.
+- [ ] Conversion errors from converters. A converter only says yes or no, so a primitive wrapping another in its converter loses the wrapped primitive's reasons: `RangePrimitive` in the Primitives sample reports "'1024..70000' is not a valid Range\<Int32\> (PortRange)", not "must be between 1 and 65535". `ListPrimitive` keeps them only because its hooks are internal. Fix: the converter's `TryParse` outputs its conversion error(s), as strings or `IFormattableText<T>`.
 
 ## Documentation
 - [x] Sensitive values: `.Sensitive()` / `IsSensitive`, carried over by `Indexed()` / `Delimited()` / `Optional()`, and redacted diagnostics (see DESIGN.md, Sensitive values).

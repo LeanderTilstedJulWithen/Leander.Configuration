@@ -57,9 +57,9 @@ Console.WriteLine();
 Console.WriteLine("Formatting:");
 Show(Primitive.Int32Hex, "ff");
 Show(SamplePrimitives.Mask, "0x1FF");
-Console.WriteLine($"  {Primitive.TimeSpan.Converter.Format(TimeSpan.FromMinutes(90))}");
-Console.WriteLine($"  {Primitive.DateTime.Converter.Format(new DateTime(2026, 10, 4, 12, 0, 0, DateTimeKind.Utc))}");
-Console.WriteLine($"  {SamplePrimitives.Ports.Converter.Format([80, 443])}");
+ShowFormatted(Primitive.TimeSpan, "90 minutes", TimeSpan.FromMinutes(90));
+ShowFormatted(Primitive.DateTime, "noon, 4 October 2026", new DateTime(2026, 10, 4, 12, 0, 0, DateTimeKind.Utc));
+ShowFormatted(SamplePrimitives.Ports, "[80, 443]", [80, 443]);
 Console.WriteLine();
 
 // A primitive of a new kind. Each end goes through Port, then the range must be in order.
@@ -67,7 +67,7 @@ Console.WriteLine("A primitive wrapping another:");
 Show(SamplePrimitives.PortRange, "1024..2048");
 Show(SamplePrimitives.PortRange, "2048..1024");
 Show(SamplePrimitives.PortRange, "1024..70000");
-Console.WriteLine($"  {SamplePrimitives.PortRange.Converter.Description}");
+Console.WriteLine($"  {"Description",-17} {SamplePrimitives.PortRange.Converter.Description}");
 
 // Parses the input and prints the value, formatted back by the converter, or every error.
 static void Show<T>(Primitive<T> primitive, string input)
@@ -77,3 +77,7 @@ static void Show<T>(Primitive<T> primitive, string input)
         : $"error: {string.Join("; ", errors)}";
     Console.WriteLine($"  {primitive.Name,-17} {$"\"{input}\"",-26} {result}");
 }
+
+// Prints a typed value as the converter formats it, next to a label saying what the value is.
+static void ShowFormatted<T>(Primitive<T> primitive, string label, T value) =>
+    Console.WriteLine($"  {primitive.Name,-17} {label,-26} -> {primitive.Converter.Format(value)}");
