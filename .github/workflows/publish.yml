@@ -1,0 +1,61 @@
+name: Publish
+
+# Only a pushed tag like v1.0.0 triggers this. Ordinary commits/branches never do.
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # required for NuGet Trusted Publishing (OIDC token issuance)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test --no-build --configuration Release
+
+      # The tag (e.g. "v1.0.1") is the single source of truth for the version:
+      # strip the leading "v" and pass it to pack, overriding <Version> in src/Directory.Build.props.
+      - name: Derive version from tag
+        id: version
+        shell: bash
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      # Packs the whole solution: every project under src is a package, and samples
+      # and tests set IsPackable=false. All packages share the tag's version.
+      - name: Pack
+        run: >
+          dotnet pack Leander.Configuration.slnx
+          --no-build --configuration Release
+          -p:Version=${{ steps.version.outputs.version }}
+          --output ./artifacts
+
+      - name: NuGet login (OIDC -> temp API key)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      # --skip-duplicate makes a re-run safe if some packages were already pushed.
+      - name: NuGet push
+        run: >
+          dotnet nuget push ./artifacts/*.nupkg
+          --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
