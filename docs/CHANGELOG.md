@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-06
+
 ### Fixed
 
 #### Leander.Primitives
@@ -56,5 +58,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Leander.Configuration no longer references the sibling Leander.Parsing repository. It depends on Leander.Primitives instead.
 - The public API of every package has XML documentation comments, shipped with the packages for IntelliSense.
 
-[Unreleased]: https://github.com/LeanderTilstedJulWithen/Leander.Configuration/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/LeanderTilstedJulWithen/Leander.Configuration/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/LeanderTilstedJulWithen/Leander.Configuration/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/LeanderTilstedJulWithen/Leander.Configuration/releases/tag/v1.0.0
