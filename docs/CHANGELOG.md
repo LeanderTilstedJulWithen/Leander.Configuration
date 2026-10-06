@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+#### Leander.Primitives
+- `Converters.Uri` (and `Primitive.Uri`) requires a written scheme. Local paths were read as `file` URIs, and which ones depended on the OS: `/etc/app` on Linux and macOS, `C:\app` and `\\server\share` on Windows. Write `file:///…` for a file URI.
+
 ## [1.0.0] - 2026-10-05
 
 ### Added

@@ -10,7 +10,10 @@ internal sealed class UriConverter : IConverter<Uri>
     public bool TryParse(string input, out Uri result, out IReadOnlyList<IFormattableText<string>> errors)
     {
         errors = [];
-        var success = Uri.TryCreate(input, UriKind.Absolute, out var uri);
+        // The scheme must be written: .NET reads local paths as file URIs, and what looks like a path
+        // depends on the OS ("/etc/app" on Unix, "C:\app" on Windows).
+        var success = Uri.TryCreate(input, UriKind.Absolute, out var uri)
+            && input.StartsWith(uri.Scheme + ":", StringComparison.OrdinalIgnoreCase);
         result = uri!;
         return success;
     }

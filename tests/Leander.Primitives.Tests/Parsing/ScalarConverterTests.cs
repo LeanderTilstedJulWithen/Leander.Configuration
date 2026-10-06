@@ -218,6 +218,8 @@ public class ScalarConverterTests
     [InlineData("")]
     [InlineData("/relative/path")]
     [InlineData("example.com")]
+    [InlineData(@"C:\config\app.json")]
+    [InlineData(@"\\server\share")]
     public void Uri_RejectsNonAbsoluteUris(string input) =>
         ConverterAssert.Rejects(Converters.Uri, input);
 
