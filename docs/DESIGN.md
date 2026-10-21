@@ -346,17 +346,26 @@ var contract = new ConfigurationContractBuilder()
     .Register(ServerConfiguration.Port)
     .Build();
 
-var server = contract.GetSection("Server")
-    .Read(configuration.GetSection("Server").AsValueSource());
+var snapshot = contract.Read(configuration.AsValueSource());
+
+SnapshotSection server = snapshot.GetSection("Server");     // the values under Server, without reading again
+server.Get(ServerConfiguration.Port);
+
+ContractSection part = contract.GetSection("Server");       // the definitions under Server
 ```
 
 - **A section builds keys.** `Section.Define("Port", …)` and `Section.Indexed(…)` give plain definitions with the absolute key, `Server:Port`. A definition is still identified by its key, so `snapshot.Get`, diagnostics, documentation, contract files and comparisons don't change.
 - **Named `SectionDefinition`**, not `ConfigurationSection`, which would clash with Microsoft's class in files that use both namespaces.
 - **Sections nest.** `Database.Section("Primary")` is `Database:Primary`.
 - **The helper is a convention, not a rule.** A definition written as `Define("Server:Port", …)` is in the `Server` section too: the contract finds a section's definitions by key, not by how they were declared.
-- **`contract.GetSection(key)` is a view, relative to the section.** It reads from a source rooted at the section, e.g. `configuration.GetSection("Server").AsValueSource()`, and only the definitions under the key. Diagnostics and `snapshot.Get` keep the absolute keys. A section without definitions is empty, like in `IConfiguration`.
+- **The root and its sections are different types**, like `IConfigurationRoot` and `IConfigurationSection`. `ConfigurationContract` and `ConfigurationSnapshot` are the whole: only they are registered with a container, documented, written to contract files and read. `contract.GetSection(name)` gives a `ContractSection`, and `snapshot.GetSection(name)` a `SnapshotSection`. Passing a part where the whole is expected doesn't compile, instead of quietly dropping every other key and every unknown-key check.
+- **Names are relative, keys are absolute.** `GetSection("Server").GetSection("Tls")` is the `Server:Tls` section, and its `Key` says so. Definitions keep their absolute keys, so a section's diagnostics and `Get` are the same as the whole's. A section without definitions is empty, like in `IConfiguration`.
+- **A `ContractSection` describes a part:** its `Key`, the definitions under it, the owned sections under it, and `GetSection`. It can't be read yet.
+- **A `SnapshotSection` holds the values of a part:** `Key`, `Get`, the diagnostics under the key (including unknown keys), its `ContractSection`, and `GetSection`. Nothing is read again. A component can be handed only its own part, and `Get` of a definition outside the section throws, as for any definition outside the contract.
+- **Every source is rooted at the root.** Unlike `IConfiguration`, a contract and its source are separate objects, so a section rooted elsewhere than its source can't be detected: every key would be missing, and keys with defaults would silently take them. With one rule, there is nothing to pair by hand. When sections can be read (see below), they read the same source as the whole contract.
 - **Owned sections are opt-in.** Registering a `SectionDefinition` declares that the application owns it, so it is checked for unknown keys on every read, like `ReadOptions.CheckedSections`. Defining keys in a section doesn't make it owned: a section can be shared, e.g. `Logging`. `CheckedSections` stays for checks per read.
-- **Not yet:** reading a section on reload, `snapshot.GetSection`, and documentation per section.
+- **Prepared for reloading.** Reloading is not designed yet, but sections shouldn't stand in its way: an invalid value under `Admin` shouldn't block a reload of `Server`. So a `SnapshotSection` stands on its own: it holds its own values and diagnostics, not a reference to the snapshot it came from, and whether it is valid depends only on the keys under it. A reload can then replace one section's values, and reading a `ContractSection` (from the root source) can be added without changing either type's shape.
+- **Not yet:** reading a section, reloading, and documentation per section.
 
 ### Sources
 
