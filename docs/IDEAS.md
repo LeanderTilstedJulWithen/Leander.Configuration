@@ -366,6 +366,70 @@ Notes:
 - `ReadOptions.CheckedSections` already names sections, for unknown keys. The two should use the same notion of a section.
 - Verdict: undecided. Revisit with reloading.
 
+### Meta configuration: configuration that configures configuration
+
+Status: an idea, nothing designed (2026-10-06).
+
+Some keys can only be read once another key is known. `Audit:Since` is a `DateTime`, but the format it is written in is itself configuration, `Audit:TimestampFormat`. The primitive of one key depends on the value of another.
+
+#### Shapes
+
+- **Two contracts, read in order.** Read a small contract with `Audit:TimestampFormat`, build the primitive from its value, then define and read the main contract with it. This works today in application code, and the library knows nothing about it. The cost: two snapshots, two sets of errors, and documentation split in two.
+- **Dependent definitions in one contract.** A definition's primitive comes from a factory over other definitions, e.g. `Define("Audit:Since", TimestampFormat, format => …)`. The contract reads the definitions in dependency order.
+- **The meta value is a converter.** `Audit:TimestampFormat` isn't really a string: its primitive parses text into an `IConverter<DateTime>`, and checks that the format is usable (it round-trips a known date). The dependent key then uses the converter it was given. That validates the meta value where it is written, instead of failing on every key that uses it.
+
+The same applies to rules, not only formats: a maximum upload size bounding another key, or an allowed list of hosts. That overlaps with cross-key validation (`Min <= Max`), which is the same dependency without changing a primitive.
+
+#### `DependsOn`: rules that depend on another key
+
+The simplest form of dependent definitions, and the leading one. A dependency **adds rules, it never replaces the primitive**. Replacing a converter (the timestamp format) is out: the primitive given to `Define` is what the key is, at every read. A modifier on the definition, next to `Optional` and `Default`:
+
+```csharp
+public static readonly ConfigurationDefinition<bool> UseFullPath = ...;
+
+public static readonly ConfigurationDefinition<string> LogFile =
+    ConfigurationDefinition.Define("Logging:File", Primitive.String)
+        .DependsOn(UseFullPath, useFullPath => useFullPath ? [Validators.Paths.FullyQualified] : []);
+```
+
+- **The factory returns rules, not a changed definition.** Definitions are immutable, so a callback that calls `definition.Validate(...)` would have to return the result anyway. Returning a list makes "no extra rules" the empty list.
+- **Same semantics as deriving:** the primitive's rules run first, the dependent rules after. Rules can be added, never removed, so every value is still a valid value of the primitive. The documentation stays true without knowing the dependency's value.
+- **It is the one exception to "all value rules live on the primitive"** (DESIGN.md, Configuration definitions). A rule that depends on another key can't live on a primitive, because a primitive knows nothing about keys. Static rules still belong on the primitive.
+- **The dependency is declared.** `Build()` sees the graph, reports cycles and missing definitions, and the read order follows from it.
+- **The factory gets the resolved value**: after its own primitive's rules, and after defaults. For an optional dependency it gets `T?` and decides what that means.
+- **When the dependency fails, the dependent isn't fully checked.** Its own primitive still runs. The dependent rules are skipped with one "not checked, `Logging:UseFullPath` is invalid" line. The factory's exceptions become errors, like a rule's.
+- **Errors say where the rule came from:** `Logging:File: must be a fully qualified path (because Logging:UseFullPath is true)`, or similar. Otherwise a user changes `Logging:File` without knowing the rule is conditional.
+- **Reloading is consistent for free:** both are read in the same pass, into the same snapshot.
+- **Cross-key validation falls out of it.** `Max` depends on `Min`: `.DependsOn(Min, min => [Validators.GreaterThanOrEqual(min)])`. The bound is formatted with `Max`'s converter, as rule texts already are.
+
+Open:
+- **Normalizers too?** `useFullPath ? FullPath normalizer : nothing` is plausible. Order: the primitive's normalizers, then the dependent normalizers, then the primitive's validators, or the dependent rules entirely after the primitive? Deriving runs the base fully first, which suggests the latter.
+- **Several dependencies.** `DependsOn(a, b, (x, y) => …)` overloads, or chained calls, each adding its rules. Chaining composes cleanly now that each call only adds rules.
+- **Order among modifiers.** With `Indexed` and delimited lists: do the rules apply to each element or to the list? Probably the list's element type decides, as the factory's rule type must match.
+- **Documentation.** The factory is code, so the documentation can name the dependency but not the rules, unless `DependsOn` takes a description ("must be a fully qualified path when `Logging:UseFullPath` is true").
+- **The contract file and comparison** record the dependency (a key), not the rules.
+
+#### Complications
+
+- **Identity.** Primitives are explicit and complete, and identity is the instance (see Explicit primitives, no registry). A dependent key has no primitive until the configuration is read, so the build step, the descriptor and the contract file have nothing to point at. They would have to record "DateTime, format from `Audit:TimestampFormat`": a parameterized primitive whose argument comes from configuration instead of code. That is the type-system question again (see Parameterized primitives, Scope), now with values that are only known at runtime.
+- **Documentation and defaults.** A default is formatted with the primitive's converter. The default of `Audit:Since` can't be written down until the format is known, and the documentation is generated without a source. Either the default is formatted with the meta key's default, or a dependent key can't have a typed default, only text.
+- **Order and cycles.** Dependencies must be declared, not discovered, so cycles can be reported by `Build()`. A factory that reads any key from the snapshot hides them.
+- **Errors.** When the meta key is missing or invalid, its dependents can't be checked. They should be reported once as "not checked, `Audit:TimestampFormat` is invalid", not as a cascade of parse errors in a format nobody asked for. That keeps "every failure at once" honest.
+- **Sensitivity.** A sensitive dependent hides its value as usual. If the meta key is sensitive, an error that mentions the format leaks it.
+- **Reloading.** A changed format re-reads every dependent. A value valid under the old format may be invalid under the new one, so the meta key and its dependents must change in one snapshot or not at all.
+- **Changing the format is a migration.** Values already written in the old format break when it changes. That suggests the format rarely belongs in configuration: it belongs to whoever writes the values.
+
+#### Is it real?
+
+- A configurable timestamp format is usually for the application's output, e.g. log lines. That is a plain string value the application uses. It doesn't take part in reading configuration.
+- Reading values in a configurable format is real when the values come from another system whose format varies, e.g. a file exported by a partner. Often accepting several formats, or requiring ISO 8601, is the simpler answer.
+- Culture is the most common hidden case: number and date formats per deployment. Primitives are invariant on purpose.
+
+Notes:
+- Smallest step: document the two-contract pattern and add nothing.
+- The converter-as-value shape is interesting on its own: a `Primitive<IConverter<T>>` is a primitive whose values are rules.
+- Verdict: open. Replacing a primitive from configuration is out. `DependsOn`, adding rules only, is the leading shape, and covers cross-key validation too.
+
 ## Tooling
 
 ### A UI for writing configuration values
