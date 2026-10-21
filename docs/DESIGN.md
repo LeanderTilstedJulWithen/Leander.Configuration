@@ -327,6 +327,37 @@ var contract = new ConfigurationContractBuilder()
 - **Failures.** Build throws one exception listing every failure: duplicate keys, then primitive name clashes, then per definition: invalid presence (see Defaults and presence).
 - **`ConfigurationContract`** is the complete list of definitions, which is also what tooling will enumerate.
 
+### Sections
+
+A section is the part of the configuration under one key, like `IConfiguration.GetSection("Server")`. It is used when defining keys, and when reading part of a contract:
+
+```csharp
+public static class ServerConfiguration
+{
+    public static readonly SectionDefinition Section = new("Server");
+
+    public static readonly ConfigurationDefinition<int> Port =
+        Section.Define("Port", AppPrimitives.Port)    // Server:Port
+            .Default(8080);
+}
+
+var contract = new ConfigurationContractBuilder()
+    .Register(ServerConfiguration.Section)            // owned: checked for unknown keys
+    .Register(ServerConfiguration.Port)
+    .Build();
+
+var server = contract.GetSection("Server")
+    .Read(configuration.GetSection("Server").AsValueSource());
+```
+
+- **A section builds keys.** `Section.Define("Port", …)` and `Section.Indexed(…)` give plain definitions with the absolute key, `Server:Port`. A definition is still identified by its key, so `snapshot.Get`, diagnostics, documentation, contract files and comparisons don't change.
+- **Named `SectionDefinition`**, not `ConfigurationSection`, which would clash with Microsoft's class in files that use both namespaces.
+- **Sections nest.** `Database.Section("Primary")` is `Database:Primary`.
+- **The helper is a convention, not a rule.** A definition written as `Define("Server:Port", …)` is in the `Server` section too: the contract finds a section's definitions by key, not by how they were declared.
+- **`contract.GetSection(key)` is a view, relative to the section.** It reads from a source rooted at the section, e.g. `configuration.GetSection("Server").AsValueSource()`, and only the definitions under the key. Diagnostics and `snapshot.Get` keep the absolute keys. A section without definitions is empty, like in `IConfiguration`.
+- **Owned sections are opt-in.** Registering a `SectionDefinition` declares that the application owns it, so it is checked for unknown keys on every read, like `ReadOptions.CheckedSections`. Defining keys in a section doesn't make it owned: a section can be shared, e.g. `Logging`. `CheckedSections` stays for checks per read.
+- **Not yet:** reading a section on reload, `snapshot.GetSection`, and documentation per section.
+
 ### Sources
 
 The core depends on a minimal `IValueSource`, not on `IConfiguration`:
