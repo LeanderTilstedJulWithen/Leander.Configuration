@@ -5,4 +5,6 @@ ReadingIConfiguration.Run();
 
 ScopedSnapshots.Run();
 
+Reloading.Run();
+
 return await HostRegistration.RunAsync(args);

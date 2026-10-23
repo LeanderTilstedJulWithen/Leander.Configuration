@@ -5,6 +5,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+#### Leander.Configuration.MicrosoftExtensions
+- Reloading: `ConfigurationContractOptions.ReloadOnChange` (off by default) reads the contract again whenever `IConfiguration` reloads. `IOptionsMonitor<T>` and `IOptionsSnapshot<T>` of options from `AddOptionsFrom` then follow the configuration, instead of throwing. Every `IOptionsSnapshot<T>` in a scope comes from the same read, and each options type is built at most once per snapshot. Only unnamed options are supported.
+- `ConfigurationSnapshotMonitor`, registered by `AddConfigurationContract`: `Current`, `OnChange` and `OnReloadFailed`. A reload is all or nothing: an invalid configuration keeps the last valid snapshot and goes to `OnReloadFailed`, with every error. A reload that changes no value in the contract gives no new snapshot.
+
+### Changed
+
+#### Leander.Configuration.MicrosoftExtensions
+- Without `ReloadOnChange`, resolving `IOptionsMonitor<T>` or `IOptionsSnapshot<T>` still throws, and the message now points to `ReloadOnChange`. `ConfigurationSnapshot` and `IOptions<T>` keep the snapshot read at startup either way.
+
 ## [1.0.1] - 2026-10-06
 
 ### Fixed

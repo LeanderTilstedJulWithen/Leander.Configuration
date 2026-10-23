@@ -1,3 +1,4 @@
+using Leander.Configuration.MicrosoftExtensions.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -11,8 +12,8 @@ namespace Leander.Configuration.MicrosoftExtensions;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers <paramref name="contract"/> and its snapshot as singletons. The snapshot is read from the container's
-    /// <see cref="IConfiguration"/> with <see cref="ConfigurationContractOptions.ReadOptions"/>.
+    /// Registers <paramref name="contract"/>, its snapshot and a <see cref="ConfigurationSnapshotMonitor"/> as singletons.
+    /// The snapshot is read from the container's <see cref="IConfiguration"/> with <see cref="ConfigurationContractOptions.ReadOptions"/>.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -21,7 +22,9 @@ public static class ServiceCollectionExtensions
     /// which lists every error. Otherwise, or without a host, it is read on the first resolve.
     /// </para>
     /// <para>
-    /// The snapshot is read once and never reloaded.
+    /// The <see cref="ConfigurationSnapshot"/> service is the snapshot read at startup, and never changes. With
+    /// <see cref="ConfigurationContractOptions.ReloadOnChange"/>, <see cref="ConfigurationSnapshotMonitor.Current"/> follows
+    /// the configuration.
     /// </para>
     /// </remarks>
     public static IServiceCollection AddConfigurationContract(
@@ -30,11 +33,12 @@ public static class ServiceCollectionExtensions
         ConfigurationContractOptions? options = null)
     {
         options ??= ConfigurationContractOptions.Default;
-        var readOptions = options.ReadOptions;
 
         services.AddSingleton(contract);
         services.AddSingleton(provider =>
-            contract.Read(provider.GetRequiredService<IConfiguration>().AsValueSource(), readOptions));
+            new ConfigurationSnapshotMonitor(contract, provider.GetRequiredService<IConfiguration>(), options));
+        services.AddSingleton(provider => provider.GetRequiredService<ConfigurationSnapshotMonitor>().Startup);
+        services.TryAddScoped<ScopeSnapshot>();
 
         // Configuring StartupRead resolves the snapshot, which reads it. Through ValidateOnStart rather than our own
         // IStartupValidator: the host resolves only one, so ours would replace or be replaced by everyone else's.
@@ -49,7 +53,9 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Exposes <typeparamref name="T"/> as <see cref="IOptions{TOptions}"/>, built once from the snapshot by <paramref name="create"/>.
+    /// Exposes <typeparamref name="T"/> as <see cref="IOptions{TOptions}"/>, built from the snapshot by <paramref name="create"/>,
+    /// and with <see cref="ConfigurationContractOptions.ReloadOnChange"/>, as <see cref="IOptionsMonitor{TOptions}"/> and
+    /// <see cref="IOptionsSnapshot{TOptions}"/> too.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -57,7 +63,13 @@ public static class ServiceCollectionExtensions
     /// The snapshot is already validated, so <c>ValidateOnStart()</c> is unnecessary.
     /// </para>
     /// <para>
-    /// The snapshot never reloads, so resolving <see cref="IOptionsSnapshot{TOptions}"/> or
+    /// <typeparamref name="T"/> is built at most once per snapshot. <see cref="IOptions{TOptions}"/> is built from the snapshot
+    /// read at startup, <see cref="IOptionsMonitor{TOptions}"/> from <see cref="ConfigurationSnapshotMonitor.Current"/>, and
+    /// <see cref="IOptionsSnapshot{TOptions}"/> from the snapshot that was current when the scope first asked for options,
+    /// so every options type in a scope comes from the same read. Only unnamed options are supported.
+    /// </para>
+    /// <para>
+    /// Without <see cref="ConfigurationContractOptions.ReloadOnChange"/>, resolving <see cref="IOptionsSnapshot{TOptions}"/> or
     /// <see cref="IOptionsMonitor{TOptions}"/> of <typeparamref name="T"/> throws <see cref="InvalidOperationException"/>,
     /// instead of quietly returning values that never change. Your own registrations of them take precedence.
     /// </para>
@@ -67,19 +79,31 @@ public static class ServiceCollectionExtensions
         Func<ConfigurationSnapshot, T> create)
         where T : class
     {
+        services.AddSingleton(new SnapshotOptions<T>(create));
         services.AddSingleton<IOptions<T>>(provider =>
-            Options.Create(create(provider.GetRequiredService<ConfigurationSnapshot>())));
+            Options.Create(provider.GetRequiredService<SnapshotOptions<T>>().Get(provider.GetRequiredService<ConfigurationSnapshot>())));
 
         // Without these, the host's open generic registrations would create T with its default factory: unbound, or failing.
-        // TryAdd, so an application that provides them itself, e.g. from a snapshot it reloads, keeps its own.
-        services.TryAddScoped<IOptionsSnapshot<T>>(_ => throw NotReloading<T>("IOptionsSnapshot"));
-        services.TryAddSingleton<IOptionsMonitor<T>>(_ => throw NotReloading<T>("IOptionsMonitor"));
+        // TryAdd, so an application that provides them itself keeps its own.
+        services.TryAddScoped<IOptionsSnapshot<T>>(provider =>
+            new ScopedOptionsSnapshot<T>(
+                Reloading<T>(provider, "IOptionsSnapshot").GetRequiredService<ScopeSnapshot>(),
+                provider.GetRequiredService<SnapshotOptions<T>>()));
+        services.TryAddSingleton<IOptionsMonitor<T>>(provider =>
+            new ReloadingOptionsMonitor<T>(
+                Reloading<T>(provider, "IOptionsMonitor").GetRequiredService<ConfigurationSnapshotMonitor>(),
+                provider.GetRequiredService<SnapshotOptions<T>>()));
         return services;
     }
 
-    private static InvalidOperationException NotReloading<T>(string service) =>
-        new($"{service}<{typeof(T).Name}> is not supported: {typeof(T).Name} is built once from a configuration snapshot " +
-            $"that never reloads. Use IOptions<{typeof(T).Name}>.");
+    // The provider, once it is known that the contract reloads.
+    private static IServiceProvider Reloading<T>(IServiceProvider provider, string service) =>
+        provider.GetRequiredService<ConfigurationSnapshotMonitor>().ReloadsOnChange
+            ? provider
+            : throw new InvalidOperationException(
+                $"{service}<{typeof(T).Name}> is not supported: {typeof(T).Name} is built from a configuration snapshot that " +
+                $"never reloads. Use IOptions<{typeof(T).Name}>, or turn on {nameof(ConfigurationContractOptions)}." +
+                $"{nameof(ConfigurationContractOptions.ReloadOnChange)}.");
 
     // Options with nothing in them: only there to resolve the snapshot at start.
     private sealed class StartupRead;

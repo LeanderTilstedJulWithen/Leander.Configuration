@@ -160,7 +160,7 @@ public class ServiceCollectionExtensionsTests
             scope.ServiceProvider.GetRequiredService<IOptionsSnapshot<ServerOptions>>());
 
         Assert.StartsWith("IOptionsSnapshot<ServerOptions> is not supported", exception.Message);
-        Assert.EndsWith("Use IOptions<ServerOptions>.", exception.Message);
+        Assert.EndsWith("Use IOptions<ServerOptions>, or turn on ConfigurationContractOptions.ReloadOnChange.", exception.Message);
     }
 
     [Fact]

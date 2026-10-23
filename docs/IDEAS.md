@@ -364,7 +364,7 @@ Notes:
 - Open: whether keys stay absolute (`Server:Port`) or become relative to the section, like `IConfiguration`. Definitions are identified by their absolute key, so relative keys would be a view, not new definitions.
 - Open: what a section's snapshot is. A smaller `ConfigurationSnapshot` whose `Get` throws for definitions outside the section, or the same snapshot type with a filtered contract.
 - `ReadOptions.CheckedSections` already names sections, for unknown keys. The two should use the same notion of a section.
-- Verdict: undecided. Revisit with reloading.
+- Verdict: undecided, and not needed for reloading (see DESIGN.md, Reload): unchanged values give no new snapshot, and a reload is all or nothing on purpose. If per-type change notifications turn out to matter, a section on `AddOptionsFrom` (rebuild `T` only when a key under it changed) is the place, sharing the notion of a section with `CheckedSections`.
 
 ### Meta configuration: configuration that configures configuration
 

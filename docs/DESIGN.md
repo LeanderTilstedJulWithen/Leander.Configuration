@@ -39,9 +39,21 @@ We **replace `.Bind()`**. The binder decides how strings are converted to object
 | DI container, hosting               | Diagnostics and the fail-fast report               |
 |                                     | Construction of options objects                    |
 
-`AddConfigurationContract(contract, options)` follows DI conventions: registration never reads or throws. The snapshot is a singleton, read from the container's `IConfiguration` on first resolve. `ConfigurationContractOptions` holds the `ReadOptions` and `ValidateOnStart` (on by default), which makes the host resolve the snapshot in `StartAsync`, so an invalid configuration stops the host before anything runs. It goes through `ValidateOnStart()` on an internal options type, not an own `IStartupValidator`: the host resolves only one, so ours would replace everyone else's or be replaced. `ValidateOnStart` can be turned off, e.g. for a host built only to write documentation. Singleton is our default, not a rule: a lifetime setting belongs in `ConfigurationContractOptions` once reloading is designed.
+`AddConfigurationContract(contract, options)` follows DI conventions: registration never reads or throws. The snapshot is a singleton, read from the container's `IConfiguration` on first resolve. `ConfigurationContractOptions` holds the `ReadOptions` and `ValidateOnStart` (on by default), which makes the host resolve the snapshot in `StartAsync`, so an invalid configuration stops the host before anything runs. It goes through `ValidateOnStart()` on an internal options type, not an own `IStartupValidator`: the host resolves only one, so ours would replace everyone else's or be replaced. `ValidateOnStart` can be turned off, e.g. for a host built only to write documentation. Singleton is our default, not a rule: an application can register a scoped snapshot of its own. Reloading needs no lifetime setting (see Reload).
 
-Options objects can still be exposed as `IOptions<T>`: `AddOptionsFrom` builds them once from the snapshot. Consumers will not notice the difference. The snapshot never reloads, so `IOptionsSnapshot<T>` and `IOptionsMonitor<T>` of that `T` throw on resolve instead of quietly returning values that never change. They are registered with `TryAdd`, so an application that provides them itself keeps its own. Because reading and validating happen together, `ValidateOnStart()` is unnecessary.
+Options objects can still be exposed as `IOptions<T>`: `AddOptionsFrom` builds them from the snapshot. Consumers will not notice the difference. With `ReloadOnChange` they are also `IOptionsMonitor<T>` and `IOptionsSnapshot<T>` (see Reload). Without it the snapshot never reloads, so those throw on resolve instead of quietly returning values that never change. They are registered with `TryAdd`, so an application that provides them itself keeps its own. Because reading and validating happen together, `ValidateOnStart()` is unnecessary.
+
+### Reload
+
+`ConfigurationContractOptions.ReloadOnChange` (off by default) reads the contract again whenever the container's `IConfiguration` reloads. `ConfigurationSnapshotMonitor` holds the current snapshot: `Current`, `OnChange` and `OnReloadFailed`.
+
+- **A reload is all or nothing.** A new snapshot becomes current only when the whole contract reads without errors. An invalid reload keeps the last valid snapshot, and options built from it stay as they are. A partial reload would run the application on a configuration that was never valid as a whole. It is also what the `DependsOn` idea relies on (IDEAS.md).
+- **Failures go to `OnReloadFailed`**, with the same `InvalidConfigurationException` startup throws. No logging dependency: an application that wants a log line subscribes once. A later valid reload simply becomes current.
+- **Only real changes count.** A re-read whose values equal the current snapshot's (collections item by item, the rest by `Equals`) keeps the current snapshot, and nothing fires. That covers changes outside the contract (`Logging`, unrelated environment variables) and the double event editors cause on save. Diagnostics alone don't count. Values that can't be compared, e.g. a dictionary of lists, count as changed, which is the safe side.
+- **`ConfigurationSnapshot` stays the startup snapshot**, the monitor's first read, like `IOptions<T>`. A singleton that captured either in its constructor stays correct, and the startup read is still the only read at startup.
+- **Options of one snapshot come from one read.** `T` is built at most once per snapshot and shared by `IOptions<T>`, `IOptionsMonitor<T>` and `IOptionsSnapshot<T>`. A scope captures the current snapshot the first time it asks, so every `IOptionsSnapshot<T>` in the scope, of any `T`, comes from the same read. `IOptionsMonitor<T>.CurrentValue` is built from `Current` at the moment of the call; for consistency across types, take `Current` once.
+- **Unnamed options only.** `Get(name)` throws for a name other than `Options.DefaultName`, instead of quietly returning the unnamed value.
+- **Sections aren't needed.** Comparing values already keeps a change under `Logging` from rebuilding anything, and all or nothing rules out reloading one section while another is invalid (see IDEAS.md, Reading a section of the contract).
 
 ## Project layout
 
@@ -617,12 +629,11 @@ Admin:Contact: added
 
 - **Defaults.** Typed vs string defaults.
 - **Collections.** Dictionaries.
-- **Reload.** `IOptionsSnapshot<T>` and `IOptionsMonitor<T>` support. 1.0 reads once at startup. Open: what an invalid reload does (keep the last valid snapshot, and how anyone finds out without a logging dependency), whether the `ConfigurationSnapshot` singleton stays the startup snapshot or gets a holder of its own, and that options types built from one snapshot come from the same read.
 
 ## Milestones
 
 1. **Core.** Done: definitions, source abstraction, reader, pipeline, diagnostics, exception with report.
 2. **Primitives.** Done: parsing, normalization, validation, explicit primitives with deriving and ready-made primitives, contract builder.
-3. **Microsoft adapter.** Done: `IConfiguration` source, DI and `IOptions<T>` registration.
+3. **Microsoft adapter.** Done: `IConfiguration` source, DI and `IOptions<T>` registration, and reloading (1.1.0).
 4. **Documentation.** Done: sensitive values, contract descriptor, Markdown documentation, contract file, example configuration, comparing contracts.
 5. **Generator.** Options construction code. After 1.0.0, with or after the opt-in registration planned for 1.1.0 (see TODO.md); no tooling before 1.0.0.
