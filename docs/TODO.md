@@ -90,7 +90,9 @@ What stands between the current code and a release. The code is feature-complete
 ## 1.1.0
 Planned after 1.0.0, not before.
 
-- [ ] Opt-in registration through attributes and reflection, to be replaced by a source generator later. Explicit registration stays the default. Don't assume definitions are public static members: applications may declare them differently.
+- [x] Opt-in registration through attributes and reflection, to be replaced by a source generator later. Explicit registration stays the default. Don't assume definitions are public static members: applications may declare them differently. `[RegisterConfiguration]` and `RegisterFrom(Assembly)` / `RegisterFrom(Type)` (see DESIGN.md, Registration through attributes).
+- [x] Options from the snapshot with a source generator: `Leander.Configuration.Generators`, `[GeneratedOptions]` on a `static partial` method, `[FromDefinition]` on each constructor parameter and property (see DESIGN.md, Options objects).
+- [ ] Registration through the source generator instead of reflection, for trimming and AOT: the same `[RegisterConfiguration]`, found at compile time.
 - [ ] Reloading: `IOptionsSnapshot<T>` and `IOptionsMonitor<T>` from a snapshot read again on `IConfiguration` reload. Design first (see DESIGN.md, Open questions, Reload). Related: reading a section of the contract (see IDEAS.md).
 
 ## Later

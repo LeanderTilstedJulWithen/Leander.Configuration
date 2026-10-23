@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+#### Leander.Configuration
+- Opt-in registration through attributes: `[RegisterConfiguration]` on a type registers every static field and property of a definition type in it, of any accessibility; on a static field, property or parameterless method, just that member, whose value may also be an `IEnumerable<ConfigurationDefinition>`. `ConfigurationContractBuilder.RegisterFrom(Assembly)` and `RegisterFrom(Type)` find them through reflection. A definition that is already registered is skipped, so explicit and attribute registration can be mixed. Members that can't be read, aren't definitions or are null, and a type or assembly without the attribute, are reported by `Build()` with the other failures.
+- `[GeneratedOptions]` and `[FromDefinition]`, the attributes for the options generator.
+
+#### Leander.Configuration.Generators
+- New package: a source generator that writes the body of a `static partial` method marked with `[GeneratedOptions]`, which builds an options type from a `ConfigurationSnapshot`. Constructor parameters (e.g. of a positional record) and settable or init-only properties marked with `[FromDefinition(nameof(...))]` are read with `snapshot.Get(...)`, and nothing else. Diagnostics `LCFG001`–`LCFG011` report an invalid method, a missing, inaccessible or mistyped definition, an unmarked constructor parameter, and an optional definition for a non-nullable member.
+
 ## [1.0.1] - 2026-10-06
 
 ### Fixed

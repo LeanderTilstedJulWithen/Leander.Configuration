@@ -1,6 +1,6 @@
 # Leander.Configuration — Design Overview
 
-Status: draft. Leander.Primitives, Leander.Configuration, Leander.Configuration.MicrosoftExtensions and Leander.Configuration.Tooling are implemented and tested. This document records the decisions made so far and the questions still open.
+Status: draft. Leander.Primitives, Leander.Configuration, Leander.Configuration.MicrosoftExtensions, Leander.Configuration.Tooling and Leander.Configuration.Generators are implemented and tested. This document records the decisions made so far and the questions still open.
 
 ## Purpose
 
@@ -56,8 +56,8 @@ src/
                                       (not .Microsoft: that namespace would shadow Microsoft.Extensions.* inside it)
   Leander.Configuration.Tooling       renders a contract descriptor: documentation, contract file, example configuration
                                       depends on Leander.Configuration
-later:
   Leander.Configuration.Generators    source generator for options construction code
+                                      netstandard2.0, an analyzer only; its attributes are in Leander.Configuration
 ```
 
 - **One package per project, with namespaces as separators.** Leander.Primitives has `Leander.Primitives`, `.Parsing`, `.Normalization` and `.Validation`. It can be extracted to its own repository later if needed.
@@ -324,8 +324,35 @@ var contract = new ConfigurationContractBuilder()
 
 - **`Build()` checks, it doesn't resolve.** Primitives are complete, so there is nothing to look up.
 - **Primitive names are unique per type.** Two different primitive instances with the same type and name in one contract are an error, e.g. an application's own `new("Int32", …)` next to `Primitive.Int32`. The same name on different types is fine: a "Utc" primitive for both `DateTime` and `DateTimeOffset`. The check covers the element primitives of lists and the bases of derived primitives.
-- **Failures.** Build throws one exception listing every failure: duplicate keys, then primitive name clashes, then per definition: invalid presence (see Defaults and presence).
+- **Failures.** Build throws one exception listing every failure: definitions `RegisterFrom` couldn't read (see Registration through attributes), duplicate keys, then primitive name clashes, then per definition: invalid presence (see Defaults and presence).
 - **`ConfigurationContract`** is the complete list of definitions, which is also what tooling will enumerate.
+
+### Registration through attributes
+
+Listing every definition with `Register` is the default. An application can opt in to marking them instead:
+
+```csharp
+[RegisterConfiguration]                       // every static definition in the type, of any accessibility
+public static class ServerConfiguration { … }
+
+public sealed partial class DatabaseOptions
+{
+    [RegisterConfiguration]                   // just this member
+    private static readonly ConfigurationDefinition<string> ConnectionString = …;
+}
+
+var contract = new ConfigurationContractBuilder()
+    .RegisterFrom(typeof(Program).Assembly)   // or RegisterFrom(typeof(ServerConfiguration))
+    .Build();
+```
+
+- **Opt-in and visible.** Nothing is registered without the attribute, and the reflection is in a method named for it: `RegisterFrom`. `RegisterFrom(Assembly)` is marked `[RequiresUnreferencedCode]`; `RegisterFrom(Type)` annotates its argument, so it works with trimming.
+- **No assumption about how definitions are declared.** Any accessibility, fields or properties, static classes or the options type itself. On a member, also a parameterless method, and a value that is an `IEnumerable<ConfigurationDefinition>`, for definitions built in a loop or kept in a list. On a type, only fields and properties whose type is a definition, so a helper method isn't called by surprise. Instance members can't be read without an instance, so marking one is a failure.
+- **One attribute, on a type or a member.** Not one per target: the meaning is the same, "register what's here".
+- **Deterministic order.** Registration order is the order of the documentation, so it can't depend on reflection's whims: types by full name, and in a type fields, then properties, then methods, each in declaration order.
+- **Mixing is allowed.** A definition already registered, e.g. explicitly or through a property returning a field, is skipped. A different definition with the same key is still a duplicate.
+- **Nothing throws while registering.** Reading a member runs its type's static initializer. Its exceptions, a null or a value that isn't a definition, an open generic type, and a type or assembly without any attribute are collected and reported by `Build()`, first among its failures. Builders never throw (see Configuration definitions), and every problem is reported at once.
+- **Later: the source generator.** It can find the same attributes at compile time and emit the `Register` calls, without reflection (see TODO.md).
 
 ### Sources
 
@@ -416,7 +443,27 @@ new DatabaseOptions
 };
 ```
 
-This is handwritten at first. A source generator may later emit exactly this code. It generates explicit construction, never convention-based mapping, and never invents application types.
+Handwritten is the default. Leander.Configuration.Generators can write exactly this code instead. It generates explicit construction, never convention-based mapping, and never invents application types:
+
+```csharp
+public sealed partial class DatabaseOptions
+{
+    [FromDefinition(nameof(DatabaseConfiguration.CommandTimeout))]
+    public required int CommandTimeout { get; init; }
+
+    [FromDefinition(nameof(DatabaseConfiguration.AdminEmail))]
+    public required string AdminEmail { get; init; }
+
+    [GeneratedOptions(typeof(DatabaseConfiguration))]
+    public static partial DatabaseOptions FromSnapshot(ConfigurationSnapshot snapshot);   // the code above
+}
+```
+
+- **A partial method, like `[GeneratedRegex]`.** The application declares the method, so its name, accessibility and place are its own, and the generated member is visible in its source. It is `static partial`, takes one `ConfigurationSnapshot` and returns the options type, so it fits `AddOptionsFrom(DatabaseOptions.FromSnapshot)`. It doesn't have to be on the options type.
+- **Every member names its definition.** `[FromDefinition(nameof(…))]` on a constructor parameter or property; `nameof` makes a renamed definition a compile error. Nothing is matched by name, and an unmarked property is left alone. The definitions are looked up in the type given to `[GeneratedOptions]`, in the type that declares the method when none is given (so private definitions on the options type work), or in the type given to `[FromDefinition(typeof(…), …)]`.
+- **Construction is the type's own.** The constructor whose parameters are marked, e.g. a positional record's, gets every argument, and all its parameters must be marked. Without one, the parameterless constructor is used. Then marked properties with `set` or `init` go in an object initializer, `required` ones included.
+- **Mistakes are compile errors at the attribute**, not errors in generated code: a missing, inaccessible or non-definition member, a type that can't be assigned, an unmarked parameter, a read-only property. An optional reference definition (`string?`) for a non-nullable member is a warning; suppressing it accepts the null.
+- **Attributes in Leander.Configuration, the generator in its own package.** The attributes are plain metadata and cost nothing at runtime; the generator is an analyzer, so it's a separate, development-only package.
 
 ## Documentation and contract files
 
@@ -625,4 +672,4 @@ Admin:Contact: added
 2. **Primitives.** Done: parsing, normalization, validation, explicit primitives with deriving and ready-made primitives, contract builder.
 3. **Microsoft adapter.** Done: `IConfiguration` source, DI and `IOptions<T>` registration.
 4. **Documentation.** Done: sensitive values, contract descriptor, Markdown documentation, contract file, example configuration, comparing contracts.
-5. **Generator.** Options construction code. After 1.0.0, with or after the opt-in registration planned for 1.1.0 (see TODO.md); no tooling before 1.0.0.
+5. **Generator.** Done: opt-in registration through attributes (reflection), and options construction code from a source generator. Next: registration through the generator instead of reflection.

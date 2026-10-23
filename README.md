@@ -6,6 +6,7 @@
 - **Leander.Configuration** describes configuration keys and reads them into a validated snapshot.
 - **Leander.Configuration.MicrosoftExtensions** reads an `IConfiguration` as a source and exposes options as `IOptions<T>`.
 - **Leander.Configuration.Tooling** renders a contract as Markdown documentation, a JSON contract file and an example configuration, and compares contracts.
+- **Leander.Configuration.Generators** is a source generator that writes the construction of options objects from a snapshot.
 
 ## Motivation
 
@@ -113,6 +114,17 @@ int port = snapshot.Get(ServerConfiguration.Port);
 string? backupEmail = snapshot.Get(ServerConfiguration.BackupEmail);
 ```
 
+Registering every definition by hand is the default. Opt in to attributes instead: `[RegisterConfiguration]` on a type registers every static definition in it, whatever its accessibility, and on a field, property or method registers just that member. `RegisterFrom` finds them through reflection, and can be mixed with `Register`. A member that can't be read is reported by `Build()` like every other problem:
+
+```csharp
+[RegisterConfiguration]
+public static class ServerConfiguration { /* Port, AllowedOrigins, ... */ }
+
+var contract = new ConfigurationContractBuilder()
+    .RegisterFrom(typeof(Program).Assembly)   // or RegisterFrom(typeof(ServerConfiguration))
+    .Build();
+```
+
 A source is anything implementing `IValueSource`. `ValueSource.FromPairs` and `ValueSource.FromDictionary` cover plain key/value data. `TryRead` returns the diagnostics instead of throwing.
 
 A misspelled key isn't wrong by itself: `Server:Prot` is ignored and `Server:Port` falls back to its default. `ReadOptions` checks the sections the application owns for keys the contract doesn't define, and can treat warnings as errors:
@@ -139,6 +151,18 @@ builder.Services
     .AddOptionsFrom(CorsOptions.FromSnapshot);                               // IOptions<CorsOptions>
 ```
 
+Leander.Configuration.Generators writes `FromSnapshot` for you. Each constructor parameter or property names its definition, and the generated code is exactly the `new ServerOptions(snapshot.Get(ServerConfiguration.Host), …)` you would write by hand. Nothing is matched by name, and a definition that doesn't exist, isn't accessible or has the wrong type is a compile error:
+
+```csharp
+public sealed partial record ServerOptions(
+    [FromDefinition(nameof(ServerConfiguration.Host))] string Host,
+    [FromDefinition(nameof(ServerConfiguration.Port))] int Port)
+{
+    [GeneratedOptions(typeof(ServerConfiguration))]
+    public static partial ServerOptions FromSnapshot(ConfigurationSnapshot snapshot);
+}
+```
+
 The snapshot is read once and never reloads, so resolving `IOptionsSnapshot<T>` or `IOptionsMonitor<T>` of an options type from `AddOptionsFrom` throws instead of quietly returning values that never change. The singleton is our default, not a rule: an application can register a scoped snapshot that reads `IConfiguration` again in every scope.
 
 ## Tooling
@@ -163,6 +187,7 @@ The example configuration is an `appsettings.json` with every key, to copy and f
 - [Leander.Primitives.Sample](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/tree/main/samples/Leander.Primitives.Sample): primitives on their own. Ready-made, custom, derived and list primitives, parsing and formatting, and a primitive wrapping another.
 - [Leander.Configuration.Sample](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/tree/main/samples/Leander.Configuration.Sample): a contract read from key/value pairs, with every problem reported and a strict read that catches a misspelled key.
 - [Leander.Configuration.MicrosoftExtensions.Sample](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/tree/main/samples/Leander.Configuration.MicrosoftExtensions.Sample): reading an `IConfiguration`, a scoped snapshot, and a host with options with and without `IOptions<T>`.
+- [Leander.Configuration.Generators.Sample](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/tree/main/samples/Leander.Configuration.Generators.Sample): definitions registered through attributes, some of them private, and options built by generated code, in a host.
 - [Leander.Configuration.Tooling.Sample](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/tree/main/samples/Leander.Configuration.Tooling.Sample): documentation, contract file and example configuration, and a comparison with the committed contract file. Its output is committed, so it can be read without running anything: [configuration.md](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/blob/main/samples/Leander.Configuration.Tooling.Sample/output/configuration.md), [configuration.contract.json](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/blob/main/samples/Leander.Configuration.Tooling.Sample/output/configuration.contract.json) and [appsettings.example.json](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/blob/main/samples/Leander.Configuration.Tooling.Sample/output/appsettings.example.json).
 
 ## Planned
@@ -170,7 +195,7 @@ The example configuration is an `appsettings.json` with every key, to copy and f
 After 1.0.0:
 
 - **Reloading:** `IOptionsSnapshot<T>` and `IOptionsMonitor<T>` from a snapshot read again when `IConfiguration` reloads.
-- **Registration without listing every definition:** opt-in, through attributes first and a source generator later. Explicit registration stays the default.
+- **Registration without reflection:** the source generator finds the definitions marked with `[RegisterConfiguration]`, so `RegisterFrom` needs no reflection and works with trimming.
 
 ## License
 
