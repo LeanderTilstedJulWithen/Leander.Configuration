@@ -4,6 +4,11 @@
     <Description>Markdown documentation, contract files, example appsettings.json and contract comparisons for Leander.Configuration contracts.</Description>
   </PropertyGroup>
 
+  <!-- JsonSerializerOptions.NewLine and RespectNullableAnnotations are new in System.Text.Json 9, so net8.0 takes the package. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <PackageReference Include="System.Text.Json" Version="10.0.11" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Leander.Configuration\Leander.Configuration.csproj" />
   </ItemGroup>

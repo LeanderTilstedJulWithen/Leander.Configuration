@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- Every package targets net8.0 as well as net10.0. On net8.0, Leander.Configuration.Tooling depends on the System.Text.Json package.
+
 ## [1.0.1] - 2026-10-06
 
 ### Fixed
