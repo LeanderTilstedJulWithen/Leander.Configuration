@@ -336,8 +336,28 @@ var contract = new ConfigurationContractBuilder()
 
 - **`Build()` checks, it doesn't resolve.** Primitives are complete, so there is nothing to look up.
 - **Primitive names are unique per type.** Two different primitive instances with the same type and name in one contract are an error, e.g. an application's own `new("Int32", …)` next to `Primitive.Int32`. The same name on different types is fine: a "Utc" primitive for both `DateTime` and `DateTimeOffset`. The check covers the element primitives of lists and the bases of derived primitives.
-- **Failures.** Build throws one exception listing every failure: duplicate keys, then primitive name clashes, then per definition: invalid presence (see Defaults and presence).
+- **Failures.** Build throws one exception listing every failure: definitions `RegisterFrom` couldn't read (see Registration through attributes), duplicate keys, then primitive name clashes, then per definition: invalid presence (see Defaults and presence).
 - **`ConfigurationContract`** is the complete list of definitions, which is also what tooling will enumerate.
+
+### Registration through attributes
+
+Listing every definition with `Register` is the default. An application can opt in to marking the type that holds them:
+
+```csharp
+[RegisterConfiguration]
+public static class ServerConfiguration { … }
+
+var contract = new ConfigurationContractBuilder()
+    .RegisterFrom(typeof(ServerConfiguration))
+    .Build();
+```
+
+- **Opt-in and visible.** Nothing is registered without the attribute, and the reflection is in a method named for it. `RegisterFrom(Type)` annotates its argument with `[DynamicallyAccessedMembers]`, so it works with trimming.
+- **No assumption about accessibility.** Every static field and property whose type is a definition is registered, public or private, in a static class, a struct or the options type itself. Methods and instance members are left alone, so nothing is called by surprise.
+- **Deterministic order.** Registration order is the order of the documentation: fields, then properties, each in declaration order.
+- **Mixing is allowed.** A definition already registered, explicitly or through a property returning a field, is skipped. A different definition with the same key is still a duplicate.
+- **Nothing throws while registering.** Reading a member runs the type's static initializer. Its exceptions, a null, an open generic type and a type without the attribute are collected and reported by `Build()`, first among its failures, like every other problem.
+- **Next steps** (see TODO.md): the attribute on single members, `RegisterFrom(Assembly)`, and the source generator.
 
 ### Sources
 

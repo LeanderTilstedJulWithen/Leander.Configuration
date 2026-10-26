@@ -7,6 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+#### Leander.Configuration
+- Opt-in registration through an attribute: `[RegisterConfiguration]` on a type, and `ConfigurationContractBuilder.RegisterFrom(Type)`, which registers every static field and property of a definition type in it, of any accessibility, found through reflection. Fields come first, then properties, each in declaration order. A definition that is already registered is skipped, so explicit and attribute registration can be mixed. A type without the attribute, an open generic type, and a member that can't be read or is null are reported by `Build()` with the other failures.
+
 #### Leander.Configuration.MicrosoftExtensions
 - Reloading: `ConfigurationContractOptions.ReloadOnChange` (off by default) reads the contract again whenever `IConfiguration` reloads. `IOptionsMonitor<T>` and `IOptionsSnapshot<T>` of options from `AddOptionsFrom` then follow the configuration, instead of throwing. Every `IOptionsSnapshot<T>` in a scope comes from the same read, and each options type is built at most once per snapshot. Only unnamed options are supported.
 - `ConfigurationSnapshotMonitor`, registered by `AddConfigurationContract`: `Current`, `OnChange` and `OnReloadFailed`. A reload is all or nothing: an invalid configuration keeps the last valid snapshot and goes to `OnReloadFailed`, with every error. A reload that changes no value in the contract gives no new snapshot.
