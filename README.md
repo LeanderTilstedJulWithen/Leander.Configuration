@@ -139,7 +139,15 @@ builder.Services
     .AddOptionsFrom(CorsOptions.FromSnapshot);                               // IOptions<CorsOptions>
 ```
 
-The snapshot is read once and never reloads, so resolving `IOptionsSnapshot<T>` or `IOptionsMonitor<T>` of an options type from `AddOptionsFrom` throws instead of quietly returning values that never change. The singleton is our default, not a rule: an application can register a scoped snapshot that reads `IConfiguration` again in every scope.
+By default the snapshot is read once and never reloads, so resolving `IOptionsSnapshot<T>` or `IOptionsMonitor<T>` of an options type from `AddOptionsFrom` throws instead of quietly returning values that never change. With `ReloadOnChange`, the contract is read again whenever `IConfiguration` reloads, and both follow the configuration:
+
+```csharp
+builder.Services
+    .AddConfigurationContract(contract, new() { ReloadOnChange = true })
+    .AddOptionsFrom(CorsOptions.FromSnapshot);   // IOptions<T> (startup values), IOptionsMonitor<T>, IOptionsSnapshot<T>
+```
+
+A reload is all or nothing: an invalid configuration keeps the last valid values, and `ConfigurationSnapshotMonitor.OnReloadFailed` gets the same exception startup would throw. A reload that changes nothing in the contract changes nothing. Every `IOptionsSnapshot<T>` in a scope comes from the same read. `ConfigurationSnapshot` and `IOptions<T>` keep the startup values; `ConfigurationSnapshotMonitor.Current` is the latest.
 
 ## Tooling
 
@@ -162,14 +170,13 @@ The example configuration is an `appsettings.json` with every key, to copy and f
 
 - [Leander.Primitives.Sample](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/tree/main/samples/Leander.Primitives.Sample): primitives on their own. Ready-made, custom, derived and list primitives, parsing and formatting, and a primitive wrapping another.
 - [Leander.Configuration.Sample](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/tree/main/samples/Leander.Configuration.Sample): a contract read from key/value pairs, with every problem reported and a strict read that catches a misspelled key.
-- [Leander.Configuration.MicrosoftExtensions.Sample](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/tree/main/samples/Leander.Configuration.MicrosoftExtensions.Sample): reading an `IConfiguration`, a scoped snapshot, and a host with options with and without `IOptions<T>`.
+- [Leander.Configuration.MicrosoftExtensions.Sample](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/tree/main/samples/Leander.Configuration.MicrosoftExtensions.Sample): reading an `IConfiguration`, a scoped snapshot, reloading, and a host with options with and without `IOptions<T>`.
 - [Leander.Configuration.Tooling.Sample](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/tree/main/samples/Leander.Configuration.Tooling.Sample): documentation, contract file and example configuration, and a comparison with the committed contract file. Its output is committed, so it can be read without running anything: [configuration.md](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/blob/main/samples/Leander.Configuration.Tooling.Sample/output/configuration.md), [configuration.contract.json](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/blob/main/samples/Leander.Configuration.Tooling.Sample/output/configuration.contract.json) and [appsettings.example.json](https://github.com/LeanderTilstedJulWithen/Leander.Configuration/blob/main/samples/Leander.Configuration.Tooling.Sample/output/appsettings.example.json).
 
 ## Planned
 
 After 1.0.0:
 
-- **Reloading:** `IOptionsSnapshot<T>` and `IOptionsMonitor<T>` from a snapshot read again when `IConfiguration` reloads.
 - **Registration without listing every definition:** opt-in, through attributes first and a source generator later. Explicit registration stays the default.
 
 ## License

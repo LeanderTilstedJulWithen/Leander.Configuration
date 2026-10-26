@@ -1,3 +1,5 @@
+using System.Collections;
+
 namespace Leander.Configuration;
 
 /// <summary>
@@ -39,4 +41,32 @@ public sealed class ConfigurationSnapshot
         _values.TryGetValue(definition, out var value)
             ? (T)value!
             : throw new ArgumentException($"{definition.Key}: definition is not part of the configuration contract.", nameof(definition));
+
+    // Whether other was read with the same contract and holds equal values: collections item by item, the rest by Equals.
+    // Diagnostics don't count. Values that can't be compared, e.g. dictionaries of lists, count as different.
+    internal bool HasSameValues(ConfigurationSnapshot other) =>
+        ReferenceEquals(Contract, other.Contract)
+        && Contract.Definitions.All(definition => ValueEquals(_values[definition], other._values[definition]));
+
+    private static bool ItemsEqual(IEnumerable left, IEnumerable right)
+    {
+        var rightItems = right.GetEnumerator();
+
+        foreach (var item in left)
+        {
+            if (!rightItems.MoveNext() || !ValueEquals(item, rightItems.Current))
+            {
+                return false;
+            }
+        }
+
+        return !rightItems.MoveNext();
+    }
+
+    private static bool ValueEquals(object? left, object? right) => (left, right) switch
+    {
+        (string, _) or (_, string) => Equals(left, right),
+        (IEnumerable leftItems, IEnumerable rightItems) => ItemsEqual(leftItems, rightItems),
+        _ => Equals(left, right),
+    };
 }

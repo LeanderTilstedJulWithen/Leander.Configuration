@@ -91,7 +91,7 @@ What stands between the current code and a release. The code is feature-complete
 Planned after 1.0.0, not before.
 
 - [ ] Opt-in registration through attributes and reflection, to be replaced by a source generator later. Explicit registration stays the default. Don't assume definitions are public static members: applications may declare them differently.
-- [ ] Reloading: `IOptionsSnapshot<T>` and `IOptionsMonitor<T>` from a snapshot read again on `IConfiguration` reload. Design first (see DESIGN.md, Open questions, Reload). Related: reading a section of the contract (see IDEAS.md).
+- [x] Reloading: `IOptionsSnapshot<T>` and `IOptionsMonitor<T>` from a snapshot read again on `IConfiguration` reload, opt-in with `ReloadOnChange` (see DESIGN.md, Reload). Reading a section of the contract stays undecided (see IDEAS.md).
 
 ## Later
 - [x] `IConfiguration` adapter: implement `IValueSource` directly (`GetSection(key).Value`, `GetChildren()`).

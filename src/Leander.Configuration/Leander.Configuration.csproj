@@ -5,6 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Leander.Configuration.MicrosoftExtensions" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Leander.Primitives\Leander.Primitives.csproj" />
   </ItemGroup>
 
