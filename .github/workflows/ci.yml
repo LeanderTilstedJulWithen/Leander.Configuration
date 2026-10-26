@@ -25,3 +25,11 @@ jobs:
 
       - name: Test
         run: dotnet test --no-build --configuration Release
+
+      # The Tooling sample's output is committed. Regenerate it and fail when it changed,
+      # so documentation, contract file and example configuration never drift from the code.
+      - name: Tooling sample output is up to date
+        run: |
+          dotnet run --project samples/Leander.Configuration.Tooling.Sample --no-build --configuration Release
+          git add --intent-to-add samples/Leander.Configuration.Tooling.Sample/output
+          git diff --exit-code -- samples/Leander.Configuration.Tooling.Sample/output
