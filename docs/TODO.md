@@ -92,7 +92,7 @@ Planned after 1.0.0, not before.
 
 - [ ] Opt-in registration through attributes and reflection, to be replaced by a source generator later. Explicit registration stays the default. Don't assume definitions are public static members: applications may declare them differently. In small steps (see DESIGN.md, Registration through attributes):
   - [x] `[RegisterConfiguration]` on a type and `RegisterFrom(Type)`: every static field and property of a definition type, of any accessibility.
-  - [ ] `[RegisterConfiguration]` on a single field, property or parameterless method, whose value may also be an `IEnumerable<ConfigurationDefinition>`.
+  - [x] `[RegisterConfiguration]` on a single field, property or parameterless method, whose value may also be an `IEnumerable<ConfigurationDefinition>`.
   - [ ] `RegisterFrom(Assembly)`: every marked type in an assembly, in order of full name.
   - [ ] Options from the snapshot with a source generator: `Leander.Configuration.Generators`, `[GeneratedOptions]` on a `static partial` method, `[FromDefinition]` on each constructor parameter and property, with a sample.
   - [ ] Registration through the source generator instead of reflection.

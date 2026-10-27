@@ -341,11 +341,17 @@ var contract = new ConfigurationContractBuilder()
 
 ### Registration through attributes
 
-Listing every definition with `Register` is the default. An application can opt in to marking the type that holds them:
+Listing every definition with `Register` is the default. An application can opt in to marking the type that holds them, or single members:
 
 ```csharp
-[RegisterConfiguration]
+[RegisterConfiguration]                       // every static definition in the type, of any accessibility
 public static class ServerConfiguration { … }
+
+public sealed class DatabaseOptions
+{
+    [RegisterConfiguration]                   // just this member
+    private static readonly ConfigurationDefinition<string> ConnectionString = …;
+}
 
 var contract = new ConfigurationContractBuilder()
     .RegisterFrom(typeof(ServerConfiguration))
@@ -353,11 +359,12 @@ var contract = new ConfigurationContractBuilder()
 ```
 
 - **Opt-in and visible.** Nothing is registered without the attribute, and the reflection is in a method named for it. `RegisterFrom(Type)` annotates its argument with `[DynamicallyAccessedMembers]`, so it works with trimming.
-- **No assumption about accessibility.** Every static field and property whose type is a definition is registered, public or private, in a static class, a struct or the options type itself. Methods and instance members are left alone, so nothing is called by surprise.
-- **Deterministic order.** Registration order is the order of the documentation: fields, then properties, each in declaration order.
+- **No assumption about how definitions are declared.** On a type, every static field and property whose type is a definition is registered, public or private, in a static class, a struct or the options type itself. Methods and instance members are left alone there, so nothing is called by surprise.
+- **One attribute, on a type or a member.** On a member it means the same thing, "register what's here", for a static field, property or parameterless method of any accessibility. Its value may be an `IEnumerable<ConfigurationDefinition>`, for definitions built in a loop or kept in a list. Instance members can't be read without an instance, so marking one is a failure, like a method with parameters.
+- **Deterministic order.** Registration order is the order of the documentation: fields, then properties, then methods, each in declaration order.
 - **Mixing is allowed.** A definition already registered, explicitly or through a property returning a field, is skipped. A different definition with the same key is still a duplicate.
-- **Nothing throws while registering.** Reading a member runs the type's static initializer. Its exceptions, a null, an open generic type and a type without the attribute are collected and reported by `Build()`, first among its failures, like every other problem.
-- **Next steps** (see TODO.md): the attribute on single members, `RegisterFrom(Assembly)`, and the source generator.
+- **Nothing throws while registering.** Reading a member runs the type's static initializer. Its exceptions, a null, a value that isn't a definition, an open generic type and a type without any attribute are collected and reported by `Build()`, first among its failures, like every other problem.
+- **Next steps** (see TODO.md): `RegisterFrom(Assembly)`, and the source generator.
 
 ### Sources
 

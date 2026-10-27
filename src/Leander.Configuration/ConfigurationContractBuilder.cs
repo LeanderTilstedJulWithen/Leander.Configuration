@@ -54,17 +54,18 @@ public sealed class ConfigurationContractBuilder
     }
 
     /// <summary>
-    /// Adds every definition in <paramref name="type"/>, which is marked with <see cref="RegisterConfigurationAttribute"/>:
-    /// its static fields and properties whose type is a <see cref="ConfigurationDefinition"/>, of any accessibility, found through reflection.
+    /// Adds the definitions in <paramref name="type"/> marked with <see cref="RegisterConfigurationAttribute"/>, found through reflection:
+    /// when the type is marked, its static fields and properties whose type is a <see cref="ConfigurationDefinition"/>, of any accessibility;
+    /// and every marked static field, property or parameterless method, whose value may also be an <see cref="IEnumerable{T}"/> of definitions.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Fields come first, then properties, each in declaration order. A definition that is already registered is skipped,
-    /// so explicit and attribute registration can be mixed.
+    /// Fields come first, then properties, then methods, each in declaration order. A definition that is already registered is skipped,
+    /// so explicit and attribute registration can be mixed. Nested types are not searched.
     /// </para>
     /// <para>
-    /// Reading a member runs the type's static initializer. Nothing throws here: a type without the attribute, an open generic type,
-    /// and a member that can't be read or is null are reported by <see cref="Build"/>.
+    /// Reading a member runs the type's static initializer. Nothing throws here: a type without any attribute, an open generic type,
+    /// and a member that can't be read, isn't static, is null or isn't a definition are reported by <see cref="Build"/>.
     /// </para>
     /// </remarks>
     public ConfigurationContractBuilder RegisterFrom([DynamicallyAccessedMembers(AttributeRegistration.Members)] Type type)
