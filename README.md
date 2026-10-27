@@ -113,11 +113,17 @@ int port = snapshot.Get(ServerConfiguration.Port);
 string? backupEmail = snapshot.Get(ServerConfiguration.BackupEmail);
 ```
 
-Registering every definition by hand is the default. To opt in to an attribute instead, mark the type that holds them: `RegisterFrom` registers every static definition in it, whatever its accessibility, and can be mixed with `Register`:
+Registering every definition by hand is the default. To opt in to an attribute instead, mark the type that holds them, and `RegisterFrom` registers every static definition in it, whatever its accessibility. To register only some, mark single fields, properties or methods instead; a method may return several definitions. `RegisterFrom` can be mixed with `Register`:
 
 ```csharp
 [RegisterConfiguration]
 public static class ServerConfiguration { /* Port, AllowedOrigins, ... */ }
+
+public sealed class DatabaseOptions
+{
+    [RegisterConfiguration]
+    private static readonly ConfigurationDefinition<string> ConnectionString = /* ... */;
+}
 
 var contract = new ConfigurationContractBuilder()
     .RegisterFrom(typeof(ServerConfiguration))
@@ -188,7 +194,7 @@ The example configuration is an `appsettings.json` with every key, to copy and f
 
 After 1.0.0:
 
-- **Registration without listing every definition:** `[RegisterConfiguration]` on a type is the first step. Next come marked members, whole assemblies, and a source generator for options and for registration without reflection. Explicit registration stays the default.
+- **Registration without listing every definition:** `[RegisterConfiguration]` on a type or a member is there. Next come whole assemblies, and a source generator for options and for registration without reflection. Explicit registration stays the default.
 
 ## License
 

@@ -68,7 +68,7 @@ public class RegisterFromTests
 
         var message = Assert.Throws<InvalidOperationException>(builder.Build).Message;
 
-        Assert.Contains("Leander.Configuration.Tests.RegisterFromTests.Unmarked: is not marked with RegisterConfiguration.", message);
+        Assert.Contains("Leander.Configuration.Tests.RegisterFromTests.Unmarked: neither the type nor any of its members is marked with RegisterConfiguration.", message);
     }
 
     [Fact]
@@ -100,6 +100,47 @@ public class RegisterFromTests
         Assert.Contains($"{type}.Null: is null.", message);
         Assert.Contains($"{type}.Throwing: could not be read: broken", message);
         Assert.Contains("Valid: defined more than once.", message);
+    }
+
+    // Marked members
+
+    [Fact]
+    public void RegisterFrom_MarkedMembers_RegistersOnlyThose()
+    {
+        var contract = new ConfigurationContractBuilder().RegisterFrom(typeof(MarkedMembers)).Build();
+
+        Assert.Equal(
+            ["Marked:Field", "Marked:Property", "Method:Single", "Method:First", "Method:Second"],
+            contract.Definitions.Select(d => d.Key));
+    }
+
+    [Fact]
+    public void RegisterFrom_MarkedTypeWithMarkedMethod_RegistersBoth()
+    {
+        var contract = new ConfigurationContractBuilder().RegisterFrom(typeof(MarkedTypeAndMethod)).Build();
+
+        Assert.Equal(["Field", "Method"], contract.Definitions.Select(d => d.Key));
+    }
+
+    [Fact]
+    public void RegisterFrom_InvalidMarkedMembers_ReportsEveryFailureAtBuild()
+    {
+        var builder = new ConfigurationContractBuilder()
+            .Register(ConfigurationDefinition.Define("Valid", Primitive.Int32))
+            .RegisterFrom(typeof(InvalidMarkedMembers));
+
+        var message = Assert.Throws<InvalidOperationException>(builder.Build).Message;
+
+        const string type = "Leander.Configuration.Tests.RegisterFromTests.InvalidMarkedMembers";
+        Assert.Contains($"{type}.Instance: RegisterConfiguration needs a static member.", message);
+        Assert.Contains($"{type}.Text: is a String, not a ConfigurationDefinition or IEnumerable<ConfigurationDefinition>.", message);
+        Assert.Contains($"{type}.WithNull: contains null.", message);
+        Assert.Contains($"{type}.WithParameter: RegisterConfiguration needs a field, a readable property or a parameterless, non-generic method.", message);
+        Assert.Contains($"{type}.Throwing: could not be read: broken", message);
+
+        // The valid definitions are still registered, and checked like any other.
+        Assert.Contains("Valid: defined more than once.", message);
+        Assert.DoesNotContain("AfterNull", message);
     }
 
     [Fact]
@@ -167,6 +208,64 @@ public class RegisterFromTests
         public static readonly ConfigurationDefinition<int>? Null = null;
 
         public static ConfigurationDefinition<int> Throwing => throw new InvalidOperationException("broken");
+    }
+
+    public static class MarkedMembers
+    {
+        [RegisterConfiguration]
+        public static readonly ConfigurationDefinition<int> Field = ConfigurationDefinition.Define("Marked:Field", Primitive.Int32);
+
+        public static readonly ConfigurationDefinition<int> NotMarked = ConfigurationDefinition.Define("NotMarked", Primitive.Int32);
+
+        private static readonly ConfigurationDefinition<int> PropertyValue = ConfigurationDefinition.Define("Marked:Property", Primitive.Int32);
+        private static readonly ConfigurationDefinition<int> SingleValue = ConfigurationDefinition.Define("Method:Single", Primitive.Int32);
+
+        private static readonly ConfigurationDefinition[] SeveralValues =
+        [
+            ConfigurationDefinition.Define("Method:First", Primitive.Int32),
+            ConfigurationDefinition.Define("Method:Second", Primitive.Int32),
+        ];
+
+        [RegisterConfiguration]
+        private static ConfigurationDefinition<int> Property => PropertyValue;
+
+        [RegisterConfiguration]
+        internal static ConfigurationDefinition Single() => SingleValue;
+
+        [RegisterConfiguration]
+        private static IEnumerable<ConfigurationDefinition> Several() => SeveralValues;
+    }
+
+    [RegisterConfiguration]
+    public static class MarkedTypeAndMethod
+    {
+        public static readonly ConfigurationDefinition<int> Field = ConfigurationDefinition.Define("Field", Primitive.Int32);
+
+        private static readonly ConfigurationDefinition<int> MethodValue = ConfigurationDefinition.Define("Method", Primitive.Int32);
+
+        [RegisterConfiguration]
+        public static ConfigurationDefinition<int> Method() => MethodValue;
+    }
+
+    public sealed class InvalidMarkedMembers
+    {
+        [RegisterConfiguration]
+        public static readonly ConfigurationDefinition<int> Valid = ConfigurationDefinition.Define("Valid", Primitive.Int32);
+
+        [RegisterConfiguration]
+        public static readonly string Text = "not a definition";
+
+        [RegisterConfiguration]
+        public readonly ConfigurationDefinition<int> Instance = ConfigurationDefinition.Define("Instance", Primitive.Int32);
+
+        [RegisterConfiguration]
+        public static IEnumerable<ConfigurationDefinition?> WithNull() => [null, ConfigurationDefinition.Define("AfterNull", Primitive.Int32)];
+
+        [RegisterConfiguration]
+        public static ConfigurationDefinition WithParameter(int value) => Valid;
+
+        [RegisterConfiguration]
+        public static ConfigurationDefinition Throwing() => throw new InvalidOperationException("broken");
     }
 
     [RegisterConfiguration]
