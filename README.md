@@ -113,6 +113,17 @@ int port = snapshot.Get(ServerConfiguration.Port);
 string? backupEmail = snapshot.Get(ServerConfiguration.BackupEmail);
 ```
 
+Registering every definition by hand is the default. To opt in to an attribute instead, mark the type that holds them: `RegisterFrom` registers every static definition in it, whatever its accessibility, and can be mixed with `Register`:
+
+```csharp
+[RegisterConfiguration]
+public static class ServerConfiguration { /* Port, AllowedOrigins, ... */ }
+
+var contract = new ConfigurationContractBuilder()
+    .RegisterFrom(typeof(ServerConfiguration))
+    .Build();
+```
+
 A source is anything implementing `IValueSource`. `ValueSource.FromPairs` and `ValueSource.FromDictionary` cover plain key/value data. `TryRead` returns the diagnostics instead of throwing.
 
 A misspelled key isn't wrong by itself: `Server:Prot` is ignored and `Server:Port` falls back to its default. `ReadOptions` checks the sections the application owns for keys the contract doesn't define, and can treat warnings as errors:
@@ -177,7 +188,7 @@ The example configuration is an `appsettings.json` with every key, to copy and f
 
 After 1.0.0:
 
-- **Registration without listing every definition:** opt-in, through attributes first and a source generator later. Explicit registration stays the default.
+- **Registration without listing every definition:** `[RegisterConfiguration]` on a type is the first step. Next come marked members, whole assemblies, and a source generator for options and for registration without reflection. Explicit registration stays the default.
 
 ## License
 
