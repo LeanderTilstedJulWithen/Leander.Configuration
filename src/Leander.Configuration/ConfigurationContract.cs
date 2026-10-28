@@ -13,9 +13,13 @@ public sealed class ConfigurationContract
     private readonly HashSet<ConfigurationDefinition> _definitionSet;
     private readonly ContractTypeNames _typeNames;
 
-    internal ConfigurationContract(IReadOnlyList<ConfigurationDefinition> definitions, ContractTypeNames typeNames)
+    internal ConfigurationContract(
+        IReadOnlyList<ConfigurationDefinition> definitions,
+        IReadOnlyList<SectionDefinition> ownedSections,
+        ContractTypeNames typeNames)
     {
         Definitions = definitions;
+        OwnedSections = ownedSections;
         _definitionSet = [.. definitions];
         _typeNames = typeNames;
     }
@@ -24,6 +28,12 @@ public sealed class ConfigurationContract
     /// The definitions, in the order they were registered.
     /// </summary>
     public IReadOnlyList<ConfigurationDefinition> Definitions { get; }
+
+    /// <summary>
+    /// The sections the application owns, in the order they were registered, each once.
+    /// Every read checks them for keys the contract doesn't define.
+    /// </summary>
+    public IReadOnlyList<SectionDefinition> OwnedSections { get; }
 
     /// <summary>
     /// Whether <paramref name="definition"/> is part of the contract.
@@ -55,6 +65,14 @@ public sealed class ConfigurationContract
 
         return new ContractDescriptor(definitions, context.Primitives);
     }
+
+    /// <summary>
+    /// Returns the definitions under <paramref name="key"/>, e.g. <c>Server</c>, or <c>Server:Tls</c> for a nested section.
+    /// </summary>
+    /// <remarks>
+    /// Keys are compared case-insensitively. A section without definitions is empty.
+    /// </remarks>
+    public ContractSection GetSection(string key) => new(this, key);
 
     /// <summary>
     /// Reads every definition from <paramref name="source"/>.
@@ -126,21 +144,31 @@ public sealed class ConfigurationContract
         return !failed;
     }
 
-    // Walks the checked sections and reports every value the contract doesn't define. A defined key isn't walked into:
+    // Walks the owned and checked sections and reports every value the contract doesn't define. A defined key isn't walked into:
     // its reader reports entries in the wrong form, e.g. child entries under a scalar.
     private void ReportUnknownKeys(ReadContext context)
     {
-        if (context.Options.CheckedSections.Count == 0)
+        var sections = OwnedSections
+            .Select(section => section.Key)
+            .Concat(context.Options.CheckedSections)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (sections.Count == 0)
         {
             return;
         }
 
         var known = new HashSet<string>(Definitions.Select(definition => definition.Key), StringComparer.OrdinalIgnoreCase);
 
-        foreach (var section in context.Options.CheckedSections)
+        // A section under another one is walked with it, e.g. Server:Tls with Server. Walking it again would report its keys twice.
+        foreach (var section in sections.Where(section => !sections.Any(other => IsUnder(section, other))))
         {
             Walk(section);
         }
+
+        static bool IsUnder(string key, string section) =>
+            key.StartsWith(section + ValueSource.KeySeparator, StringComparison.OrdinalIgnoreCase);
 
         void Walk(string key)
         {

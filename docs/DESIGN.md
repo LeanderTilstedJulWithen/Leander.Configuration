@@ -324,7 +324,7 @@ var contract = new ConfigurationContractBuilder()
 
 - **`Build()` checks, it doesn't resolve.** Primitives are complete, so there is nothing to look up.
 - **Primitive names are unique per type.** Two different primitive instances with the same type and name in one contract are an error, e.g. an application's own `new("Int32", …)` next to `Primitive.Int32`. The same name on different types is fine: a "Utc" primitive for both `DateTime` and `DateTimeOffset`. The check covers the element primitives of lists and the bases of derived primitives.
-- **Failures.** Build throws one exception listing every failure: duplicate keys, then primitive name clashes, then per definition: invalid presence (see Defaults and presence).
+- **Failures.** Build throws one exception listing every failure: duplicate keys, then primitive name clashes, then per definition: a key with an empty section (`Server:`, `Server::Port`, or an empty key), then invalid presence (see Defaults and presence).
 - **`ConfigurationContract`** is the complete list of definitions, which is also what tooling will enumerate.
 
 ### Sections

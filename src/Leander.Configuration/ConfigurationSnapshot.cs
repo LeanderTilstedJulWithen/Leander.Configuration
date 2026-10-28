@@ -39,4 +39,13 @@ public sealed class ConfigurationSnapshot
         _values.TryGetValue(definition, out var value)
             ? (T)value!
             : throw new ArgumentException($"{definition.Key}: definition is not part of the configuration contract.", nameof(definition));
+
+    /// <summary>
+    /// Returns the values under <paramref name="key"/>, e.g. <c>Server</c>, or <c>Server:Tls</c> for a nested section.
+    /// Nothing is read again.
+    /// </summary>
+    /// <remarks>
+    /// Keys are compared case-insensitively. A section without definitions is empty.
+    /// </remarks>
+    public SnapshotSection GetSection(string key) => SnapshotSection.Create(Contract.GetSection(key), _values, Diagnostics);
 }

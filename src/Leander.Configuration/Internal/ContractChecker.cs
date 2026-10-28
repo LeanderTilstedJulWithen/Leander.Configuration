@@ -10,7 +10,7 @@ internal sealed class ContractChecker
     private readonly HashSet<(Type Type, string Name)> _clashes = [];
     private readonly Dictionary<(Type Type, string Name), Primitive> _named = [];
 
-    // Per definition: invalid presence.
+    // Per definition and owned section: a key with an empty section, invalid presence.
     public List<string> Failures { get; } = [];
 
     // Name clashes, one per type and name, in order of discovery.
@@ -18,6 +18,15 @@ internal sealed class ContractChecker
 
     // The value types of every primitive checked, for naming types in the contract.
     public HashSet<Type> Types { get; } = [];
+
+    // E.g. "Server:" or "Server::Port", from a section with an empty name. Quoted, because the key may be empty.
+    public void CheckKey(string key)
+    {
+        if (key.Split(ValueSource.KeySeparator).Any(string.IsNullOrEmpty))
+        {
+            Failures.Add($"'{key}': the key has an empty section.");
+        }
+    }
 
     // Checks the primitive, its bases, and the elements of list primitives.
     public void Check(string key, Primitive primitive)

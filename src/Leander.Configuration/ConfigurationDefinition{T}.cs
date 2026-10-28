@@ -71,6 +71,8 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
 
     internal override void Check(ContractChecker checker)
     {
+        checker.CheckKey(Key);
+
         if (HasDefault && IsOptional)
         {
             checker.Failures.Add($"{Key}: Optional() cannot be combined with a default.");
