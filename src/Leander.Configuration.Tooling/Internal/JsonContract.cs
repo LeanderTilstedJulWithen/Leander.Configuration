@@ -15,6 +15,8 @@ internal static class JsonContract
     private static readonly JsonSerializerOptions Options = new()
     {
         WriteIndented = true,
+        // The file is committed, so it mustn't change with the machine that wrote it.
+        NewLine = "\n",
         // The file is read by people and diffed, not embedded in HTML, so IReadOnlyList<Uri> stays readable.
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,

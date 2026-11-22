@@ -7,6 +7,82 @@ public class DocumentationTests
 {
     private static readonly string Markdown = Documentation.WriteMarkdown(Contracts.Server(), "Server configuration");
 
+    // The whole document, so that any change to the layout fails here and has to be made on purpose.
+    [Fact]
+    public void Server_RendersEverything()
+    {
+        Assert.Equal(
+            """
+            # Server configuration
+
+            ## Server
+
+            | Key | Type | Presence | Default |
+            |-----|------|----------|---------|
+            | [`Server:Host`](#serverhost) | String | default | `localhost` |
+            | [`Server:Port`](#serverport) | Int32 (Port) | required |  |
+            | [`Server:MaxConnections`](#servermaxconnections) | Int32 | optional |  |
+            | [`Server:AllowedOrigins`](#serverallowedorigins) | IReadOnlyList\<Uri\> (Origins) | required |  |
+            | [`Server:Features`](#serverfeatures) | IReadOnlyList\<String\> (Features) | default | *empty* |
+
+            ### `Server:Host`
+
+            The host name.
+
+            - **Type:** String
+            - **Format:** Any text.
+            - **Presence:** default `localhost`
+
+            ### `Server:Port`
+
+            The port to listen on.
+
+            - **Type:** Int32 (Port)
+            - **Format:** A 32-bit integer.
+            - **Validated:** must be between 1 and 65535
+            - **Presence:** required
+
+            ### `Server:MaxConnections`
+
+            - **Type:** Int32
+            - **Format:** A 32-bit integer.
+            - **Presence:** optional, missing is null
+
+            ### `Server:AllowedOrigins`
+
+            - **Type:** IReadOnlyList\<Uri\> (Origins)
+            - **Form:** indexed: `Server:AllowedOrigins:0`, `Server:AllowedOrigins:1`, …
+            - **Validated:** must not be empty
+            - **Items:** Uri
+              - **Format:** An absolute URI, e.g. https://example.com.
+            - **Presence:** required
+
+            ### `Server:Features`
+
+            - **Type:** IReadOnlyList\<String\> (Features)
+            - **Form:** one entry, items separated by `,`
+            - **Items:** String
+              - **Format:** Any text.
+            - **Presence:** default *empty*
+
+            ## Database
+
+            | Key | Type | Presence | Default |
+            |-----|------|----------|---------|
+            | [`Database:Password`](#databasepassword) | String | default | *hidden* |
+
+            ### `Database:Password`
+
+            - **Type:** String
+            - **Format:** Any text.
+            - **Presence:** default (hidden)
+            - **Sensitive:** the value is never shown in diagnostics or documentation.
+
+
+            """.ReplaceLineEndings("\n"),
+            Markdown);
+    }
+
     [Fact]
     public void StartsWithTitle()
     {

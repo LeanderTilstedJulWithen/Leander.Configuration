@@ -19,6 +19,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 #### Leander.Configuration.MicrosoftExtensions
 - Without `ReloadOnChange`, resolving `IOptionsMonitor<T>` or `IOptionsSnapshot<T>` still throws, and the message now points to `ReloadOnChange`. `ConfigurationSnapshot` and `IOptions<T>` keep the snapshot read at startup either way.
 
+### Fixed
+
+#### Leander.Configuration.Tooling
+- `ContractSerializer.WriteJson` ends lines in `\n` on every platform, like the Markdown and the example configuration. It wrote `\r\n` on Windows, so a committed contract file changed with the machine that wrote it.
+
 ## [1.0.1] - 2026-10-06
 
 ### Fixed
