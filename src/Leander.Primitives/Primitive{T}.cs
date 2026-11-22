@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Leander.Primitives.Internal;
 using Leander.Primitives.Normalization;
 using Leander.Primitives.Parsing;
@@ -95,31 +96,31 @@ public class Primitive<T> : Primitive
     /// Normalizes, then validates a value that is already a <typeparamref name="T"/>, e.g. a default.
     /// On failure, <paramref name="result"/> is <see langword="default"/>.
     /// </summary>
-    public bool TryAccept(T value, out T result) => TryAccept(value, out result, errors: null);
+    public bool TryAccept(T value, [MaybeNullWhen(false)] out T result) => TryAccept(value, out result, errors: null);
 
     /// <summary>
     /// Normalizes, then validates a value that is already a <typeparamref name="T"/>, e.g. a default.
     /// On failure, <paramref name="result"/> is <see langword="default"/> and <paramref name="errors"/> lists every failure.
     /// </summary>
-    public bool TryAccept(T value, out T result, out IReadOnlyList<string> errors) =>
+    public bool TryAccept(T value, [MaybeNullWhen(false)] out T result, out IReadOnlyList<string> errors) =>
         TryAccept(value, redact: false, out result, out errors);
 
     /// <summary>
     /// Parses <paramref name="input"/> with the converter, then normalizes and validates the value.
     /// On failure, <paramref name="value"/> is <see langword="default"/>.
     /// </summary>
-    public bool TryParse(string input, out T value) => TryParse(input, out value, errors: null);
+    public bool TryParse(string input, [MaybeNullWhen(false)] out T value) => TryParse(input, out value, errors: null);
 
     /// <summary>
     /// Parses <paramref name="input"/> with the converter, then normalizes and validates the value.
     /// On failure, <paramref name="value"/> is <see langword="default"/> and <paramref name="errors"/> lists every failure.
     /// </summary>
-    public bool TryParse(string input, out T value, out IReadOnlyList<string> errors) =>
+    public bool TryParse(string input, [MaybeNullWhen(false)] out T value, out IReadOnlyList<string> errors) =>
         TryParse(input, redact: false, out value, out errors);
 
     // The overloads with redact are the boundary: errors are collected in both forms, and redact picks one.
     // With redact, error messages leave out the value, for sensitive configuration values.
-    internal bool TryAccept(T value, bool redact, out T result, out IReadOnlyList<string> errors)
+    internal bool TryAccept(T value, bool redact, [MaybeNullWhen(false)] out T result, out IReadOnlyList<string> errors)
     {
         var list = new List<ErrorText>();
         var success = TryAccept(value, out result, list);
@@ -127,11 +128,11 @@ public class Primitive<T> : Primitive
         return success;
     }
 
-    internal bool TryAccept(T value, out T result, List<ErrorText>? errors)
+    internal bool TryAccept(T value, [MaybeNullWhen(false)] out T result, List<ErrorText>? errors)
     {
         if (!TryAcceptItems(value, out var accepted, errors))
         {
-            result = default!;
+            result = default;
             return false;
         }
 
@@ -139,7 +140,7 @@ public class Primitive<T> : Primitive
     }
 
     // Only this primitive's rules (the base's, then its own), not its items'. For a list whose items were accepted one by one.
-    internal bool TryApplyRules(T value, bool redact, out T result, out IReadOnlyList<string> errors)
+    internal bool TryApplyRules(T value, bool redact, [MaybeNullWhen(false)] out T result, out IReadOnlyList<string> errors)
     {
         var list = new List<ErrorText>();
         var success = TryApplyRules(value, out result, list);
@@ -147,10 +148,10 @@ public class Primitive<T> : Primitive
         return success;
     }
 
-    internal bool TryApplyRules(T value, out T result, List<ErrorText>? errors) =>
+    internal bool TryApplyRules(T value, [MaybeNullWhen(false)] out T result, List<ErrorText>? errors) =>
         Rules.TryApply(AllNormalizers, AllValidators, Converter, value, out result, errors);
 
-    internal bool TryParse(string input, bool redact, out T value, out IReadOnlyList<string> errors)
+    internal bool TryParse(string input, bool redact, [MaybeNullWhen(false)] out T value, out IReadOnlyList<string> errors)
     {
         var list = new List<ErrorText>();
         var success = TryParse(input, out value, list);
@@ -159,11 +160,11 @@ public class Primitive<T> : Primitive
     }
 
     // Without an error list, the first failure stops.
-    internal bool TryParse(string input, out T value, List<ErrorText>? errors)
+    internal bool TryParse(string input, [MaybeNullWhen(false)] out T value, List<ErrorText>? errors)
     {
         if (!TryConvert(input, out var converted, errors))
         {
-            value = default!;
+            value = default;
             return false;
         }
 
@@ -171,7 +172,7 @@ public class Primitive<T> : Primitive
     }
 
     // Accepts the items of a value made of items, before this primitive's rules run. A plain value has none.
-    private protected virtual bool TryAcceptItems(T value, out T result, List<ErrorText>? errors)
+    private protected virtual bool TryAcceptItems(T value, [MaybeNullWhen(false)] out T result, List<ErrorText>? errors)
     {
         result = value;
         return true;
@@ -179,7 +180,7 @@ public class Primitive<T> : Primitive
 
     // Turns the input into a T, before this primitive's rules run. Without an error list, the converter isn't asked for reasons.
     // Each reason follows the primitive's own line.
-    private protected virtual bool TryConvert(string input, out T value, List<ErrorText>? errors)
+    private protected virtual bool TryConvert(string input, [MaybeNullWhen(false)] out T value, List<ErrorText>? errors)
     {
         if (errors is null)
         {

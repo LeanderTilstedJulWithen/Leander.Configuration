@@ -27,10 +27,10 @@ public class CompositeConverterTests
     [InlineData("1,x,3")]
     [InlineData("1,,3")]
     [InlineData("1,")]
-    public void List_RejectsInvalidElementAndReturnsEmptyResult(string input)
+    public void List_RejectsInvalidElement_WithoutAResult(string input)
     {
         Assert.False(Converters.List(Converters.Int32).TryParse(input, out var result));
-        Assert.Empty(result);
+        Assert.Null(result);
     }
 
     [Fact]
@@ -115,10 +115,10 @@ public class CompositeConverterTests
     [InlineData("a=1,b")]
     [InlineData("a=x")]
     [InlineData("a=1,a=2")]
-    public void Dictionary_RejectsInvalidEntriesAndReturnsEmptyResult(string input)
+    public void Dictionary_RejectsInvalidEntries_WithoutAResult(string input)
     {
         Assert.False(Converters.Dictionary(Converters.String, Converters.Int32).TryParse(input, out var result));
-        Assert.Empty(result);
+        Assert.Null(result);
     }
 
     [Theory]

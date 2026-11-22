@@ -1,4 +1,5 @@
 using Leander.Configuration.Descriptors;
+using Leander.Primitives;
 
 namespace Leander.Configuration.Internal;
 
@@ -13,6 +14,9 @@ internal enum ReadStatus
 // Presence rules and definition-level rules are handled by the definition.
 internal abstract class ValueReader<T>
 {
+    // The primitive the value is read with. For an optional value, the inner definition's.
+    public abstract Primitive Primitive { get; }
+
     public abstract void Check(ContractChecker checker, ConfigurationDefinition definition);
 
     // Describes how the value is read: its form, primitive and elements. The definition adds type, presence, default and rules.

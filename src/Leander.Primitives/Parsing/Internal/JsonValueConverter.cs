@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using Leander.Primitives.Internal;
 
@@ -11,7 +12,7 @@ internal sealed class JsonValueConverter<T>(JsonSerializerOptions? options) : IC
 
     public string Format(T value) => JsonSerializer.Serialize(value, _options);
 
-    public bool TryParse(string input, out T result, out IReadOnlyList<IFormattableText<string>> errors)
+    public bool TryParse(string input, [MaybeNullWhen(false)] out T result, out IReadOnlyList<IFormattableText<string>> errors)
     {
         errors = [];
         try
@@ -21,7 +22,7 @@ internal sealed class JsonValueConverter<T>(JsonSerializerOptions? options) : IC
         }
         catch (JsonException)
         {
-            result = default!;
+            result = default;
             return false;
         }
     }

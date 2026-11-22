@@ -100,14 +100,14 @@ Planned after 1.0.0, not before.
 - [x] Reloading: `IOptionsSnapshot<T>` and `IOptionsMonitor<T>` from a snapshot read again on `IConfiguration` reload, opt-in with `ReloadOnChange` (see DESIGN.md, Reload). Reading a section of the contract stays undecided (see IDEAS.md).
 
 ### Requested by Leander.Logging
-Not triaged yet: decide which go into 1.1.0 and which move to Later. Source: Leander.Logging's `docs/DEPENDENCIES.md`, Known problems, which also says what Logging changes when each one comes.
+The first three are in 1.1.0 and done; the rest aren't triaged yet. Source: Leander.Logging's `docs/DEPENDENCIES.md`, Known problems, which also says what Logging changes when each one comes.
 
-Decided:
-- [ ] **Primitives**: `[MaybeNullWhen(false)] out T result` on `IParser<T>.TryParse`, so a failed parse doesn't have to invent a value. Breaking.
-- [ ] **Configuration**: the primitive public on a definition, so tests and tooling outside Leander.Configuration can format a value the way the documentation does.
+In 1.1.0:
+- [x] **Primitives**: `[MaybeNullWhen(false)] out T result` on `IParser<T>.TryParse`, so a failed parse doesn't have to invent a value. Breaking. Also on `Primitive<T>.TryParse` and `TryAccept`; `Converters.List` and `Dictionary` give `null` on failure, not an empty collection.
+- [x] **Configuration**: the primitive public on a definition, so tests and tooling outside Leander.Configuration can format a value the way the documentation does. `ConfigurationDefinition.Primitive`, non-generic because `Optional()` changes `T` but not the primitive.
+- [x] **Primitives**: `FormatIn(TimeZoneInfo)` on both date-time builders (see DESIGN.md, Converter descriptions, and CHANGELOG). `Converters.DateTimeUtc` writes UTC, and `DateTimeLocal` local time.
 
 Needs design:
-- [ ] **Primitives**: a builder step for the time zone a value is formatted in, e.g. `.FormatIn(TimeZoneInfo.Utc)`, on both `DateTimeConverterBuilder` and `DateTimeOffsetConverterBuilder`. `DateTimeStyles` only apply to parsing, so a converter can read any offset into UTC but can't write UTC. Explicit rather than inferred from `AdjustToUniversal`. The same asymmetry in `Converters.DateTimeUtc`: it parses into UTC, but formats a `Local` value as local time.
 - [ ] **Configuration**: sections, for defining (`section.Define("Sinks:File:Directory", …)`, full key `Leander:Logging:Sinks:File:Directory`) and for reading. A definition keeps its full key, so contracts, documentation and diagnostics don't change. Overlaps with IDEAS.md, Reading a section of the contract, and `ReadOptions.CheckedSections`: one notion of a section.
 - [ ] **Configuration**: dictionary keys, a key per entry (`Categories:App.Data = Debug`), next to `Indexed` lists.
 

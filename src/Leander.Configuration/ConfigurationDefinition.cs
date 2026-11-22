@@ -58,6 +58,16 @@ public abstract class ConfigurationDefinition
     public abstract bool IsSensitive { get; }
 
     /// <summary>
+    /// The primitive the value is read with: the one given to <see cref="Define{T}"/>, or the list given to
+    /// <see cref="Indexed{T}"/>. For <c>Optional()</c>, the primitive of the underlying type, e.g. a
+    /// <see cref="Primitive{T}"/> of <see cref="int"/> for an <see cref="int"/>?.
+    /// </summary>
+    /// <remarks>
+    /// Its <c>Converter</c> formats a value the way documentation and diagnostics do, e.g. in a test that writes a value back.
+    /// </remarks>
+    public abstract Primitive Primitive { get; }
+
+    /// <summary>
     /// The configuration key, with sections separated by <c>:</c>, e.g. <c>Server:Port</c>.
     /// </summary>
     public abstract string Key { get; }

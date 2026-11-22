@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Leander.Primitives.Normalization;
 using Leander.Primitives.Parsing;
 using Leander.Primitives.Validation;
@@ -16,7 +17,7 @@ internal static class Rules
         IReadOnlyList<IValidator<T>> validators,
         IFormatter<T> converter,
         T value,
-        out T result,
+        [MaybeNullWhen(false)] out T result,
         List<ErrorText>? errors)
     {
         result = value;
@@ -30,7 +31,7 @@ internal static class Rules
             catch (Exception exception)
             {
                 errors?.Add(Failed("normalizer", normalizer.Description, converter, exception));
-                result = default!;
+                result = default;
                 return false;
             }
         }
@@ -72,7 +73,7 @@ internal static class Rules
 
         if (!isValid)
         {
-            result = default!;
+            result = default;
         }
 
         return isValid;

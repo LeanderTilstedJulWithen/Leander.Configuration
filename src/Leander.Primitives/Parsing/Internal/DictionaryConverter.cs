@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Leander.Primitives.Parsing.Internal;
 
 internal sealed class DictionaryConverter<TKey, TValue>(
@@ -35,7 +37,7 @@ internal sealed class DictionaryConverter<TKey, TValue>(
         value.Select(pair => $"{_keyConverter.Format(pair.Key)}{_keyValueDelimiter}{_valueConverter.Format(pair.Value)}"));
 
     // Every entry is checked, and every reason is reported, e.g. "entry 1: value: 'x' is not a valid Int32". Entries count from 0.
-    public bool TryParse(string input, out IReadOnlyDictionary<TKey, TValue> result, out IReadOnlyList<IFormattableText<string>> errors)
+    public bool TryParse(string input, [MaybeNullWhen(false)] out IReadOnlyDictionary<TKey, TValue> result, out IReadOnlyList<IFormattableText<string>> errors)
     {
         var dictionary = new Dictionary<TKey, TValue>();
         var reasons = new List<IFormattableText<string>>();
@@ -75,7 +77,8 @@ internal sealed class DictionaryConverter<TKey, TValue>(
                 reasons.AddRange(PartErrors.Of<TValue>($"{prefix}value: ", valueText, valueErrors));
             }
 
-            if (hasKey && hasValue && !dictionary.TryAdd(key, value))
+            // Both parsed, so neither is a made-up value.
+            if (hasKey && hasValue && !dictionary.TryAdd(key!, value!))
             {
                 reasons.Add(FormattableText.Create<string>(formatter => $"{prefix}duplicate key {formatter.Format($"'{keyText}'")}"));
             }
@@ -83,7 +86,7 @@ internal sealed class DictionaryConverter<TKey, TValue>(
 
         if (reasons.Count > 0)
         {
-            result = new Dictionary<TKey, TValue>();
+            result = null;
             return false;
         }
 

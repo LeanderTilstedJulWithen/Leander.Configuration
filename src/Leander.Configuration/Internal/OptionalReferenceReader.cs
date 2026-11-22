@@ -1,4 +1,5 @@
 using Leander.Configuration.Descriptors;
+using Leander.Primitives;
 
 namespace Leander.Configuration.Internal;
 
@@ -8,6 +9,8 @@ internal sealed class OptionalReferenceReader<T>(ConfigurationDefinition<T> inne
     where T : class
 {
     private readonly ConfigurationDefinition<T> _inner = inner;
+
+    public override Primitive Primitive => _inner.Primitive;
 
     // A default set before Optional() would make the value never null.
     public override void Check(ContractChecker checker, ConfigurationDefinition definition)

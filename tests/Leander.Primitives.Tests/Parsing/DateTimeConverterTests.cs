@@ -50,6 +50,43 @@ public class DateTimeConverterTests
     }
 
     [Fact]
+    public void DateTimeUtc_WritesALocalValueInUtc()
+    {
+        var utc = new DateTime(2024, 1, 2, 3, 4, 5, DateTimeKind.Utc);
+
+        Assert.Equal("2024-01-02T03:04:05Z", Converters.DateTimeUtc.Format(utc.ToLocalTime()));
+    }
+
+    [Fact]
+    public void DateTimeUtc_TakesAnUnspecifiedValueAsUtc()
+    {
+        var unspecified = new DateTime(2024, 1, 2, 3, 4, 5, DateTimeKind.Unspecified);
+
+        Assert.Equal("2024-01-02T03:04:05Z", Converters.DateTimeUtc.Format(unspecified));
+    }
+
+    [Fact]
+    public void DateTimeUtc_DescriptionSaysItWritesUtc()
+    {
+        Assert.Equal(
+            "A date and time as yyyy-MM-ddTHH:mm:ssK or yyyy-MM-dd; without an offset, UTC; written in UTC.",
+            Converters.DateTimeUtc.Description);
+    }
+
+    [Fact]
+    public void DateTimeLocal_WritesAUtcValueInLocalTime()
+    {
+        var utc = new DateTime(2024, 1, 2, 3, 4, 5, DateTimeKind.Utc);
+
+        var text = Converters.DateTimeLocal.Format(utc);
+
+        Assert.Equal(Converters.DateTimeLocal.Format(utc.ToLocalTime()), text);
+        Assert.True(Converters.DateTimeLocal.TryParse(text, out var result));
+        Assert.Equal(DateTimeKind.Local, result.Kind);
+        Assert.Equal(utc, result.ToUniversalTime());
+    }
+
+    [Fact]
     public void DateTimeLocal_AssumesLocalWhenNoOffsetIsGiven()
     {
         Assert.True(Converters.DateTimeLocal.TryParse("2024-01-02", out var result));
@@ -109,5 +146,43 @@ public class DateTimeConverterTests
 
         ConverterAssert.Parses(converter, "20240102", new DateTimeOffset(2024, 1, 2, 0, 0, 0, TimeSpan.Zero));
         Assert.Equal("20240102", converter.Format(new DateTimeOffset(2024, 1, 2, 0, 0, 0, TimeSpan.Zero)));
+    }
+
+    // A literal 'Z' is only true when the value is converted first.
+    [Fact]
+    public void DateTimeOffsetConverterBuilder_FormatIn_ConvertsBeforeFormatting()
+    {
+        var converter = new DateTimeOffsetConverterBuilder()
+            .AddFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
+            .WithStyles(DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal)
+            .FormatIn(TimeZoneInfo.Utc)
+            .Build();
+        var value = new DateTimeOffset(2024, 1, 2, 5, 4, 5, TimeSpan.FromHours(2));
+
+        var text = converter.Format(value);
+
+        Assert.Equal("2024-01-02T03:04:05Z", text);
+        Assert.True(converter.TryParse(text, out var result));
+        Assert.Equal(value, result);
+    }
+
+    [Fact]
+    public void DateTimeOffsetConverterBuilder_FormatIn_AnyZone()
+    {
+        var zone = TimeZoneInfo.CreateCustomTimeZone("Test+05", TimeSpan.FromHours(5), "Test", "Test");
+        var converter = new DateTimeOffsetConverterBuilder().AddFormat("yyyy-MM-ddTHH:mm:sszzz").FormatIn(zone).Build();
+
+        Assert.Equal("2024-01-02T08:04:05+05:00", converter.Format(new DateTimeOffset(2024, 1, 2, 3, 4, 5, TimeSpan.Zero)));
+        Assert.Equal("A date and time as yyyy-MM-ddTHH:mm:sszzz; written in Test+05.", converter.Description);
+    }
+
+    [Fact]
+    public void DateTimeConverterBuilder_FormatIn_AnyZone_ConvertsAUtcValue()
+    {
+        var zone = TimeZoneInfo.CreateCustomTimeZone("Test+05", TimeSpan.FromHours(5), "Test", "Test");
+        var converter = new DateTimeConverterBuilder().AddFormat("yyyy-MM-ddTHH:mm:ss").FormatIn(zone).Build();
+
+        Assert.Equal("2024-01-02T08:04:05", converter.Format(new DateTime(2024, 1, 2, 3, 4, 5, DateTimeKind.Utc)));
+        Assert.Equal("2024-01-02T03:04:05", converter.Format(new DateTime(2024, 1, 2, 3, 4, 5, DateTimeKind.Unspecified)));
     }
 }

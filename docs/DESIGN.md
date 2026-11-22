@@ -177,7 +177,7 @@ public interface IConverter<T> : IParser<T>, IFormatter<T>
 - **Written for the reader of the configuration**, who knows a little about types but not .NET: "A 32-bit integer.", not "parsed with the invariant culture". Where the culture matters, say what it means: "A decimal number, with . as the decimal separator."
 - **Plain text**, like rule descriptions: no Markdown, because it's also read in IntelliSense and other renderers.
 - **Ready-made converters have one**, short: `Int32` "A 32-bit integer.", `Int32Hex` "A 32-bit integer in hexadecimal, with or without 0x.", `Guid` "A GUID, e.g. 0f8fad5b-d9cb-469f-a165-70867728950e."
-- **Builders generate it from their formats and styles**, e.g. "A date and time as yyyy-MM-ddTHH:mm:ssK or yyyy-MM-dd; without an offset, UTC." Standard formats, a single letter, are shown as their pattern: `TimeSpan` reads "A duration as [-][d.]hh:mm:ss[.fffffff], e.g. 00:00:30." Durations get an example, formatted from 30 seconds; dates don't, because a local date's offset depends on the machine. `WithDescription(...)` replaces the generated text.
+- **Builders generate it from their formats, styles and time zone**, e.g. "A date and time as yyyy-MM-ddTHH:mm:ssK or yyyy-MM-dd; without an offset, UTC; written in UTC." Standard formats, a single letter, are shown as their pattern: `TimeSpan` reads "A duration as [-][d.]hh:mm:ss[.fffffff], e.g. 00:00:30." Durations get an example, formatted from 30 seconds; dates don't, because a local date's offset depends on the machine. `WithDescription(...)` replaces the generated text.
 - **Composite converters compose.** `Converters.List` reads "A list separated by ','. Each item: {element}", and `Converters.Dictionary` adds "Each key: …" and "Each value: …"; without an element description, only the separator part. Inside a list primitive the element converter is the element primitive, whose description is its display name: "A list separated by ','. Each item: Uri." The element's own format is on the element, which the documentation links to. An enum reads "One of the names, or its number, ignoring case." (the names are in `Values`), and `Json<T>` reads "{Type} as JSON."
 - **A derived primitive takes the base's converter**, so its description is on the base, like the base's rules.
 
@@ -188,8 +188,8 @@ A converter says why it failed, not only that it did. Otherwise a converter that
 ```csharp
 public interface IParser<T>
 {
-    bool TryParse(string input, out T result, out IReadOnlyList<IFormattableText<string>> errors);
-    bool TryParse(string input, out T result) => TryParse(input, out result, out _);   // override only for speed
+    bool TryParse(string input, [MaybeNullWhen(false)] out T result, out IReadOnlyList<IFormattableText<string>> errors);
+    bool TryParse(string input, [MaybeNullWhen(false)] out T result) => TryParse(input, out result, out _);   // override only for speed
 }
 
 // in a converter:
@@ -199,6 +199,7 @@ FormattableText.Create<string>(formatter => $"'{formatter.Format(segment)}' is n
 - **`IFormattableText<string>`, not plain strings**, because of sensitive values. A converter's errors usually contain the input, and the converter can't redact: it doesn't know about keys, and the `redact` flag stays internal (see Sensitive values). Values in the text are pieces of the input, and the primitive formats them as they are, or with a redacting formatter. Same mechanism as rule texts.
 - **Every reason is reported.** The interface allows several, like a validator; empty is allowed too. Empty, not null, on success.
 - **The primitive leads with its own line.** Each reason becomes `'1024..70000' is not a valid Range<Int32> (PortRange): maximum: must be between 1 and 65535`; without reasons, just `'1024..70000' is not a valid Range<Int32> (PortRange)`. Redacted, the lead is `value is not a valid …` and the reasons are formatted with the redacting formatter. One line per reason, like item errors, so every diagnostic stands on its own.
+- **No result on failure.** `result` is `[MaybeNullWhen(false)]`: `default`, `null` for a reference type. A converter doesn't make up a value such as an empty list, and the compiler warns a caller that uses it anyway. The same goes for `Primitive<T>.TryParse` and `TryAccept`.
 - **The bool-only `TryParse` stays**, as a default interface member, like `IsValid` on validators. A converter overrides it only for speed.
 - **A primitive as a converter: `Primitive<T>.AsConverter()`.** A converter that wraps a primitive, e.g. a range or `Converters.List` inside a list primitive, holds it as a converter: parsing applies all of the primitive's rules, and its errors come back unformatted, so the outer primitive decides on redaction. Formatting uses the primitive's `Converter`. `Converter` is how a primitive reads text; `AsConverter()` is the whole primitive. Not another `TryParse` overload: `out var` couldn't choose between `IReadOnlyList<string>` and `IReadOnlyList<IFormattableText<string>>`. Its inner rule texts are formatted with the inner converter, or redacted when the outer primitive redacts.
 
@@ -258,7 +259,8 @@ public static class DatabaseConfiguration
 
 ### Definition hierarchy
 
-- `ConfigurationDefinition` (abstract, non-generic): key, value type, description, required, has-default, optional, sensitive. Tooling enumerates this type. It also hosts the `Define` entry points.
+- `ConfigurationDefinition` (abstract, non-generic): key, value type, primitive, description, required, has-default, optional, sensitive. Tooling enumerates this type. It also hosts the `Define` entry points.
+- **The primitive is public**, so a test or tool outside the library can format a value the way documentation and diagnostics do. It's the non-generic `Primitive`, because `Optional()` changes `T` but not the primitive: a `ConfigurationDefinition<int?>` reads with a `Primitive<int>`. For `Indexed`, it's the list primitive.
 - `ConfigurationDefinition<T> : ConfigurationDefinition`: the typed reader and the default value.
 
 ### Keys

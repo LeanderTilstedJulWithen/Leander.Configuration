@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Leander.Primitives.Parsing.Internal;
 
 internal sealed class ListConverter<T>(IConverter<T> elementConverter, char delimiter) : IConverter<IReadOnlyList<T>>
@@ -12,7 +14,7 @@ internal sealed class ListConverter<T>(IConverter<T> elementConverter, char deli
     public string Format(IReadOnlyList<T> value) => string.Join(_delimiter, value.Select(_elementConverter.Format));
 
     // Every item is checked, and every item's reasons are reported, e.g. "item 2: 'x' is not a valid Int32".
-    public bool TryParse(string input, out IReadOnlyList<T> result, out IReadOnlyList<IFormattableText<string>> errors)
+    public bool TryParse(string input, [MaybeNullWhen(false)] out IReadOnlyList<T> result, out IReadOnlyList<IFormattableText<string>> errors)
     {
         var list = new List<T>();
         var reasons = new List<IFormattableText<string>>();
@@ -30,7 +32,7 @@ internal sealed class ListConverter<T>(IConverter<T> elementConverter, char deli
         }
 
         errors = reasons;
-        result = reasons.Count == 0 ? list : [];
+        result = reasons.Count == 0 ? list : null;
         return reasons.Count == 0;
     }
 

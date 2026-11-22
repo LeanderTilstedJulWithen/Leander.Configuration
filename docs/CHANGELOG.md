@@ -7,7 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+#### Leander.Primitives
+- `FormatIn(TimeZoneInfo)` on `DateTimeConverterBuilder` and `DateTimeOffsetConverterBuilder`: a value is converted to the time zone before it's formatted, so a converter that reads into UTC can also write UTC, e.g. with a literal `'Z'` in the format. Styles still only apply to parsing. A `DateTime` with `Kind = Unspecified` is taken as being in the zone already. The generated description ends in "written in UTC", "written in local time" or the zone's ID.
+
 #### Leander.Configuration
+- `ConfigurationDefinition.Primitive`: the primitive a definition reads with, so a test or tool can format a value the way the documentation does. For `Indexed`, the list primitive; for `Optional()`, the primitive of the underlying type.
 - Opt-in registration through an attribute: `[RegisterConfiguration]` on a type, and `ConfigurationContractBuilder.RegisterFrom(Type)`, which registers every static field and property of a definition type in it, of any accessibility, found through reflection. Fields come first, then properties, each in declaration order. A definition that is already registered is skipped, so explicit and attribute registration can be mixed. A type without the attribute, an open generic type, and a member that can't be read or is null are reported by `Build()` with the other failures.
 
 #### Leander.Configuration.MicrosoftExtensions
@@ -16,10 +20,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+#### Leander.Primitives
+- **Breaking:** `result` is `[MaybeNullWhen(false)]` on both `IParser<T>.TryParse` overloads, and on `Primitive<T>.TryParse` and `TryAccept`. On failure it's `default`, and a parser no longer has to make one up. Code that uses the result after a failure now gets a nullable warning. `Converters.List` and `Converters.Dictionary` give `null` on failure instead of an empty collection.
+
 #### Leander.Configuration.MicrosoftExtensions
 - Without `ReloadOnChange`, resolving `IOptionsMonitor<T>` or `IOptionsSnapshot<T>` still throws, and the message now points to `ReloadOnChange`. `ConfigurationSnapshot` and `IOptions<T>` keep the snapshot read at startup either way.
 
 ### Fixed
+
+#### Leander.Primitives
+- `Converters.DateTimeUtc` (and `Primitive.DateTime`) writes in UTC, and `Converters.DateTimeLocal` (`Primitive.DateTimeLocal`) in local time, the way they read. A local `DateTime` was written as local time with its offset by the UTC converter, and the other way around. A `DateTime` with `Kind = Unspecified`, e.g. a default written in code, is now written with `Z` by the UTC converter, as the UTC it's read as.
 
 #### Leander.Configuration.Tooling
 - `ContractSerializer.WriteJson` ends lines in `\n` on every platform, like the Markdown and the example configuration. It wrote `\r\n` on Windows, so a committed contract file changed with the machine that wrote it.

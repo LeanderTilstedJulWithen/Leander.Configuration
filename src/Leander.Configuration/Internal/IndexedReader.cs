@@ -11,6 +11,8 @@ internal sealed class IndexedReader<T>(ListPrimitive<T> list) : ValueReader<IRea
     private readonly ScalarReader<T> _element = new(list.Element);
     private readonly ListPrimitive<T> _list = list;
 
+    public override Primitive Primitive => _list;
+
     public override void Check(ContractChecker checker, ConfigurationDefinition definition) =>
         checker.Check(definition.Key, _list);
 
@@ -104,14 +106,17 @@ internal sealed class IndexedReader<T>(ListPrimitive<T> list) : ValueReader<IRea
         }
 
         // Only the list's rules: the items went through the element primitive already.
-        var success = _list.TryApplyRules(items, context.IsSensitive, out value, out var errors);
+        // On failure the value is default, and the status says not to use it.
+        var success = _list.TryApplyRules(items, context.IsSensitive, out var accepted, out var errors);
+        value = accepted!;
         Pipeline.Report(context, definition, key, errors);
         return success ? ReadStatus.Read : ReadStatus.Failed;
     }
 
     public override bool TryProcess(ReadContext context, ConfigurationDefinition definition, string key, IReadOnlyList<T> value, out IReadOnlyList<T> result)
     {
-        var success = _list.TryAccept(value, context.IsSensitive, out result, out var errors);
+        var success = _list.TryAccept(value, context.IsSensitive, out var accepted, out var errors);
+        result = accepted!;
         Pipeline.Report(context, definition, key, errors);
         return success;
     }

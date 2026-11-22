@@ -51,7 +51,8 @@ public sealed class RangePrimitive<T>(string name, Primitive<T> bound)
             var hasMaximum = _bound.TryParse(maximumText, out var maximum, out var maximumErrors);
             reasons.AddRange(maximumErrors.Select(error => Prefixed("maximum: ", error)));
 
-            if (hasMinimum && hasMaximum && minimum.CompareTo(maximum) > 0)
+            // On failure a parsed value is default, so the ends are only compared and used when both parsed.
+            if (hasMinimum && hasMaximum && minimum!.CompareTo(maximum) > 0)
             {
                 reasons.Add(FormattableText.Create<string>(formatter =>
                     $"{formatter.Format(minimumText)} is greater than {formatter.Format(maximumText)}"));
@@ -63,7 +64,7 @@ public sealed class RangePrimitive<T>(string name, Primitive<T> bound)
                 return false;
             }
 
-            result = new Range<T>(minimum, maximum);
+            result = new Range<T>(minimum!, maximum!);
             return true;
         }
 

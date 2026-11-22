@@ -23,7 +23,7 @@ internal static class FormatDescriptions
         ["G"] = "[-]d:hh:mm:ss.fffffff",
     };
 
-    public static string DateTime(string[] formats, DateTimeStyles styles)
+    public static string DateTime(string[] formats, DateTimeStyles styles, TimeZoneInfo? timeZone)
     {
         var description = $"A date and time as {Join(formats, DateTimePatterns)}";
         if (styles.HasFlag(DateTimeStyles.AssumeUniversal))
@@ -35,8 +35,18 @@ internal static class FormatDescriptions
             description += "; without an offset, local time";
         }
 
+        if (timeZone is not null)
+        {
+            description += $"; written in {ZoneName(timeZone)}";
+        }
+
         return description + ".";
     }
+
+    private static string ZoneName(TimeZoneInfo timeZone) =>
+        timeZone.Equals(TimeZoneInfo.Utc) ? "UTC"
+        : timeZone.Equals(TimeZoneInfo.Local) ? "local time"
+        : timeZone.Id;
 
     public static string TimeSpan(string[] formats, TimeSpanStyles styles)
     {

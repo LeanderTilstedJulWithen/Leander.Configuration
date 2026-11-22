@@ -8,7 +8,7 @@ internal sealed class ScalarReader<T>(Primitive<T> primitive) : ValueReader<T>
 {
     private readonly Primitive<T> _primitive = primitive;
 
-    public Primitive<T> Primitive => _primitive;
+    public override Primitive Primitive => _primitive;
 
     public override void Check(ContractChecker checker, ConfigurationDefinition definition) =>
         checker.Check(definition.Key, _primitive);
@@ -32,14 +32,17 @@ internal sealed class ScalarReader<T>(Primitive<T> primitive) : ValueReader<T>
             return ReadStatus.Missing;
         }
 
-        var success = _primitive.TryParse(raw, context.IsSensitive, out value, out var errors);
+        // On failure the value is default, and the status says not to use it.
+        var success = _primitive.TryParse(raw, context.IsSensitive, out var parsed, out var errors);
+        value = parsed!;
         Pipeline.Report(context, definition, key, errors);
         return success ? ReadStatus.Read : ReadStatus.Failed;
     }
 
     public override bool TryProcess(ReadContext context, ConfigurationDefinition definition, string key, T value, out T result)
     {
-        var success = _primitive.TryAccept(value, context.IsSensitive, out result, out var errors);
+        var success = _primitive.TryAccept(value, context.IsSensitive, out var accepted, out var errors);
+        result = accepted!;
         Pipeline.Report(context, definition, key, errors);
         return success;
     }

@@ -1,5 +1,6 @@
 using Leander.Configuration.Descriptors;
 using Leander.Configuration.Internal;
+using Leander.Primitives;
 
 namespace Leander.Configuration;
 
@@ -37,6 +38,9 @@ public sealed class ConfigurationDefinition<T> : ConfigurationDefinition
 
     /// <inheritdoc/>
     public override bool IsSensitive => _settings.IsSensitive;
+
+    /// <inheritdoc/>
+    public override Primitive Primitive => Reader.Primitive;
 
     /// <inheritdoc/>
     public override string Key => _settings.Key;

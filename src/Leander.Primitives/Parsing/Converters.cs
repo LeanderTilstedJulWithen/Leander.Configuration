@@ -21,12 +21,13 @@ public static class Converters
 
     /// <summary>
     /// A local <see cref="System.DateTime"/>, as <c>yyyy-MM-ddTHH:mm:ssK</c> or <c>yyyy-MM-dd</c>.
-    /// Values without an offset are taken as local time.
+    /// Values without an offset are taken as local time, and values are written in local time.
     /// </summary>
     public static IConverter<DateTime> DateTimeLocal { get; } = new DateTimeConverterBuilder()
         .AddFormat("yyyy-MM-ddTHH:mm:ssK")
         .AddFormat("yyyy-MM-dd")
         .WithStyles(DateTimeStyles.AssumeLocal)
+        .FormatIn(TimeZoneInfo.Local)
         .Build();
 
     /// <summary>
@@ -41,12 +42,13 @@ public static class Converters
 
     /// <summary>
     /// A <see cref="System.DateTime"/> in UTC, as <c>yyyy-MM-ddTHH:mm:ssK</c> or <c>yyyy-MM-dd</c>.
-    /// Values without an offset are taken as UTC.
+    /// Values without an offset are taken as UTC, and values are written in UTC.
     /// </summary>
     public static IConverter<DateTime> DateTimeUtc { get; } = new DateTimeConverterBuilder()
         .AddFormat("yyyy-MM-ddTHH:mm:ssK")
         .AddFormat("yyyy-MM-dd")
         .WithStyles(DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal)
+        .FormatIn(TimeZoneInfo.Utc)
         .Build();
 
     /// <summary>

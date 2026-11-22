@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Leander.Primitives.Parsing;
 
 namespace Leander.Primitives.Internal;
@@ -13,9 +14,9 @@ internal sealed class PrimitiveConverter<T>(Primitive<T> primitive) : IConverter
 
     public string Format(T value) => _primitive.Converter.Format(value);
 
-    public bool TryParse(string input, out T result) => _primitive.TryParse(input, out result);
+    public bool TryParse(string input, [MaybeNullWhen(false)] out T result) => _primitive.TryParse(input, out result);
 
-    public bool TryParse(string input, out T result, out IReadOnlyList<IFormattableText<string>> errors)
+    public bool TryParse(string input, [MaybeNullWhen(false)] out T result, out IReadOnlyList<IFormattableText<string>> errors)
     {
         var list = new List<ErrorText>();
         var success = _primitive.TryParse(input, out result, list);
