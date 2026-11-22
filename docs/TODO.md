@@ -99,6 +99,25 @@ Planned after 1.0.0, not before.
   - [ ] Registration through the source generator instead of reflection.
 - [x] Reloading: `IOptionsSnapshot<T>` and `IOptionsMonitor<T>` from a snapshot read again on `IConfiguration` reload, opt-in with `ReloadOnChange` (see DESIGN.md, Reload). Reading a section of the contract stays undecided (see IDEAS.md).
 
+### Requested by Leander.Logging
+Not triaged yet: decide which go into 1.1.0 and which move to Later. Source: Leander.Logging's `docs/DEPENDENCIES.md`, Known problems, which also says what Logging changes when each one comes.
+
+Decided:
+- [ ] **Primitives**: `[MaybeNullWhen(false)] out T result` on `IParser<T>.TryParse`, so a failed parse doesn't have to invent a value. Breaking.
+- [ ] **Configuration**: the primitive public on a definition, so tests and tooling outside Leander.Configuration can format a value the way the documentation does.
+
+Needs design:
+- [ ] **Primitives**: a builder step for the time zone a value is formatted in, e.g. `.FormatIn(TimeZoneInfo.Utc)`, on both `DateTimeConverterBuilder` and `DateTimeOffsetConverterBuilder`. `DateTimeStyles` only apply to parsing, so a converter can read any offset into UTC but can't write UTC. Explicit rather than inferred from `AdjustToUniversal`. The same asymmetry in `Converters.DateTimeUtc`: it parses into UTC, but formats a `Local` value as local time.
+- [ ] **Configuration**: sections, for defining (`section.Define("Sinks:File:Directory", …)`, full key `Leander:Logging:Sinks:File:Directory`) and for reading. A definition keeps its full key, so contracts, documentation and diagnostics don't change. Overlaps with IDEAS.md, Reading a section of the contract, and `ReadOptions.CheckedSections`: one notion of a section.
+- [ ] **Configuration**: dictionary keys, a key per entry (`Categories:App.Data = Debug`), next to `Indexed` lists.
+
+Perhaps:
+- [ ] **Primitives**: an optional `IEqualityComparer<TKey>` on `Converters.Dictionary`, e.g. keys that ignore case.
+- [ ] **Primitives**: a description on `IFormatter<T>`, like `IConverter<T>.Description`, so a value that is only formatted can say how.
+- [ ] **Configuration**: lists of objects, `Indexed` entries that are groups of keys (`Events:0:Ids`, `Events:0:Category`).
+- [ ] **Configuration**: sub-contracts, where a primitive name is unique within its sub-contract rather than the whole contract, so a package can define its own common primitives.
+- [ ] **Configuration**: an explicit `Optional<T>` instead of `T?`, so `Optional()` and the helpers built on it need one generic overload instead of one per kind of type.
+
 ## Later
 - [x] `IConfiguration` adapter: implement `IValueSource` directly (`GetSection(key).Value`, `GetChildren()`).
 - [x] `Uri` formatting: `OriginalString` instead of `AbsoluteUri`, so `https://example.com` formats without a trailing `/`.
