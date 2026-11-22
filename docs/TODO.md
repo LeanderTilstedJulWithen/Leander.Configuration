@@ -89,23 +89,25 @@ What stands between the current code and a release. The code is feature-complete
 - [x] CHANGELOG: `[Unreleased]` becomes `[1.0.0]`, possibly reset to a short first-release summary.
 
 ## 1.1.0
-Planned after 1.0.0, not before.
+Released 2026-11-22 (see CHANGELOG).
 
-- [ ] Opt-in registration through attributes and reflection, to be replaced by a source generator later. Explicit registration stays the default. Don't assume definitions are public static members: applications may declare them differently. In small steps (see DESIGN.md, Registration through attributes):
-  - [x] `[RegisterConfiguration]` on a type and `RegisterFrom(Type)`: every static field and property of a definition type, of any accessibility.
+- [x] `[RegisterConfiguration]` on a type and `RegisterFrom(Type)`: every static field and property of a definition type, of any accessibility. The first step of attribute registration; the rest is under Next.
+- [x] Reloading: `IOptionsSnapshot<T>` and `IOptionsMonitor<T>` from a snapshot read again on `IConfiguration` reload, opt-in with `ReloadOnChange` (see DESIGN.md, Reload). Reading a section of the contract stays undecided (see IDEAS.md).
+- [x] Requested by Leander.Logging: `[MaybeNullWhen(false)] out T result` on `IParser<T>.TryParse` (breaking; also on `Primitive<T>.TryParse` and `TryAccept`, and `Converters.List` and `Dictionary` give `null` on failure, not an empty collection).
+- [x] Requested by Leander.Logging: the primitive public on a definition, `ConfigurationDefinition.Primitive`, non-generic because `Optional()` changes `T` but not the primitive.
+- [x] Requested by Leander.Logging: `FormatIn(TimeZoneInfo)` on both date-time builders (see DESIGN.md, Converter descriptions). `Converters.DateTimeUtc` writes UTC, and `DateTimeLocal` local time.
+
+## Next
+Not scheduled for a release yet.
+
+- [ ] The rest of opt-in registration through attributes and reflection, to be replaced by a source generator later. Explicit registration stays the default. Don't assume definitions are public static members: applications may declare them differently. In small steps (see DESIGN.md, Registration through attributes):
   - [ ] `[RegisterConfiguration]` on a single field, property or parameterless method, whose value may also be an `IEnumerable<ConfigurationDefinition>`.
   - [ ] `RegisterFrom(Assembly)`: every marked type in an assembly, in order of full name.
   - [ ] Options from the snapshot with a source generator: `Leander.Configuration.Generators`, `[GeneratedOptions]` on a `static partial` method, `[FromDefinition]` on each constructor parameter and property, with a sample.
   - [ ] Registration through the source generator instead of reflection.
-- [x] Reloading: `IOptionsSnapshot<T>` and `IOptionsMonitor<T>` from a snapshot read again on `IConfiguration` reload, opt-in with `ReloadOnChange` (see DESIGN.md, Reload). Reading a section of the contract stays undecided (see IDEAS.md).
 
 ### Requested by Leander.Logging
-The first three are in 1.1.0 and done; the rest aren't triaged yet. Source: Leander.Logging's `docs/DEPENDENCIES.md`, Known problems, which also says what Logging changes when each one comes.
-
-In 1.1.0:
-- [x] **Primitives**: `[MaybeNullWhen(false)] out T result` on `IParser<T>.TryParse`, so a failed parse doesn't have to invent a value. Breaking. Also on `Primitive<T>.TryParse` and `TryAccept`; `Converters.List` and `Dictionary` give `null` on failure, not an empty collection.
-- [x] **Configuration**: the primitive public on a definition, so tests and tooling outside Leander.Configuration can format a value the way the documentation does. `ConfigurationDefinition.Primitive`, non-generic because `Optional()` changes `T` but not the primitive.
-- [x] **Primitives**: `FormatIn(TimeZoneInfo)` on both date-time builders (see DESIGN.md, Converter descriptions, and CHANGELOG). `Converters.DateTimeUtc` writes UTC, and `DateTimeLocal` local time.
+Not triaged yet. Source: Leander.Logging's `docs/DEPENDENCIES.md`, Known problems, which also says what Logging changes when each one comes.
 
 Needs design:
 - [ ] **Configuration**: sections, for defining (`section.Define("Sinks:File:Directory", …)`, full key `Leander:Logging:Sinks:File:Directory`) and for reading. A definition keeps its full key, so contracts, documentation and diagnostics don't change. Overlaps with IDEAS.md, Reading a section of the contract, and `ReadOptions.CheckedSections`: one notion of a section.
